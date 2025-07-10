@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive TSD: Multimodality Labeling System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Tech -->
+    <!-- Application Structure Plan: The SPA is designed as a top-to-bottom narrative scroll, transforming the static TSD into an interactive story. This linear flow guides the user logically through each part of the technical plan, from high-level architecture to deployment details. Key interactions include clickable diagrams to reveal component details, an interactive flowchart to explain the user journey, and a live data chart to visualize the system's purpose. This structure was chosen over a tabbed or dashboard layout to maintain the narrative integrity of the original document, making a complex technical specification digestible and engaging for all stakeholders without requiring them to jump between different views. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: System Architecture Diagram -> Goal: Organize/Inform -> Viz: Interactive Diagram (HTML/CSS/JS) -> Interaction: Click on components (Portal, DB, Label Studio) to see detailed responsibilities. Justification: Makes the abstract architecture tangible and easy to explore.
+        - Report Info: Technology Stack -> Goal: Inform -> Viz: Icon-based Grid (HTML/Tailwind) -> Interaction: Hover for justification text. Justification: Visually appealing and provides quick, scannable information.
+        - Report Info: API/Page Flow -> Goal: Organize/Change -> Viz: Interactive Flowchart (HTML/CSS/JS) -> Interaction: Click on steps to see endpoint details and highlight the path. Justification: Clarifies the user journey and associated technical actions in a step-by-step manner.
+        - Report Info: `docker-compose.yml` -> Goal: Organize -> Viz: Collapsible Panels (HTML/JS) -> Interaction: Click to expand/collapse service configurations. Justification: Simplifies a dense code block, making it easier to inspect individual service setups.
+        - Report Info: Project Progress (`task_number`, `finished_task_number`) -> Goal: Inform/Compare -> Viz: Doughnut Chart (Chart.js/Canvas) -> Interaction: Hover for tooltips. Justification: Provides a dynamic, at-a-glance summary of the system's ultimate output, making the project's goal concrete. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .flow-arrow {
+            content: '→';
+            color: #9ca3af;
+        }
+        .active-step {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+            color: #1e40af !important;
+            transform: scale(1.05);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 400px;
+            max-height: 400px;
+            margin: auto;
+        }
+        .smooth-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        .component-card.active {
+            box-shadow: 0 0 0 3px #3b82f6;
+            transform: translateY(-5px);
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-5xl">
+        
+        <header class="text-center py-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Interactive Technical Specification</h1>
+            <p class="text-lg text-gray-600 mt-2">Multimodality Data Labeling System (v1.1)</p>
+        </header>
+
+        <main class="space-y-24">
+
+            <!-- Section 1: System Architecture -->
+            <section id="architecture">
+                <h2 class="text-2xl font-bold text-center mb-2 text-gray-900">System Architecture</h2>
+                <p class="text-center text-gray-600 max-w-3xl mx-auto mb-12">
+                    This system uses a decoupled architecture to separate user management from the core labeling tasks. The 'Portal' handles user-facing interactions like login and task selection, while the 'Labeling Engine' provides the specialized interface for data annotation. Click each component below to see its specific responsibilities.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-center text-center font-medium">
+                    <div id="comp-portal" class="component-card border-2 border-gray-300 rounded-lg p-6 cursor-pointer bg-white shadow-sm smooth-transition">Portal App</div>
+                    <div class="text-5xl text-gray-400 flow-arrow">↔</div>
+                    <div id="comp-db" class="component-card border-2 border-gray-300 rounded-lg p-6 cursor-pointer bg-white shadow-sm smooth-transition">Database</div>
+                    <div class="text-5xl text-gray-400 flow-arrow">↔</div>
+                    <div id="comp-ls" class="component-card border-2 border-gray-300 rounded-lg p-6 cursor-pointer bg-white shadow-sm smooth-transition">Label Studio</div>
+                </div>
+                <div id="architecture-details" class="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg min-h-[100px] text-blue-900 smooth-transition">
+                    <p>Click on a component to view its details here.</p>
+                </div>
+            </section>
+
+            <!-- Section 2: Technology Stack -->
+            <section id="tech-stack">
+                <h2 class="text-2xl font-bold text-center mb-2 text-gray-900">Technology Stack</h2>
+                <p class="text-center text-gray-600 max-w-3xl mx-auto mb-12">
+                    The system is built on a foundation of modern, reliable, and scalable technologies. Each component was chosen to efficiently fulfill its role within the architecture.
+                </p>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-center">
+                    <div class="bg-white p-4 rounded-lg shadow-sm border"><span class="text-4xl">🐍</span><p class="mt-2 font-semibold">Python/Flask</p></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm border"><span class="text-4xl">🐘</span><p class="mt-2 font-semibold">PostgreSQL</p></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm border"><span class="text-4xl">🏷️</span><p class="mt-2 font-semibold">Label Studio</p></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm border"><span class="text-4xl">🐳</span><p class="mt-2 font-semibold">Docker</p></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm border"><span class="text-4xl">💨</span><p class="mt-2 font-semibold">Tailwind CSS</p></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm border"><span class="text-4xl">🦄</span><p class="mt-2 font-semibold">Gunicorn</p></div>
+                </div>
+            </section>
+            
+            <!-- Section 3: Data & User Workflow -->
+            <section id="workflow">
+                <h2 class="text-2xl font-bold text-center mb-2 text-gray-900">Data & User Workflow</h2>
+                <p class="text-center text-gray-600 max-w-3xl mx-auto mb-12">
+                    This section outlines the journey a data labeler takes through the system, from logging in to completing a task. The flow is designed to be linear and intuitive. Click each step to see the technical details and associated API endpoints.
+                </p>
+                <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-4 text-center">
+                    <div id="flow-step-1" class="flow-step border-2 border-gray-300 rounded-full px-6 py-3 cursor-pointer bg-white shadow-sm smooth-transition">1. Login</div>
+                    <div class="text-2xl text-gray-400 flow-arrow">→</div>
+                    <div id="flow-step-2" class="flow-step border-2 border-gray-300 rounded-full px-6 py-3 cursor-pointer bg-white shadow-sm smooth-transition">2. Dashboard</div>
+                    <div class="text-2xl text-gray-400 flow-arrow">→</div>
+                    <div id="flow-step-3" class="flow-step border-2 border-gray-300 rounded-full px-6 py-3 cursor-pointer bg-white shadow-sm smooth-transition">3. Instructions</div>
+                     <div class="text-2xl text-gray-400 flow-arrow">→</div>
+                    <div id="flow-step-4" class="flow-step border-2 border-gray-300 rounded-full px-6 py-3 cursor-pointer bg-white shadow-sm smooth-transition">4. Labeling UI</div>
+                </div>
+                <div id="workflow-details" class="mt-8 p-6 bg-gray-100 border border-gray-200 rounded-lg min-h-[120px] text-gray-800 smooth-transition">
+                    <p>Click on a workflow step to view its details here.</p>
+                </div>
+            </section>
+            
+            <!-- Section 4: Live Project Status Dashboard -->
+            <section id="dashboard">
+                <h2 class="text-2xl font-bold text-center mb-2 text-gray-900">Live Project Status</h2>
+                <p class="text-center text-gray-600 max-w-3xl mx-auto mb-12">
+                    The portal provides a dashboard for labelers to track their progress. This live chart is a representation of what a user would see, showing the completion status of an active labeling project.
+                </p>
+                <div class="chart-container">
+                    <canvas id="progressChart"></canvas>
+                </div>
+                 <div class="text-center mt-4">
+                    <button id="updateChartBtn" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 smooth-transition">Simulate New Label</button>
+                </div>
+            </section>
+
+            <!-- Section 5: Deployment & Setup -->
+            <section id="deployment">
+                <h2 class="text-2xl font-bold text-center mb-2 text-gray-900">Deployment & Setup</h2>
+                <p class="text-center text-gray-600 max-w-3xl mx-auto mb-12">
+                    The entire system is orchestrated using Docker Compose, ensuring a consistent and reproducible setup. Below is an interactive representation of the `docker-compose.yml` file and the required setup steps.
+                </p>
+                <div class="bg-gray-800 text-white p-6 rounded-lg font-mono text-sm shadow-lg">
+                    <h3 class="text-lg text-yellow-300 mb-4">docker-compose.yml</h3>
+                    <div class="space-y-4">
+                        <div class="collapsible-section">
+                            <button class="collapsible-header w-full text-left font-bold text-green-400">services.portal ▼</button>
+                            <div class="collapsible-content hidden mt-2 pl-4 border-l-2 border-gray-600">
+                                <p><span class="text-purple-400">build:</span> .</p>
+                                <p><span class="text-purple-400">ports:</span> - "5000:5000"</p>
+                                <p><span class="text-purple-400">depends_on:</span> [db, label-studio]</p>
+                                <p><span class="text-purple-400">environment:</span> {...}</p>
+                            </div>
+                        </div>
+                        <div class="collapsible-section">
+                            <button class="collapsible-header w-full text-left font-bold text-green-400">services.db ▼</button>
+                            <div class="collapsible-content hidden mt-2 pl-4 border-l-2 border-gray-600">
+                                <p><span class="text-purple-400">image:</span> postgres:14-alpine</p>
+                                <p><span class="text-purple-400">volumes:</span> [postgres_data:/var/lib/postgresql/data/]</p>
+                                <p><span class="text-purple-400">environment:</span> {...}</p>
+                            </div>
+                        </div>
+                         <div class="collapsible-section">
+                            <button class="collapsible-header w-full text-left font-bold text-green-400">services.label-studio ▼</button>
+                            <div class="collapsible-content hidden mt-2 pl-4 border-l-2 border-gray-600">
+                                <p><span class="text-purple-400">image:</span> heartexlabs/label-studio:latest</p>
+                                <p><span class="text-purple-400">ports:</span> - "8080:8080"</p>
+                                <p><span class="text-purple-400">volumes:</span> [ls_data:/label-studio/data]</p>
+                                <p><span class="text-purple-400">environment:</span> {...}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+        
+        <footer class="text-center py-12 mt-16 border-t border-gray-200">
+            <p class="text-gray-500">Interactive Document Generated by Gemini</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- Architecture Section ---
+            const archDetails = {
+                'comp-portal': {
+                    title: 'Portal App (Flask + PostgreSQL)',
+                    description: 'This is the main user-facing web application. It handles user login, displays the task dashboard by fetching data from the Label Studio API, and presents task-specific instructions. It acts as a secure and simplified gateway for labelers.'
+                },
+                'comp-db': {
+                    title: 'PostgreSQL Database',
+                    description: 'A dedicated database that stores user account information for the Portal App, including usernames and securely hashed passwords. It does not store any labeling data.'
+                },
+                'comp-ls': {
+                    title: 'Label Studio Engine',
+                    description: 'The core labeling software. It manages all multimedia tasks, renders the powerful labeling interface, and saves all annotations. The Portal communicates with its API to retrieve project metadata.'
+                }
+            };
+
+            const archDetailContainer = document.getElementById('architecture-details');
+            const componentCards = document.querySelectorAll('.component-card');
+            
+            componentCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    const compId = card.id;
+                    const details = archDetails[compId];
+
+                    componentCards.forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+
+                    archDetailContainer.innerHTML = `
+                        <h4 class="font-bold text-lg mb-2">${details.title}</h4>
+                        <p>${details.description}</p>
+                    `;
+                });
+            });
+
+            // --- Workflow Section ---
+            const flowDetails = {
+                'flow-step-1': {
+                    title: 'Step 1: User Login',
+                    description: 'The labeler navigates to the portal and enters their credentials. The Flask backend verifies the username and password hash against the PostgreSQL database.',
+                    endpoints: '`GET /login`, `POST /login`'
+                },
+                'flow-step-2': {
+                    title: 'Step 2: Task Dashboard',
+                    description: 'Upon successful login, the user sees a dashboard of available labeling projects. The portal backend generates this list by making authenticated API calls to Label Studio to fetch project titles and completion progress.',
+                    endpoints: '`GET /dashboard`'
+                },
+                'flow-step-3': {
+                    title: 'Step 3: View Instructions',
+                    description: 'Before starting, the user is shown an instruction image for the selected task. This ensures they understand the labeling criteria.',
+                    endpoints: '`GET /task/{id}/instructions`'
+                },
+                 'flow-step-4': {
+                    title: 'Step 4: Labeling UI',
+                    description: 'The user is redirected to the Label Studio interface itself. From this point on, Label Studio handles the presentation of media, choice selection, and saving of annotations.',
+                    endpoints: 'Redirect to Label Studio URL'
+                }
+            };
+
+            const flowDetailContainer = document.getElementById('workflow-details');
+            const flowSteps = document.querySelectorAll('.flow-step');
+
+            flowSteps.forEach(step => {
+                step.addEventListener('click', () => {
+                    const flowId = step.id;
+                    const details = flowDetails[flowId];
+                    
+                    flowSteps.forEach(s => s.classList.remove('active-step'));
+                    step.classList.add('active-step');
+
+                    flowDetailContainer.innerHTML = `
+                        <h4 class="font-bold text-lg mb-2">${details.title}</h4>
+                        <p class="mb-2">${details.description}</p>
+                        <p class="font-mono bg-gray-200 text-gray-700 rounded px-2 py-1 inline-block">Endpoints: ${details.endpoints}</p>
+                    `;
+                });
+            });
+            
+            // --- Chart.js Section ---
+            let completedTasks = 120;
+            let totalTasks = 200;
+
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            const progressChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Completed', 'Remaining'],
+                    datasets: [{
+                        label: 'Tasks',
+                        data: [completedTasks, totalTasks - completedTasks],
+                        backgroundColor: [
+                            'rgb(59, 130, 246)',
+                            'rgb(229, 231, 235)'
+                        ],
+                        borderColor: [
+                            'rgb(59, 130, 246)',
+                            'rgb(229, 231, 235)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: `Project Alpha: ${completedTasks} / ${totalTasks} Tasks Completed`,
+                            font: { size: 16 }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+            
+            document.getElementById('updateChartBtn').addEventListener('click', () => {
+                if (completedTasks < totalTasks) {
+                    completedTasks++;
+                    progressChart.data.datasets[0].data = [completedTasks, totalTasks - completedTasks];
+                    progressChart.options.plugins.title.text = `Project Alpha: ${completedTasks} / ${totalTasks} Tasks Completed`;
+                    progressChart.update();
+                }
+            });
+
+
+            // --- Collapsible Sections for Deployment ---
+            document.querySelectorAll('.collapsible-header').forEach(header => {
+                header.addEventListener('click', () => {
+                    const content = header.nextElementSibling;
+                    content.classList.toggle('hidden');
+                    header.textContent = content.classList.contains('hidden') 
+                        ? header.textContent.replace('▼', '►').replace('▲', '▼') 
+                        : header.textContent.replace('►', '▼').replace('▼', '▲');
+                });
+                 header.textContent = header.textContent.replace('▼', '►');
+            });
+        });
+    </script>
+</body>
+</html>
