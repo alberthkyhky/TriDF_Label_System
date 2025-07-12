@@ -1,120 +1,78 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from app.config import settings
+from app.routers import auth_router, tasks_router, users_router
 import os
-from dotenv import load_dotenv
-from supabase import create_client, Client
-from pydantic import BaseModel
-from typing import Optional, List
-import jwt
 
-load_dotenv()
-
-app = FastAPI(title="Labeling System API", version="1.0.0")
-
-# Initialize Supabase
-supabase: Client = create_client(
-    os.getenv("SUPABASE_URL"),
-    os.getenv("SUPABASE_SERVICE_KEY")
+# Create FastAPI app
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    description="A comprehensive labeling system for images, videos, and audio files with quality control and user management.",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
-
-# Security
-security = HTTPBearer()
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Pydantic models
-class UserProfile(BaseModel):
-    id: str
-    email: str
-    full_name: Optional[str] = None
-    role: str = "labeler"
-    preferred_classes: Optional[List[str]] = []
+# Mount static files
+if os.path.exists(settings.UPLOAD_DIR):
+    app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
-class UserStats(BaseModel):
-    total_questions_labeled: int = 0
-    accuracy_score: float = 100.0
-    labels_today: int = 0
-    labels_this_week: int = 0
-    labels_this_month: int = 0
+# Include routers
+app.include_router(auth_router, prefix=settings.API_V1_STR)
+app.include_router(tasks_router, prefix=settings.API_V1_STR)
+app.include_router(users_router, prefix=settings.API_V1_STR)
 
-# Auth dependency
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    try:
-        # Verify JWT token
-        token = credentials.credentials
-        payload = jwt.decode(
-            token, 
-            os.getenv("SUPABASE_JWT_SECRET", "your-jwt-secret"), 
-            algorithms=["HS256"],
-            audience="authenticated"
-        )
-        user_id = payload.get("sub")
-        if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        return user_id
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-# Routes
+# Root endpoints
 @app.get("/")
 async def root():
-    return {"message": "Labeling System API is running!"}
+    return {
+        "message": f"{settings.PROJECT_NAME} is running!",
+        "version": settings.VERSION,
+        "docs": "/docs",
+        "redoc": "/redoc"
+    }
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "service": "labeling-system-api"}
+    return {
+        "status": "healthy",
+        "service": settings.PROJECT_NAME.lower().replace(" ", "-"),
+        "version": settings.VERSION
+    }
 
-@app.get("/auth/profile", response_model=UserProfile)
-async def get_user_profile(user_id: str = Depends(get_current_user)):
-    try:
-        result = supabase.table("user_profiles").select("*").eq("id", user_id).execute()
-        if not result.data:
-            raise HTTPException(status_code=404, detail="User profile not found")
-        return result.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# Exception handlers
+@app.exception_handler(404)
+async def not_found_handler(request, exc):
+    return {
+        "error": "Not Found",
+        "message": "The requested resource was not found",
+        "status_code": 404
+    }
 
-@app.put("/auth/profile", response_model=UserProfile)
-async def update_user_profile(profile_data: UserProfile, user_id: str = Depends(get_current_user)):
-    try:
-        result = supabase.table("user_profiles").update({
-            "full_name": profile_data.full_name,
-            "preferred_classes": profile_data.preferred_classes
-        }).eq("id", user_id).execute()
-        return result.data[0]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/auth/stats", response_model=UserStats)
-async def get_user_stats(user_id: str = Depends(get_current_user)):
-    try:
-        result = supabase.table("user_stats").select("*").eq("user_id", user_id).execute()
-        if result.data:
-            return result.data[0]
-        else:
-            # Create default stats if none exist
-            default_stats = {
-                "user_id": user_id,
-                "total_questions_labeled": 0,
-                "accuracy_score": 100.0,
-                "labels_today": 0,
-                "labels_this_week": 0,
-                "labels_this_month": 0
-            }
-            supabase.table("user_stats").insert(default_stats).execute()
-            return UserStats()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@app.exception_handler(500)
+async def internal_error_handler(request, exc):
+    return {
+        "error": "Internal Server Error", 
+        "message": "An internal server error occurred",
+        "status_code": 500
+    }
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )
