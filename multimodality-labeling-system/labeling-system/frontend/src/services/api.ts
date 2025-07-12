@@ -128,10 +128,11 @@ export const api = {
   },
 
   async assignTask(taskId: string, data: {
-    user_id: string;
+    user_id_to_assign: string;  // ← Fixed field name
     assigned_classes: string[];
     target_labels: number;
   }): Promise<TaskAssignment> {
+    console.log('Assigning task:', taskId, data);
     return apiCall(`/tasks/${taskId}/assign`, {
       method: 'POST',
       body: JSON.stringify(data),

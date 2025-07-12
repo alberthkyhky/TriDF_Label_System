@@ -6,7 +6,6 @@ import {
   List, 
   ListItem, 
   ListItemText, 
-  ListItemSecondaryAction,
   IconButton,
   Dialog,
   DialogTitle,
@@ -121,8 +120,9 @@ const TaskManagement: React.FC = () => {
         {tasks.map((task) => (
           <ListItem key={task.id} divider>
             <ListItemText
+              disableTypography
               primary={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   {task.title}
                   <Chip 
                     label={task.status} 
@@ -132,7 +132,7 @@ const TaskManagement: React.FC = () => {
                 </Box>
               }
               secondary={
-                <Box>
+                <Box component="span">
                   <Typography variant="body2" color="text.secondary">
                     {task.description || 'No description'}
                   </Typography>
@@ -142,7 +142,6 @@ const TaskManagement: React.FC = () => {
                 </Box>
               }
             />
-            <ListItemSecondaryAction>
               <FormControl size="small" sx={{ minWidth: 100, mr: 1 }}>
                 <Select
                   value={task.status}
@@ -157,7 +156,6 @@ const TaskManagement: React.FC = () => {
               <IconButton size="small">
                 <Edit />
               </IconButton>
-            </ListItemSecondaryAction>
           </ListItem>
         ))}
       </List>

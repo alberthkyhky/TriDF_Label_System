@@ -158,17 +158,41 @@ class TaskService:
             user_check = self.supabase.table("user_profiles").select("id").eq("id", assignment_data.user_id_to_assign).execute()
             if not user_check.data:
                 raise Exception("User not found")
-            
-            # Validate classes exist
+
+            # Convert label class names to IDs if necessary
+            assigned_class_ids = []
             if assignment_data.assigned_classes:
-                class_check = self.supabase.table("label_classes").select("id").in_("id", assignment_data.assigned_classes).execute()
+                # Check if we're receiving names or IDs
+                first_class = assignment_data.assigned_classes[0]
+                
+                # Simple check: if it looks like a UUID, assume they're all IDs
+                import uuid
+                try:
+                    uuid.UUID(first_class)
+                    # They're already UUIDs/IDs, use as-is
+                    assigned_class_ids = assignment_data.assigned_classes
+                    class_check = self.supabase.table("label_classes").select("id").in_("id", assigned_class_ids).execute()
+                except ValueError:
+                    # They're names, convert to IDs
+                    class_check = self.supabase.table("label_classes").select("id, name").in_("name", assignment_data.assigned_classes).execute()
+                    if not class_check.data:
+                        raise Exception(f"No label classes found for names: {assignment_data.assigned_classes}")
+                    
+                    assigned_class_ids = [item["id"] for item in class_check.data]
+                    
+                    # Verify all names were found
+                    found_names = [item["name"] for item in class_check.data]
+                    missing_names = set(assignment_data.assigned_classes) - set(found_names)
+                    if missing_names:
+                        raise Exception(f"Label classes not found: {list(missing_names)}")
+                
                 if len(class_check.data) != len(assignment_data.assigned_classes):
                     raise Exception("One or more label classes not found")
             
             assignment_dict = {
                 "task_id": task_id,
                 "user_id": assignment_data.user_id_to_assign,
-                "assigned_classes": assignment_data.assigned_classes,
+                "assigned_classes": assigned_class_ids,  # Store as IDs in database
                 "target_labels": assignment_data.target_labels,
                 "completed_labels": 0,
                 "is_active": True
@@ -178,9 +202,10 @@ class TaskService:
             if result.data:
                 return TaskAssignment(**result.data[0])
             raise Exception("Failed to create assignment")
+            
         except Exception as e:
             raise Exception(f"Error creating assignment: {str(e)}")
-    
+
     async def update_assignment_progress(self, assignment_id: str, completed_labels: int) -> TaskAssignment:
         """Update assignment progress"""
         try:

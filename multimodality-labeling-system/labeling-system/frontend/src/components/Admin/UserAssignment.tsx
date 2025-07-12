@@ -1,4 +1,4 @@
-// 5. components/Admin/UserAssignment.tsx
+// components/Admin/UserAssignment.tsx
 import React, { useState, useEffect } from 'react';
 import { 
   Box, 
@@ -20,16 +20,25 @@ import {
   Alert,
   Grid,
   Card,
-  CardContent
+  CardContent,
+  OutlinedInput,
+  SelectChangeEvent
 } from '@mui/material';
 import { Assignment } from '@mui/icons-material';
 import { api } from '../../services/api';
 import { Task, TaskAssignment } from '../../types/tasks';
 
+interface LabelClass {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 const UserAssignment: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [labelClasses, setLabelClasses] = useState<LabelClass[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -46,16 +55,26 @@ const UserAssignment: React.FC = () => {
   const fetchData = async () => {
     try {
       setError(null);
-      const [tasksData, usersData] = await Promise.all([
+      const [tasksData, usersData, labelClassesData] = await Promise.all([
         api.getTasks(),
-        api.getUsersByRole('labeler')
+        api.getUsersByRole('labeler'),
+        api.getLabelClasses().catch(() => []) // Fallback to empty array if endpoint doesn't exist
       ]);
       setTasks(tasksData.filter(task => task.status === 'active'));
       setUsers(usersData);
+      setLabelClasses(labelClassesData);
     } catch (error) {
       console.error('Error fetching data:', error);
       setError('Failed to fetch data');
     }
+  };
+
+  const handleAssignedClassesChange = (event: SelectChangeEvent<string[]>) => {
+    const value = event.target.value;
+    setFormData({
+      ...formData,
+      assigned_classes: typeof value === 'string' ? value.split(',') : value,
+    });
   };
 
   const handleAssign = async () => {
@@ -64,13 +83,19 @@ const UserAssignment: React.FC = () => {
       return;
     }
 
+    // If no label classes are available, use a default one
+    const assignedClasses = formData.assigned_classes.length > 0 
+      ? formData.assigned_classes 
+      : ['general']; // Fallback to a default class
+
     setLoading(true);
     setError(null);
 
     try {
+      // Fix the field name: user_id -> user_id_to_assign
       await api.assignTask(formData.task_id, {
-        user_id: formData.user_id,
-        assigned_classes: formData.assigned_classes,
+        user_id_to_assign: formData.user_id, // ← Fixed field name
+        assigned_classes: assignedClasses,
         target_labels: formData.target_labels
       });
       
@@ -82,10 +107,12 @@ const UserAssignment: React.FC = () => {
         assigned_classes: []
       });
       
-      // Could refresh assignments here if you have an endpoint
+      // Show success message
+      setError(null);
+      
     } catch (error) {
       console.error('Error assigning task:', error);
-      setError('Failed to assign task');
+      setError('Failed to assign task. Please check the console for details.');
     } finally {
       setLoading(false);
     }
@@ -112,7 +139,7 @@ const UserAssignment: React.FC = () => {
       </Box>
 
       <Grid container spacing={3}>
-        <Grid size={{xs: 12, md: 6}}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -132,7 +159,7 @@ const UserAssignment: React.FC = () => {
           </Card>
         </Grid>
 
-        <Grid size={{xs: 12, md: 6}}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
@@ -184,6 +211,43 @@ const UserAssignment: React.FC = () => {
             </Select>
           </FormControl>
 
+          {/* Label Classes Selection */}
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Assigned Label Classes</InputLabel>
+            <Select
+              multiple
+              value={formData.assigned_classes}
+              onChange={handleAssignedClassesChange}
+              input={<OutlinedInput label="Assigned Label Classes" />}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {selected.map((value) => (
+                    <Chip key={value} label={value} size="small" />
+                  ))}
+                </Box>
+              )}
+            >
+              {labelClasses.length > 0 ? (
+                labelClasses.map((labelClass) => (
+                  <MenuItem key={labelClass.id} value={labelClass.name}>
+                    {labelClass.name}
+                  </MenuItem>
+                ))
+              ) : (
+                // Fallback options if no label classes are loaded
+                ['general', 'person', 'vehicle', 'animal', 'object'].map((className) => (
+                  <MenuItem key={className} value={className}>
+                    {className}
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+              {labelClasses.length === 0 && 'Using default label classes. Create custom ones in Task Management.'}
+              {formData.assigned_classes.length === 0 && 'At least one class must be selected.'}
+            </Typography>
+          </FormControl>
+
           <TextField
             fullWidth
             label="Target Labels"
@@ -211,4 +275,3 @@ const UserAssignment: React.FC = () => {
 };
 
 export default UserAssignment;
-
