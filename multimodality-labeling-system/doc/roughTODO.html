@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Development Todo List - Labeling System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: 600;
+            color: #495057;
+        }
+        .phase {
+            margin-bottom: 30px;
+            border: 2px solid #e3f2fd;
+            border-radius: 15px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .phase:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .phase-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 1.2em;
+        }
+        .phase-header.completed {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+        }
+        .phase-content {
+            padding: 20px;
+            background: white;
+            display: block;
+        }
+        .todo-item {
+            margin: 12px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        .todo-item:hover {
+            background: #e3f2fd;
+            transform: translateX(5px);
+        }
+        .todo-item.completed {
+            background: #e8f5e8;
+            border-left-color: #4caf50;
+            opacity: 0.8;
+        }
+        .todo-item.completed .todo-text {
+            text-decoration: line-through;
+        }
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #667eea;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .checkbox.checked {
+            background: #4caf50;
+            border-color: #4caf50;
+            color: white;
+        }
+        .todo-text {
+            flex: 1;
+            line-height: 1.5;
+        }
+        .todo-description {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        .priority {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .priority.high {
+            background: #ffe6e6;
+            color: #d32f2f;
+        }
+        .priority.medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .priority.low {
+            background: #d4edda;
+            color: #155724;
+        }
+        .phase-progress {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #495057;
+        }
+        .notes-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 10px;
+            border-left: 4px solid #ffc107;
+        }
+        .notes-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        .notes-content {
+            color: #856404;
+            line-height: 1.5;
+        }
+        .phase-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+        .toggle-icon.rotated {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Development Todo List</h1>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">0% Complete (0/40 tasks)</div>
+
+        <!-- Phase 1: Project Setup -->
+        <div class="phase">
+            <div class="phase-header" onclick="togglePhase(this)">
+                <span>Phase 1: Project Setup & Foundation</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="phase-content">
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Set up Supabase project</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Create account, new project, get API keys, configure environment variables</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Initialize FastAPI backend</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Install dependencies, create basic structure, set up CORS</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Create React TypeScript frontend</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Create-react-app with TypeScript, install UI libraries (Material-UI/Tailwind)</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Set up local file storage structure</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">Create /uploads/ directories, set permissions, configure serving</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Configure Supabase database schema</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Create tables: tasks, media_files, annotations, quality_checks, user_stats</div>
+                    </div>
+                </div>
+                <div class="phase-progress">Phase 1: <span id="phase1-progress">0/5</span> tasks completed</div>
+            </div>
+        </div>
+
+        <!-- Phase 2: Authentication & User Management -->
+        <div class="phase">
+            <div class="phase-header" onclick="togglePhase(this)">
+                <span>Phase 2: Authentication & User Management</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="phase-content">
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Implement Supabase Auth integration</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Sign up, sign in, password reset, session management</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Create user profiles system</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">Extended user data, roles (admin/labeler/reviewer), preferences</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Build login/signup UI</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Forms, validation, error handling, responsive design</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Implement protected routes</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">Route guards, role-based access control</div>
+                    </div>
+                </div>
+                <div class="phase-progress">Phase 2: <span id="phase2-progress">0/4</span> tasks completed</div>
+            </div>
+        </div>
+
+        <!-- Phase 3: Task Management -->
+        <div class="phase">
+            <div class="phase-header" onclick="togglePhase(this)">
+                <span>Phase 3: Task Management System</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="phase-content">
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Create task creation API</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">CRUD operations, validation, file association</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Build task management UI</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Task list, filtering, search, assignment interface</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Implement file upload system</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Multi-file upload, progress tracking, file validation</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Add task assignment logic</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">Manual assignment, auto-assignment, workload balancing</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Create user dashboard</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">Personal stats, assigned tasks, progress overview</div>
+                    </div>
+                </div>
+                <div class="phase-progress">Phase 3: <span id="phase3-progress">0/5</span> tasks completed</div>
+            </div>
+        </div>
+
+        <!-- Phase 4: Image Labeling -->
+        <div class="phase">
+            <div class="phase-header" onclick="togglePhase(this)">
+                <span>Phase 4: Image Labeling Interface</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="phase-content">
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Build image viewer component</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Zoom, pan, fit-to-screen, image navigation</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Implement bounding box annotation</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Draw, resize, move rectangles, label assignment</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Add classification labels</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">Dropdown/checkbox selection, custom categories</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Create annotation persistence</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Save/load annotations, auto-save, undo/redo</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Add keyboard shortcuts</strong>
+                        <span class="priority low">LOW</span>
+                        <div class="todo-description">Quick tools, navigation, labeling shortcuts</div>
+                    </div>
+                </div>
+                <div class="phase-progress">Phase 4: <span id="phase4-progress">0/5</span> tasks completed</div>
+            </div>
+        </div>
+
+        <!-- Phase 5: Video & Audio Support -->
+        <div class="phase">
+            <div class="phase-header" onclick="togglePhase(this)">
+                <span>Phase 5: Video & Audio Labeling</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="phase-content">
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Build video player component</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Play/pause, scrubbing, frame-by-frame, speed control</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Implement timeline annotations</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Time-based labeling, segment marking, temporal data</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Create audio waveform viewer</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">Waveform display, playback controls, time selection</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Add audio segment labeling</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">Time-based audio annotations, classification</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Optimize media file handling</strong>
+                        <span class="priority low">LOW</span>
+                        <div class="todo-description">Compression, format conversion, streaming</div>
+                    </div>
+                </div>
+                <div class="phase-progress">Phase 5: <span id="phase5-progress">0/5</span> tasks completed</div>
+            </div>
+        </div>
+
+        <!-- Phase 6: Quality Control -->
+        <div class="phase">
+            <div class="phase-header" onclick="togglePhase(this)">
+                <span>Phase 6: Quality Control System</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="phase-content">
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Create honeypot task system</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Pre-labeled easy tasks, random insertion, accuracy tracking</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Implement quality metrics</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">Accuracy scores, consistency tracking, performance analytics</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Build quality dashboard</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">Individual/team performance, charts, alerts</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Add consensus requirements</strong>
+                        <span class="priority low">LOW</span>
+                        <div class="todo-description">Multiple labelers per task, agreement thresholds</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Create audit system</strong>
+                        <span class="priority low">LOW</span>
+                        <div class="todo-description">Random sampling, admin review, feedback system</div>
+                    </div>
+                </div>
+                <div class="phase-progress">Phase 6: <span id="phase6-progress">0/5</span> tasks completed</div>
+            </div>
+        </div>
+
+        <!-- Phase 7: Admin Panel -->
+        <div class="phase">
+            <div class="phase-header" onclick="togglePhase(this)">
+                <span>Phase 7: Admin Panel & Analytics</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="phase-content">
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Build admin dashboard</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">System overview, user management, task statistics</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Create user management interface</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">User roles, permissions, performance review</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Implement export functionality</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">JSON, CSV, COCO format exports, filtering options</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Add system analytics</strong>
+                        <span class="priority low">LOW</span>
+                        <div class="todo-description">Usage statistics, performance metrics, trend analysis</div>
+                    </div>
+                </div>
+                <div class="phase-progress">Phase 7: <span id="phase7-progress">0/4</span> tasks completed</div>
+            </div>
+        </div>
+
+        <!-- Phase 8: Polish & Deployment -->
+        <div class="phase">
+            <div class="phase-header" onclick="togglePhase(this)">
+                <span>Phase 8: Polish & Deployment</span>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="phase-content">
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Optimize performance</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">Lazy loading, caching, image optimization, code splitting</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Add error handling & logging</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Global error boundaries, API error handling, logging system</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Create Docker containers</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">Dockerfile for backend/frontend, docker-compose setup</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Set up production deployment</strong>
+                        <span class="priority high">HIGH</span>
+                        <div class="todo-description">Server configuration, SSL, monitoring, backup strategy</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Write documentation</strong>
+                        <span class="priority low">LOW</span>
+                        <div class="todo-description">User guide, API docs, deployment instructions</div>
+                    </div>
+                </div>
+                <div class="todo-item" onclick="toggleTodo(this)">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">
+                        <strong>Testing & QA</strong>
+                        <span class="priority medium">MEDIUM</span>
+                        <div class="todo-description">Unit tests, integration tests, user acceptance testing</div>
+                    </div>
+                </div>
+                <div class="phase-progress">Phase 8: <span id="phase8-progress">0/6</span> tasks completed</div>
+            </div>
+        </div>
+
+        <div class="notes-section">
+            <div class="notes-title">📝 Development Notes</div>
+            <div class="notes-content">
+                <strong>Recommended Development Order:</strong> Follow phases sequentially for best results. Each phase builds on the previous one.<br><br>
+                <strong>Priority System:</strong> Focus on HIGH priority tasks first, then MEDIUM, then LOW.<br><br>
+                <strong>Testing Strategy:</strong> Test each component as you build it. Don't wait until the end.<br><br>
+                <strong>Backup Plan:</strong> Commit code frequently and backup your local files regularly.<br><br>
+                <strong>Performance Tips:</strong> Start with basic functionality, then optimize. Premature optimization can slow development.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function togglePhase(header) {
+            const content = header.nextElementSibling;
+            const icon = header.querySelector('.toggle-icon');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.textContent = '▼';
+                icon.classList.remove('rotated');
+            } else {
+                content.style.display = 'none';
+                icon.textContent = '▶';
+                icon.classList.add('rotated');
+            }
+        }
+
+        function toggleTodo(item) {
+            const checkbox = item.querySelector('.checkbox');
+            const isCompleted = item.classList.contains('completed');
+            
+            if (isCompleted) {
+                item.classList.remove('completed');
+                checkbox.classList.remove('checked');
+                checkbox.innerHTML = '';
+            } else {
+                item.classList.add('completed');
+                checkbox.classList.add('checked');
+                checkbox.innerHTML = '✓';
+            }
+            
+            updateProgress();
+            updatePhaseProgress();
+        }
+
+        function updateProgress() {
+            const totalTasks = document.querySelectorAll('.todo-item').length;
+            const completedTasks = document.querySelectorAll('.todo-item.completed').length;
+            const percentage = Math.round((completedTasks / totalTasks) * 100);
+            
+            document.getElementById('progressFill').style.width = percentage + '%';
+            document.getElementById('progressText').textContent = `${percentage}% Complete (${completedTasks}/${totalTasks} tasks)`;
+        }
+
+        function updatePhaseProgress() {
+            for (let i = 1; i <= 8; i++) {
+                const phase = document.querySelector(`#phase${i}-progress`);
+                if (phase) {
+                    const phaseElement = phase.closest('.phase');
+                    const phaseTasks = phaseElement.querySelectorAll('.todo-item');
+                    const phaseCompleted = phaseElement.querySelectorAll('.todo-item.completed');
+                    
+                    phase.textContent = `${phaseCompleted.length}/${phaseTasks.length}`;
+                    
+                    // Mark phase as completed if all tasks are done
+                    const phaseHeader = phaseElement.querySelector('.phase-header');
+                    if (phaseCompleted.length === phaseTasks.length && phaseTasks.length > 0) {
+                        phaseHeader.classList.add('completed');
+                    } else {
+                        phaseHeader.classList.remove('completed');
+                    }
+                }
+            }
+        }
+
+        // Initialize progress on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateProgress();
+            updatePhaseProgress();
+        });
+    </script>
+</body>
+</html>
