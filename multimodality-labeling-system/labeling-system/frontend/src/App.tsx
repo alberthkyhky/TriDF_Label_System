@@ -1,40 +1,60 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { AppBar, Toolbar, Typography, Container } from '@mui/material';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import LoginForm from './components/Auth/LoginForm';
 import Dashboard from './components/Dashboard';
+import LoadingScreen from './components/LoadingScreen';
 
 const theme = createTheme({
   palette: {
-    primary: {
-      main: '#667eea',
-    },
-    secondary: {
-      main: '#764ba2',
-    },
+    primary: { main: '#667eea' },
+    secondary: { main: '#764ba2' },
   },
 });
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) return <LoadingScreen />;
+  if (!user) return <Navigate to="/login" replace />;
+  
+  return <>{children}</>;
+};
+
+const AppContent = () => {
+  const { user, loading } = useAuth();
+  
+  if (loading) return <LoadingScreen />;
+  
+  return (
+    <Router>
+      <Routes>
+        <Route 
+          path="/login" 
+          element={user ? <Navigate to="/" replace /> : <LoginForm />} 
+        />
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+      </Routes>
+    </Router>
+  );
+};
 
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
-        <AppBar position="static">
-          <Toolbar>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-              🎯 Labeling System
-            </Typography>
-          </Toolbar>
-        </AppBar>
-        
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-          </Routes>
-        </Container>
-      </Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </ThemeProvider>
   );
 }
