@@ -5,11 +5,12 @@ A comprehensive, production-ready labeling system for images, videos, and audio 
 ## ✨ Key Features
 
 - 🎵 **Multi-Modal Support** - Images, videos, and audio labeling
-- 🔐 **Advanced Authentication** - Role-based access with Supabase
+- 🔐 **Advanced Authentication** - Role-based access with Supabase Auth
 - 📋 **Question-Based Tasks** - Structured labeling with multiple choice
 - 🎖️ **Quality Control** - Honeypot tasks and accuracy tracking
 - 📊 **Analytics Dashboard** - Performance metrics and leaderboards
 - 🚀 **Real-time Updates** - Live progress tracking and notifications
+- 👑 **Admin Management** - Complete task creation and user assignment system
 
 ## 🏗️ Architecture Overview
 
@@ -18,12 +19,13 @@ A comprehensive, production-ready labeling system for images, videos, and audio 
 │     Frontend    │    │     Backend     │    │    Database     │
 │   React + TS    │◄──►│  FastAPI + JWT  │◄──►│   Supabase      │
 │   Material-UI   │    │  File Upload    │    │  PostgreSQL     │
+│   Admin + User  │    │  25+ Endpoints  │    │  RLS + Triggers │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-- **Frontend**: React with TypeScript, Material-UI components
-- **Backend**: FastAPI with JWT authentication, file management
-- **Database**: Supabase PostgreSQL with real-time capabilities
+- **Frontend**: React with TypeScript, Material-UI components, role-based dashboards
+- **Backend**: FastAPI with JWT authentication, comprehensive API
+- **Database**: Supabase PostgreSQL with real-time capabilities and security policies
 
 ## 🚀 Quick Start
 
@@ -73,20 +75,32 @@ npm start
 ```
 labeling-system/
 ├── README.md                 # This file
-├── docker-compose.yml        # Docker setup
 ├── docs/                     # Documentation
 │   ├── database-setup.md
 │   ├── deployment.md
 │   └── api-reference.md
 ├── backend/                  # FastAPI backend
-│   ├── README.md            # Backend-specific docs
+│   ├── README.md            # Backend documentation
 │   ├── main.py              # Application entry
 │   ├── requirements.txt     # Python dependencies
-│   └── app/                 # Application code
+│   ├── app/
+│   │   ├── config.py        # Configuration
+│   │   ├── database.py      # Supabase client
+│   │   ├── routers/         # API endpoints
+│   │   ├── models/          # Pydantic models
+│   │   ├── services/        # Business logic
+│   │   └── auth/            # Authentication
+│   └── uploads/             # Media file storage
 ├── frontend/                 # React frontend
-│   ├── README.md            # Frontend-specific docs
+│   ├── README.md            # Frontend documentation
 │   ├── package.json         # Node dependencies
-│   └── src/                 # React components
+│   ├── src/
+│   │   ├── components/      # React components
+│   │   ├── contexts/        # React contexts
+│   │   ├── services/        # API services
+│   │   ├── types/           # TypeScript types
+│   │   └── App.tsx          # Main application
+│   └── public/              # Static assets
 └── scripts/                  # Utility scripts
     ├── setup.sh             # Automated setup
     └── deploy.sh            # Deployment script
@@ -94,83 +108,114 @@ labeling-system/
 
 ## 🎯 Core Workflows
 
-### **For Labelers**
-1. **Login** → View assigned tasks
-2. **Select task** → Read labeling guidelines  
-3. **Label questions** → Submit responses
-4. **Track progress** → View personal statistics
-
 ### **For Admins**
-1. **Create tasks** → Upload media files
-2. **Assign users** → Set quotas and classes
-3. **Monitor quality** → Review accuracy scores
-4. **Export data** → Download labeled datasets
+1. **Login** → Access admin dashboard with tabs
+2. **Create Tasks** → Define labeling tasks with rules
+3. **Assign Users** → Assign tasks to labelers with quotas
+4. **Monitor Progress** → Track completion and accuracy
+5. **Export Data** → Download labeled datasets
+
+### **For Labelers**
+1. **Login** → View assigned tasks as cards
+2. **Select Task** → See task progress and requirements
+3. **Label Data** → Answer questions about media files
+4. **Track Progress** → Monitor personal statistics
+5. **Complete Tasks** → Submit all required labels
+
+## 🔧 Current Status (January 2025)
+
+### ✅ **Completed (85%)**
+- **Authentication System** - Login, JWT validation, role-based access
+- **Admin Dashboard** - Task creation, user assignment interface
+- **Labeler Dashboard** - Task cards with progress tracking
+- **Backend API** - 25+ endpoints, complete CRUD operations
+- **Database Schema** - 10+ tables with relationships and triggers
+- **Role-based Navigation** - Different experiences per user type
+
+### 🚧 **In Progress (15%)**
+- **User Assignment** - Demo users and assignment workflow
+- **Question Management** - Question creation and media upload
+- **Labeling Interface** - Core labeling functionality
+- **Demo Data** - Sample tasks and assignments for testing
+
+### 🎯 **Next Milestones**
+1. **Complete Assignment System** - Full admin-to-labeler workflow
+2. **Question Creation** - Media upload and question management
+3. **Labeling Interface** - Core data labeling functionality
+4. **Quality Control** - Honeypot tasks and accuracy tracking
+
+## 🧪 Demo Accounts
+
+### **Quick Login (Development)**
+- **Admin**: admin@example.com / password123
+- **Labeler**: labeler@example.com / password123
+- **Reviewer**: reviewer@example.com / password123
+
+### **Features by Role**
+| Role | Capabilities |
+|------|-------------|
+| **Admin** | Full system access, create tasks, assign users, view analytics |
+| **Labeler** | Complete assigned tasks, view personal progress |
+| **Reviewer** | Review submissions, quality control (future) |
 
 ## 🔧 Key Technologies
 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
-| **Frontend** | React + TypeScript | User interface |
-| **UI Library** | Material-UI | Component library |
-| **Backend** | FastAPI | RESTful API |
-| **Database** | Supabase (PostgreSQL) | Data storage |
-| **Auth** | Supabase Auth + JWT | User authentication |
-| **File Storage** | Local filesystem | Media file storage |
-| **Real-time** | Supabase realtime | Live updates |
-
-## 🚀 Deployment Options
-
-### **Development**
-```bash
-# Using Docker Compose
-docker-compose up --build
-
-# Manual setup (see individual README files)
-```
-
-### **Production**
-- **Docker**: `docker-compose -f docker-compose.prod.yml up -d`
-- **Manual**: See [Deployment Guide](./docs/deployment.md)
-- **Cloud**: Deploy to AWS, GCP, or Azure
+| **Frontend** | React + TypeScript + Material-UI | Modern, type-safe user interface |
+| **Backend** | FastAPI + JWT | High-performance API with security |
+| **Database** | Supabase (PostgreSQL) | Scalable database with real-time |
+| **Auth** | Supabase Auth | Secure user authentication |
+| **File Storage** | Local filesystem | Media file management |
+| **Real-time** | Supabase realtime | Live progress updates |
 
 ## 📊 System Capabilities
 
 ### **Labeling Features**
-- ✅ **Image annotation** with bounding boxes and classification
-- ✅ **Video labeling** with timeline-based annotations
-- ✅ **Audio tagging** with waveform visualization
-- ✅ **Multi-choice questions** with predefined options
-- ✅ **Batch processing** for efficient workflows
+- ✅ **Multi-modal support** - Images, videos, audio files
+- ✅ **Question-based workflow** - Structured labeling approach
+- ✅ **Multiple choice interface** - Predefined answer options
+- 🚧 **Progress tracking** - Real-time completion monitoring
+- 🚧 **Batch processing** - Efficient workflow management
 
 ### **Quality Assurance**
-- ✅ **Honeypot tasks** for accuracy validation
-- ✅ **Consensus requirements** with multiple labelers
-- ✅ **Speed checks** to detect rushed work
-- ✅ **Performance analytics** with detailed metrics
-- ✅ **Feedback system** for continuous improvement
+- 🚧 **Honeypot tasks** - Accuracy validation system
+- 🚧 **Consensus requirements** - Multiple labeler validation
+- 🚧 **Performance analytics** - Detailed accuracy metrics
+- 🚧 **Feedback system** - Continuous improvement tools
 
 ### **User Management**
-- ✅ **Role-based access** (Admin, Labeler, Reviewer)
-- ✅ **Task assignment** with workload balancing
-- ✅ **Progress tracking** with quotas and deadlines
-- ✅ **Performance monitoring** with accuracy scores
-- ✅ **Gamification** with leaderboards and streaks
+- ✅ **Role-based access** - Admin, Labeler, Reviewer roles
+- ✅ **Task assignment** - Flexible user-task mapping
+- ✅ **Progress tracking** - Individual and system-wide metrics
+- 🚧 **Performance monitoring** - User accuracy and speed
+- 🚧 **Gamification** - Leaderboards and achievement system
 
 ## 🔒 Security & Compliance
 
 - **Authentication**: JWT tokens with Supabase Auth
 - **Authorization**: Role-based access control (RBAC)
-- **Data Security**: Row-level security in database
+- **Data Security**: Row-level security in database (temporarily disabled for development)
 - **File Validation**: Type and size restrictions
-- **API Security**: CORS protection and rate limiting
+- **API Security**: CORS protection and request validation
 
-## 📈 Performance Features
+## 🚀 Deployment Options
 
-- **Real-time Updates**: Instant progress synchronization
-- **Efficient Storage**: Optimized file organization
-- **Scalable Architecture**: Handles growing datasets
-- **Caching Strategy**: Fast data retrieval
-- **Database Optimization**: Proper indexing and queries
+### **Development**
+```bash
+# Backend
+cd backend && python main.py
+
+# Frontend  
+cd frontend && npm start
+
+# Access: http://localhost:3000
+```
+
+### **Production**
+- **Docker**: `docker-compose up --build`
+- **Manual**: See [Deployment Guide](./docs/deployment.md)
+- **Cloud**: Deploy to AWS, GCP, or Azure
 
 ## 🤝 Contributing
 
@@ -184,8 +229,10 @@ We welcome contributions! Please see our [Contributing Guidelines](./CONTRIBUTIN
 
 ## 📞 Support & Resources
 
-- **Documentation**: [docs/](./docs/)
-- **API Reference**: http://localhost:8000/docs
+- **API Documentation**: http://localhost:8000/docs
+- **Backend Setup**: [Backend README](./backend/README.md)
+- **Frontend Setup**: [Frontend README](./frontend/README.md)
+- **Database Setup**: [Database Guide](./docs/database-setup.md)
 - **Issues**: [GitHub Issues](../../issues)
 - **Discussions**: [GitHub Discussions](../../discussions)
 
@@ -202,10 +249,12 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 
 ---
 
-**🚀 Ready to start labeling? Follow the setup guides in each directory!**
+**🚀 Ready to start labeling? Follow the setup guides and join our community of data annotators!**
 
 | Component | Quick Start | Documentation |
 |-----------|-------------|---------------|
 | 🗄️ **Backend** | `cd backend && python main.py` | [Backend README](./backend/README.md) |
 | 🎨 **Frontend** | `cd frontend && npm start` | [Frontend README](./frontend/README.md) |
-| 🐳 **Docker** | `docker-compose up` | [Docker Guide](./docs/docker.md) |
+| 🚀 **Full System** | Follow setup guide above | [Complete Documentation](./docs/) |
+
+**Current Status**: Core system operational, assignment workflow in progress, labeling interface next phase.
