@@ -222,4 +222,46 @@ export const api = {
   async getUserActivity(id: string): Promise<any> {
     return apiCall(`/users/${id}/activity`);
   },
+  
+  async getAllAssignments(): Promise<any[]> {
+    return apiCall('/assignments/all');
+  },
+  
+  async getAssignmentStats(): Promise<any> {
+    return apiCall('/assignments/stats');
+  },
+  
+  async getAssignment(id: string): Promise<any> {
+    return apiCall(`/assignments/${id}`);
+  },
+  
+  async updateAssignmentStatus(id: string, isActive: boolean): Promise<any> {
+    return apiCall(`/assignments/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ is_active: isActive }),
+    });
+  },
+  
+  async getUserAssignments(userId: string): Promise<any[]> {
+    return apiCall(`/users/${userId}/assignments`);
+  },
+  
+  async exportAssignmentReport(format: 'csv' | 'json' = 'csv'): Promise<Blob> {
+    const headers = await getAuthHeaders();
+    const url = `${API_URL}/api/v1/assignments/export?format=${format}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': headers.Authorization,
+      },
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Export failed: ${response.status} - ${errorText}`);
+    }
+    
+    return response.blob();
+  },
 };
+
