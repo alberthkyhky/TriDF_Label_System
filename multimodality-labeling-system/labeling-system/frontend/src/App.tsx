@@ -26,8 +26,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const AppContent = () => {
   const { user, loading } = useAuth();
   
-  if (loading) return <LoadingScreen />;
-  
   return (
     <Router>
       <Routes>
@@ -39,7 +37,7 @@ const AppContent = () => {
           path="/" 
           element={
             <ProtectedRoute>
-              <Dashboard />
+             <Dashboard />
             </ProtectedRoute>
           } 
         />

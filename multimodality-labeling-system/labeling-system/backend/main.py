@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import settings
-from app.routers import auth_router, tasks_router, users_router
+from app.routers.init import auth_router, tasks_router, users_router
 import os
 
 # Create FastAPI app
