@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import settings
-from app.routers.init import auth_router, tasks_router, users_router
+from app.routers.init import auth_router, tasks_router, users_router, assignments_router
 import os
 
 # Create FastAPI app
@@ -31,6 +31,7 @@ if os.path.exists(settings.UPLOAD_DIR):
 app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(tasks_router, prefix=settings.API_V1_STR)
 app.include_router(users_router, prefix=settings.API_V1_STR)
+app.include_router(assignments_router, prefix=settings.API_V1_STR)
 
 # Root endpoints
 @app.get("/")

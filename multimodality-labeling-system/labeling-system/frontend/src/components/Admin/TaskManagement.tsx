@@ -42,12 +42,15 @@ const TaskManagement: React.FC = () => {
 
   const fetchTasks = async () => {
     try {
+      setLoading(true);
       setError(null);
       const data = await api.getTasks();
       setTasks(data);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       setError('Failed to fetch tasks');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -96,6 +99,14 @@ const TaskManagement: React.FC = () => {
       default: return 'default';
     }
   };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
+        <Typography>Loading assignments...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box>

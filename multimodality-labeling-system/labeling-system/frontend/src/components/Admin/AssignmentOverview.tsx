@@ -24,7 +24,8 @@ import {
   DialogActions,
   Alert,
   Avatar,
-  Stack} from '@mui/material';
+  Stack,
+} from '@mui/material';
 import {
   Assignment as AssignmentIcon,
   Person as PersonIcon,
@@ -34,7 +35,8 @@ import {
   Refresh as RefreshIconMui,
   Download as DownloadIcon,
   Pause as PauseIcon,
-  PlayArrow as PlayArrowIcon} from '@mui/icons-material';
+  PlayArrow as PlayArrowIcon,
+} from '@mui/icons-material';
 import { api } from '../../services/api';
 
 interface AssignmentData {
@@ -48,7 +50,7 @@ interface AssignmentData {
   target_labels: number;
   completed_labels: number;
   is_active: boolean;
-  created_at: string;
+  assigned_at: string;
   updated_at: string;
   deadline?: string;
   accuracy?: number;
@@ -219,13 +221,6 @@ const AssignmentOverview: React.FC = () => {
           >
             Refresh
           </Button>
-          <Button
-            startIcon={<DownloadIcon />}
-            variant="outlined"
-            onClick={() => {/* TODO: Export functionality */}}
-          >
-            Export Report
-          </Button>
         </Box>
       </Box>
 
@@ -283,7 +278,7 @@ const AssignmentOverview: React.FC = () => {
                   <TableCell>Progress</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Label Classes</TableCell>
-                  <TableCell>Created</TableCell>
+                  <TableCell>Assigned</TableCell>
                   <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -355,7 +350,7 @@ const AssignmentOverview: React.FC = () => {
 
                     <TableCell>
                       <Typography variant="body2">
-                        {formatDate(assignment.created_at)}
+                        {formatDate(assignment.assigned_at)}
                       </Typography>
                     </TableCell>
 
@@ -449,8 +444,8 @@ const AssignmentOverview: React.FC = () => {
                       </Box>
                     </Box>
                     <Box>
-                      <Typography variant="body2" color="text.secondary">Created</Typography>
-                      <Typography variant="body1">{formatDate(selectedAssignment.created_at)}</Typography>
+                      <Typography variant="body2" color="text.secondary">Assigned</Typography>
+                      <Typography variant="body1">{formatDate(selectedAssignment.assigned_at)}</Typography>
                     </Box>
                     <Box>
                       <Typography variant="body2" color="text.secondary">Last Updated</Typography>

@@ -55,6 +55,7 @@ const UserAssignment: React.FC = () => {
   const fetchData = async () => {
     try {
       setError(null);
+      setLoading(true);
       const [tasksData, usersData, labelClassesData] = await Promise.all([
         api.getTasks(),
         api.getUsersByRole('labeler'),
@@ -66,6 +67,8 @@ const UserAssignment: React.FC = () => {
     } catch (error) {
       console.error('Error fetching data:', error);
       setError('Failed to fetch data');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -117,6 +120,14 @@ const UserAssignment: React.FC = () => {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
+        <Typography>Loading assignments...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box>
