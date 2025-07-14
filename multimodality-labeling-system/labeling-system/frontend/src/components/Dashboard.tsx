@@ -18,12 +18,14 @@ import { PlayArrow, CheckCircle } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { TaskAssignment } from '../types/tasks';
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
   const { user, signOut } = useAuth();
   const [assignments, setAssignments] = useState<TaskAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchAssignments();
@@ -120,7 +122,7 @@ const Dashboard: React.FC = () => {
                     startIcon={assignment.completed_labels >= assignment.target_labels ? <CheckCircle /> : <PlayArrow />}
                     onClick={() => {
                       // Navigate to labeling interface - you'll implement this later
-                      alert(`Starting task ${assignment.task_id}`);
+                      navigate(`/task/${assignment.task_id}`);
                     }}
                   >
                     {assignment.completed_labels >= assignment.target_labels 

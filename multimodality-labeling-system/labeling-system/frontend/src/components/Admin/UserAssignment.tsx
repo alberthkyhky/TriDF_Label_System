@@ -26,7 +26,7 @@ import {
 } from '@mui/material';
 import { Assignment } from '@mui/icons-material';
 import { api } from '../../services/api';
-import { Task, TaskAssignment } from '../../types/tasks';
+import { Task } from '../../types/tasks';
 
 interface LabelClass {
   id: string;

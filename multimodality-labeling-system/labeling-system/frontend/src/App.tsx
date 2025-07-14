@@ -8,6 +8,8 @@ import Dashboard from './components/Dashboard';
 import LoadingScreen from './components/LoadingScreen';
 import AdminDashboard from './components/AdminDashboard';
 import ApiTest from './components/ApiTest';
+import TaskIntroduction from './components/Tasks/TaskIntroduction';
+import LabelingInterface from './components/Tasks/LabelingInterface';
 
 const theme = createTheme({
   palette: {
@@ -55,7 +57,7 @@ const RoleBasedRedirect = () => {
 };
 
 const AppContent = () => {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   
   return (
     <Router>
@@ -103,6 +105,23 @@ const AppContent = () => {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/task/:taskId" 
+          element={
+            <ProtectedRoute>
+              <TaskIntroduction />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/task/:taskId/label" 
+          element={
+            <ProtectedRoute>
+              <LabelingInterface />
             </ProtectedRoute>
           } 
         />

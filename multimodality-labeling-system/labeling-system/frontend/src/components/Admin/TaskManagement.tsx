@@ -13,14 +13,13 @@ import {
   DialogActions,
   TextField,
   FormControl,
-  InputLabel,
   Select,
   MenuItem,
   Typography,
   Chip,
   Alert
 } from '@mui/material';
-import { Edit, Delete, Add } from '@mui/icons-material';
+import { Edit, Add } from '@mui/icons-material';
 import { api } from '../../services/api';
 import { Task } from '../../types/tasks';
 

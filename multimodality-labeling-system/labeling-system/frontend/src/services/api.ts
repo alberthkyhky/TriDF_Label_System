@@ -1,5 +1,4 @@
 // Fixed services/api.ts - Use FastAPI backend instead of direct Supabase
-import { supabase } from '../lib/supabase';
 import { LabelClass, Task, TaskAssignment } from '../types/tasks';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
