@@ -28,3 +28,66 @@ description: string;
 instructions: string;
 example_media?: string[];
 }
+
+export interface MediaFile {
+  filename: string;
+  file_path: string;
+  media_type: 'image' | 'video' | 'audio';
+  file_size?: number;
+  mime_type?: string;
+  duration_seconds?: number;
+  width?: number;
+  height?: number;
+}
+
+export interface FailureChoice {
+  text: string;
+  options: string[];
+  multiple_select: boolean;
+}
+
+export interface QuestionWithMedia {
+  id: string;
+  task_id: string;
+  question_text: string;
+  question_order: number;
+  status: string;
+  target_classes: string[];
+  media_files: MediaFile[];
+  choices: {
+    [key: string]: FailureChoice;
+  };
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface QuestionResponseCreate {
+  question_id: string;
+  task_id: string;
+  responses: {
+    [failureType: string]: string[];
+  };
+  media_files: string[];
+  time_spent_seconds?: number;
+  started_at?: string;
+}
+
+export interface QuestionResponseDetailed {
+  id: string;
+  question_id: string;
+  user_id: string;
+  task_id: string;
+  task_assignment_id: string;
+  responses: {
+    [failureType: string]: string[];
+  };
+  confidence_level?: number;
+  time_spent_seconds?: number;
+  started_at?: string;
+  submitted_at: string;
+  media_files: string[];
+  is_honeypot_response: boolean;
+  is_flagged: boolean;
+  flag_reason?: string;
+  metadata: Record<string, any>;
+}

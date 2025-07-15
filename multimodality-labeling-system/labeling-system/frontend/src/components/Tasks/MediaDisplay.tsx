@@ -1,249 +1,383 @@
-import React from 'react';
+/* eslint-disable react-hooks/exhaustive-deps */
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
-  Card,
-  CardContent,
   Chip,
+  Alert,
   IconButton,
-  Grid
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogActions,
+  Button,
+  CircularProgress
 } from '@mui/material';
-import { 
-  PlayArrow, 
-  Pause, 
-  VolumeUp, 
-  Image as ImageIcon,
-  VideoLibrary,
-  AudioFile,
+import {
+  ZoomIn,
+  PlayArrow,
+  Pause,
+  VolumeUp,
+  Error as ErrorIcon,
   Fullscreen
 } from '@mui/icons-material';
+import { getToken } from '../../services/api';
 
-interface MediaDisplayProps {
-  mediaFiles: string[];
-  onMediaLoad?: (mediaFile: string) => void;
+interface MediaFile {
+  filename: string;
+  file_path: string;
+  media_type: 'image' | 'video' | 'audio';
+  file_size?: number;
+  mime_type?: string;
+  duration_seconds?: number;
+  width?: number;
+  height?: number;
 }
 
-const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, onMediaLoad }) => {
-  const getMediaType = (filename: string): 'image' | 'video' | 'audio' | 'unknown' => {
-    const ext = filename.toLowerCase().split('.').pop();
-    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext || '')) return 'image';
-    if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(ext || '')) return 'video';
-    if (['mp3', 'wav', 'ogg', 'aac', 'flac'].includes(ext || '')) return 'audio';
-    return 'unknown';
+interface MediaDisplayProps {
+  mediaFiles: MediaFile[];
+  taskId: string;
+}
+
+const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, taskId }) => {
+  const [selectedMedia, setSelectedMedia] = useState<MediaFile | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const [errorStates, setErrorStates] = useState<Record<string, boolean>>({});
+  const [mediaBlobUrls, setMediaBlobUrls] = useState<Record<string, string>>({});
+
+  const getMediaUrl = (mediaFile: MediaFile): string => {
+    // Construct the URL to serve media files from your backend
+    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+    // Updated to match your backend router structure
+    return `${baseUrl}/api/v1/tasks/media/${taskId}/${mediaFile.filename}`;
   };
 
-  const getMediaIcon = (type: string) => {
-    switch (type) {
-      case 'image': return <ImageIcon />;
-      case 'video': return <VideoLibrary />;
-      case 'audio': return <AudioFile />;
-      default: return <ImageIcon />;
+  // Fetch media with authentication and create blob URL
+  const fetchMediaWithAuth = async (mediaFile: MediaFile): Promise<string> => {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    const mediaUrl = getMediaUrl(mediaFile);
+    
+    try {
+      const response = await fetch(mediaUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      return blobUrl;
+    } catch (error) {
+      console.error('Error fetching media:', error);
+      throw error;
     }
   };
 
-  const getMediaColor = (type: string) => {
-    switch (type) {
-      case 'image': return 'info';
-      case 'video': return 'secondary';
-      case 'audio': return 'warning';
-      default: return 'default';
-    }
+  // Load media file with authentication
+  useEffect(() => {
+    const loadMediaFiles = async () => {
+      for (const mediaFile of mediaFiles) {
+        if (!mediaBlobUrls[mediaFile.filename] && !loadingStates[mediaFile.filename]) {
+          setLoadingStates(prev => ({ ...prev, [mediaFile.filename]: true }));
+          
+          try {
+            const blobUrl = await fetchMediaWithAuth(mediaFile);
+            setMediaBlobUrls(prev => ({ ...prev, [mediaFile.filename]: blobUrl }));
+            setLoadingStates(prev => ({ ...prev, [mediaFile.filename]: false }));
+            setErrorStates(prev => ({ ...prev, [mediaFile.filename]: false }));
+          } catch (error) {
+            console.error(`Error loading media ${mediaFile.filename}:`, error);
+            setLoadingStates(prev => ({ ...prev, [mediaFile.filename]: false }));
+            setErrorStates(prev => ({ ...prev, [mediaFile.filename]: true }));
+          }
+        }
+      }
+    };
+
+    loadMediaFiles();
+
+    // Cleanup blob URLs when component unmounts
+    return () => {
+      Object.values(mediaBlobUrls).forEach(blobUrl => {
+        if (blobUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(blobUrl);
+        }
+      });
+    };
+  }, [mediaFiles, taskId])
+
+  const handleMediaError = (filename: string) => {
+    setLoadingStates(prev => ({ ...prev, [filename]: false }));
+    setErrorStates(prev => ({ ...prev, [filename]: true }));
   };
 
-  const MediaItem: React.FC<{ mediaFile: string; index: number }> = ({ mediaFile, index }) => {
-    const mediaType = getMediaType(mediaFile);
-    const [isPlaying, setIsPlaying] = React.useState(false);
+  const openMediaDialog = (mediaFile: MediaFile) => {
+    setSelectedMedia(mediaFile);
+    setDialogOpen(true);
+  };
+
+  const closeMediaDialog = () => {
+    setSelectedMedia(null);
+    setDialogOpen(false);
+  };
+
+  const renderMediaItem = (mediaFile: MediaFile, index: number) => {
+    const blobUrl = mediaBlobUrls[mediaFile.filename];
+    const isLoading = loadingStates[mediaFile.filename];
+    const hasError = errorStates[mediaFile.filename];
 
     return (
-      <Card sx={{ height: '100%' }}>
-        <CardContent sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="subtitle2" noWrap sx={{ flex: 1, mr: 1 }}>
-              {mediaFile}
+      <Box
+        key={index}
+        sx={{
+          position: 'relative',
+          height: 180,
+          bgcolor: 'grey.100',
+          borderRadius: 2,
+          overflow: 'hidden',
+          border: '1px solid',
+          borderColor: 'grey.300',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        {/* Loading State */}
+        {isLoading && (
+          <Box sx={{ 
+            position: 'absolute', 
+            top: '50%', 
+            left: '50%', 
+            transform: 'translate(-50%, -50%)',
+            zIndex: 2,
+            bgcolor: 'rgba(255,255,255,0.8)',
+            borderRadius: 1,
+            p: 2
+          }}>
+            <CircularProgress size={30} />
+            <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+              Loading...
             </Typography>
-            <Chip 
-              icon={getMediaIcon(mediaType)}
-              label={mediaType.charAt(0).toUpperCase() + mediaType.slice(1)}
-              size="small"
-              color={getMediaColor(mediaType) as any}
-              variant="outlined"
-            />
           </Box>
+        )}
 
-          {/* Media Content Area */}
-          <Box
-            sx={{
-              height: 200,
-              bgcolor: 'grey.100',
-              borderRadius: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '2px dashed',
-              borderColor: 'grey.300',
-              position: 'relative',
-              cursor: 'pointer',
-              '&:hover': {
+        {/* Error State */}
+        {hasError && (
+          <Box sx={{ textAlign: 'center', color: 'error.main' }}>
+            <ErrorIcon sx={{ fontSize: 40, mb: 1 }} />
+            <Typography variant="caption" display="block">
+              Failed to load
+            </Typography>
+            <Typography variant="caption" display="block">
+              {mediaFile.filename}
+            </Typography>
+          </Box>
+        )}
+
+        {/* Media Content */}
+        {!hasError && blobUrl && (
+          <>
+            {mediaFile.media_type === 'image' && (
+              <img
+                src={blobUrl}
+                alt={mediaFile.filename}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  cursor: 'pointer'
+                }}
+                onError={() => handleMediaError(mediaFile.filename)}
+                onClick={() => openMediaDialog(mediaFile)}
+              />
+            )}
+
+            {mediaFile.media_type === 'video' && (
+              <video
+                src={blobUrl}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+                controls
+                preload="metadata"
+                onError={() => handleMediaError(mediaFile.filename)}
+              >
+                Your browser does not support the video tag.
+              </video>
+            )}
+
+            {mediaFile.media_type === 'audio' && (
+              <Box sx={{ 
+                width: '100%', 
+                height: '100%', 
+                display: 'flex', 
+                flexDirection: 'column',
+                alignItems: 'center', 
+                justifyContent: 'center',
                 bgcolor: 'grey.200',
-                borderColor: 'primary.main'
-              }
-            }}
-            onClick={() => onMediaLoad?.(mediaFile)}
-          >
-            {/* Media Type Specific Content */}
-            {mediaType === 'image' && (
-              <Box sx={{ textAlign: 'center' }}>
-                <ImageIcon sx={{ fontSize: 48, color: 'grey.500', mb: 1 }} />
-                <Typography variant="body2" color="text.secondary">
-                  Click to view image
+                p: 2
+              }}>
+                <VolumeUp sx={{ fontSize: 40, mb: 2, color: 'primary.main' }} />
+                <audio
+                  src={blobUrl}
+                  controls
+                  style={{ width: '100%' }}
+                  onError={() => handleMediaError(mediaFile.filename)}
+                >
+                  Your browser does not support the audio tag.
+                </audio>
+                <Typography variant="caption" sx={{ mt: 1, textAlign: 'center' }}>
+                  {mediaFile.filename}
                 </Typography>
               </Box>
             )}
+          </>
+        )}
 
-            {mediaType === 'video' && (
-              <Box sx={{ textAlign: 'center' }}>
-                <VideoLibrary sx={{ fontSize: 48, color: 'grey.500', mb: 1 }} />
-                <Typography variant="body2" color="text.secondary">
-                  Click to play video
-                </Typography>
-                <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-                  <IconButton 
-                    size="small" 
-                    sx={{ bgcolor: 'background.paper' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsPlaying(!isPlaying);
-                    }}
-                  >
-                    {isPlaying ? <Pause /> : <PlayArrow />}
-                  </IconButton>
-                  <IconButton size="small" sx={{ bgcolor: 'background.paper' }}>
-                    <Fullscreen />
-                  </IconButton>
-                </Box>
-              </Box>
-            )}
-
-            {mediaType === 'audio' && (
-              <Box sx={{ textAlign: 'center', width: '100%' }}>
-                <AudioFile sx={{ fontSize: 48, color: 'grey.500', mb: 1 }} />
-                <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Click to play audio
-                </Typography>
-                
-                {/* Audio Waveform Placeholder */}
-                <Box sx={{ 
-                  width: '100%', 
-                  height: 40, 
-                  bgcolor: 'grey.300', 
-                  borderRadius: 1, 
-                  mb: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Audio Waveform
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                  <IconButton 
-                    size="small" 
-                    sx={{ bgcolor: 'background.paper' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsPlaying(!isPlaying);
-                    }}
-                  >
-                    {isPlaying ? <Pause /> : <PlayArrow />}
-                  </IconButton>
-                  <IconButton size="small" sx={{ bgcolor: 'background.paper' }}>
-                    <VolumeUp />
-                  </IconButton>
-                </Box>
-              </Box>
-            )}
-
-            {/* Item Number Badge */}
-            <Chip 
-              label={`${index + 1}`}
+        {/* Media Info Overlay */}
+        <Box sx={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          display: 'flex',
+          gap: 0.5
+        }}>
+          <Chip 
+            label={`${index + 1}`}
+            size="small"
+            color="primary"
+          />
+          {mediaFile.media_type === 'image' && blobUrl && (
+            <IconButton
               size="small"
-              sx={{ 
-                position: 'absolute', 
-                top: 8, 
-                right: 8,
-                bgcolor: 'primary.main',
-                color: 'white'
-              }}
-            />
-          </Box>
+              sx={{ bgcolor: 'rgba(0,0,0,0.5)', color: 'white' }}
+              onClick={() => openMediaDialog(mediaFile)}
+            >
+              <ZoomIn fontSize="small" />
+            </IconButton>
+          )}
+        </Box>
 
-          {/* Media Info */}
-          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="caption" color="text.secondary">
-              {mediaType === 'image' && 'Image file for analysis'}
-              {mediaType === 'video' && 'Video file for analysis'}
-              {mediaType === 'audio' && 'Audio file for analysis'}
-            </Typography>
-            
-            {mediaType !== 'image' && (
-              <Typography variant="caption" color="text.secondary">
-                {isPlaying ? 'Playing...' : 'Ready'}
-              </Typography>
-            )}
-          </Box>
-        </CardContent>
-      </Card>
+        {/* Media Type Badge */}
+        <Chip
+          label={mediaFile.media_type.toUpperCase()}
+          size="small"
+          color={
+            mediaFile.media_type === 'image' ? 'success' :
+            mediaFile.media_type === 'video' ? 'warning' : 'info'
+          }
+          sx={{
+            position: 'absolute',
+            bottom: 8,
+            left: 8
+          }}
+        />
+
+        {/* Duration Badge for Video/Audio */}
+        {mediaFile.duration_seconds && (
+          <Chip
+            label={`${Math.round(mediaFile.duration_seconds)}s`}
+            size="small"
+            variant="outlined"
+            sx={{
+              position: 'absolute',
+              bottom: 8,
+              right: 8,
+              bgcolor: 'rgba(255,255,255,0.9)'
+            }}
+          />
+        )}
+      </Box>
     );
   };
 
   return (
-    <Box>
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6">
-          📱 Media Analysis ({mediaFiles.length} items)
-        </Typography>
-        <Chip 
-          label={`${mediaFiles.length} files to analyze`}
-          size="small"
-          variant="outlined"
-        />
+    <>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {mediaFiles.length === 0 ? (
+          <Alert severity="warning">
+            No media files available for this question.
+          </Alert>
+        ) : (
+          mediaFiles.map((mediaFile, index) => renderMediaItem(mediaFile, index))
+        )}
       </Box>
-      
-      <Typography variant="body2" color="text.secondary" paragraph>
-        Compare these media items to identify any failures. Click on each item to interact with it.
-      </Typography>
 
-      <Grid container spacing={2}>
-        {mediaFiles.map((mediaFile, index) => (
-          <Grid size={{ xs: 12, sm: 6, md: mediaFiles.length === 2 ? 6 : 4 }} key={index}>
-            <MediaItem mediaFile={mediaFile} index={index} />
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Comparison Helper */}
-      {mediaFiles.length > 1 && (
-        <Box sx={{ 
-          mt: 3, 
-          p: 2, 
-          bgcolor: 'info.50', 
-          borderRadius: 1,
-          border: '1px solid',
-          borderColor: 'info.200'
-        }}>
-          <Typography variant="subtitle2" color="info.dark" gutterBottom>
-            💡 Comparison Tips:
+      {/* Media Preview Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onClose={closeMediaDialog}
+        maxWidth="lg"
+        fullWidth
+      >
+        <DialogTitle>
+          {selectedMedia?.filename}
+          <Typography variant="body2" color="text.secondary">
+            {selectedMedia?.media_type} • {selectedMedia?.file_size ? `${Math.round(selectedMedia.file_size / 1024)} KB` : 'Unknown size'}
+            {selectedMedia?.width && selectedMedia?.height && ` • ${selectedMedia.width}×${selectedMedia.height}`}
           </Typography>
-          <Typography variant="body2" color="info.dark">
-            • Look for differences between the media items
-            • Check for structural issues (cracks, deformation, missing parts)
-            • Identify functional problems (electrical, mechanical, software)
-            • Notice quality issues (safety, performance, aesthetic)
-          </Typography>
-        </Box>
-      )}
-    </Box>);
+        </DialogTitle>
+        <DialogContent>
+          {selectedMedia && (
+            <Box sx={{ textAlign: 'center' }}>
+              {selectedMedia.media_type === 'image' && mediaBlobUrls[selectedMedia.filename] && (
+                <img
+                  src={mediaBlobUrls[selectedMedia.filename]}
+                  alt={selectedMedia.filename}
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '70vh',
+                    objectFit: 'contain'
+                  }}
+                />
+              )}
+              {selectedMedia.media_type === 'video' && mediaBlobUrls[selectedMedia.filename] && (
+                <video
+                  src={mediaBlobUrls[selectedMedia.filename]}
+                  controls
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '70vh'
+                  }}
+                >
+                  Your browser does not support the video tag.
+                </video>
+              )}
+              {selectedMedia.media_type === 'audio' && mediaBlobUrls[selectedMedia.filename] && (
+                <Box sx={{ p: 4 }}>
+                  <VolumeUp sx={{ fontSize: 80, mb: 2, color: 'primary.main' }} />
+                  <audio
+                    src={mediaBlobUrls[selectedMedia.filename]}
+                    controls
+                    style={{ width: '100%' }}
+                    autoPlay
+                  >
+                    Your browser does not support the audio tag.
+                  </audio>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeMediaDialog}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
 };
+
+export default MediaDisplay;

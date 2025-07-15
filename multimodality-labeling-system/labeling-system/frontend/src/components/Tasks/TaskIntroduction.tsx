@@ -11,29 +11,49 @@ import {
   AppBar,
   Toolbar,
   Alert,
-  Chip
+  Chip,
+  CircularProgress
 } from '@mui/material';
 import { PlayArrow, ArrowBack } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
-import { getFakeTask } from '../../services/fakeData';
-import { Task } from '../../types/labeling';
+import { api } from '../../services/api';
+import { TaskWithQuestionsData } from '../../types/createTask';
 
 const TaskIntroduction: React.FC = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const [task, setTask] = useState<Task | null>(null);
+  const [task, setTask] = useState<TaskWithQuestionsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (taskId) {
-      // Simulate API call delay
-      setTimeout(() => {
-        const taskData = getFakeTask(taskId);
-        setTask(taskData);
+    const fetchTask = async () => {
+      if (!taskId) {
+        setError('No task ID provided');
         setLoading(false);
-      }, 500);
-    }
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch enhanced task data from backend
+        const taskData = await api.getTaskWithQuestions(taskId);
+        setTask(taskData);
+        
+        console.log('Fetched task data:', taskData);
+        
+      } catch (error: any) {
+        console.error('Error fetching task:', error);
+        setError(error.message || 'Failed to load task');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTask();
   }, [taskId]);
 
   const handleStartLabeling = () => {
@@ -44,19 +64,28 @@ const TaskIntroduction: React.FC = () => {
     navigate('/dashboard');
   };
 
+  // Loading state
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Typography>Loading task...</Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress size={60} sx={{ mb: 2 }} />
+        <Typography variant="h6">Loading task...</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Fetching task details and question information
+        </Typography>
       </Box>
     );
   }
 
-  if (!task) {
+  console.log(task)
+  console.log(error)
+
+  // Error state
+  if (error || !task) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
-        <Alert severity="error">
-          Task not found. Please return to your dashboard.
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error || 'Task not found. Please return to your dashboard.'}
         </Alert>
         <Button 
           variant="contained" 
@@ -68,6 +97,9 @@ const TaskIntroduction: React.FC = () => {
       </Container>
     );
   }
+
+  // Extract failure categories from question template
+  const failureCategories = Object.entries(task.question_template.choices || {});
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -97,11 +129,22 @@ const TaskIntroduction: React.FC = () => {
           <Typography variant="h3" gutterBottom>
             {task.title}
           </Typography>
-          <Chip 
-            label={`Task ID: ${task.id}`} 
-            variant="outlined" 
-            sx={{ mb: 2 }}
-          />
+          <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+            <Chip 
+              label={`Task ID: ${task.id}`} 
+              variant="outlined" 
+            />
+            <Chip 
+              label={`Status: ${task.status}`} 
+              color={task.status === 'active' ? 'success' : 'default'}
+              variant="outlined" 
+            />
+            <Chip 
+              label={`${task.questions_number} Questions Available`} 
+              color="primary"
+              variant="outlined" 
+            />
+          </Box>
           <Typography variant="h6" color="text.secondary" paragraph>
             {task.description}
           </Typography>
@@ -116,21 +159,39 @@ const TaskIntroduction: React.FC = () => {
                   📋 Instructions
                 </Typography>
                 <Typography variant="body1" paragraph>
-                  {task.instructions}
+                  {task.instructions || 'Please review the media items and identify any failures according to the categories provided.'}
                 </Typography>
                 
+                <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+                  Task Details:
+                </Typography>
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="body2" paragraph>
+                    <strong>Question:</strong> {task.question_template.question_text}
+                  </Typography>
+                  <Typography variant="body2" paragraph>
+                    <strong>Media per question:</strong> {task.media_config.num_images} images, {task.media_config.num_videos} videos, {task.media_config.num_audios} audio files
+                  </Typography>
+                  <Typography variant="body2" paragraph>
+                    <strong>Total questions in task:</strong> {task.questions_number}
+                  </Typography>
+                  <Typography variant="body2" paragraph>
+                    <strong>Required agreements per question:</strong> {task.required_agreements}
+                  </Typography>
+                </Box>
+
                 <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
                   What you'll be doing:
                 </Typography>
                 <Box component="ul" sx={{ pl: 2 }}>
                   <Typography component="li" variant="body2" paragraph>
-                    Review 2-3 media items (images, videos, or audio) per question
+                    Review {task.media_config.num_images + task.media_config.num_videos + task.media_config.num_audios} media items per question
                   </Typography>
                   <Typography component="li" variant="body2" paragraph>
-                    Identify failures across three categories: A-type (Structural), B-type (Functional), and C-type (Quality)
+                    Answer: "{task.question_template.question_text}"
                   </Typography>
                   <Typography component="li" variant="body2" paragraph>
-                    Select multiple options if you see multiple failure types
+                    Select appropriate failure types from {failureCategories.length} categories
                   </Typography>
                   <Typography component="li" variant="body2" paragraph>
                     Use the Back button to review previous questions if needed
@@ -138,27 +199,24 @@ const TaskIntroduction: React.FC = () => {
                 </Box>
 
                 <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
-                  Failure Types:
+                  Failure Categories:
                 </Typography>
                 <Box sx={{ mb: 2 }}>
-                  <Chip 
-                    label="A-type: Structural (Cracks, Corrosion, Deformation)"
-                    color="error"
-                    variant="outlined"
-                    sx={{ mb: 1, mr: 1 }}
-                  />
-                  <Chip 
-                    label="B-type: Functional (Electrical, Mechanical, Software)"
-                    color="warning"
-                    variant="outlined"
-                    sx={{ mb: 1, mr: 1 }}
-                  />
-                  <Chip 
-                    label="C-type: Quality (Safety, Performance, Aesthetic)"
-                    color="info"
-                    variant="outlined"
-                    sx={{ mb: 1, mr: 1 }}
-                  />
+                  {failureCategories.map(([key, choice], index) => {
+                    // Color mapping for different categories
+                    const colors = ['error', 'warning', 'info', 'success', 'primary'] as const;
+                    const color = colors[index % colors.length];
+                    
+                    return (
+                      <Chip 
+                        key={key}
+                        label={`${key}: ${choice.text} (${choice.options.length} options)`}
+                        color={color}
+                        variant="outlined"
+                        sx={{ mb: 1, mr: 1 }}
+                      />
+                    );
+                  })}
                 </Box>
               </CardContent>
             </Card>
@@ -185,64 +243,90 @@ const TaskIntroduction: React.FC = () => {
                   p: 3,
                   borderRadius: 2
                 }}>
-                  {task.example_media?.map((media: string, index: number) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        width: '100%',
-                        height: 120,
-                        bgcolor: 'grey.300',
-                        borderRadius: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '2px dashed',
-                        borderColor: 'grey.400'
-                      }}
-                    >
-                      <Typography variant="body2" color="text.secondary">
-                        {media} (Example)
-                      </Typography>
-                    </Box>
-                  ))}
-                  
-                  {/* Placeholder if no example media */}
-                  {(!task.example_media || task.example_media.length === 0) && (
+                  {task.example_media && task.example_media.length > 0 ? (
+                    task.example_media.map((media: string, index: number) => (
+                      <Box
+                        key={index}
+                        sx={{
+                          width: '100%',
+                          height: 120,
+                          bgcolor: 'grey.300',
+                          borderRadius: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '2px dashed',
+                          borderColor: 'grey.400'
+                        }}
+                      >
+                        <Typography variant="body2" color="text.secondary">
+                          {media} (Example)
+                        </Typography>
+                      </Box>
+                    ))
+                  ) : (
+                    // Generate placeholder examples based on media config
                     <>
-                      <Box
-                        sx={{
-                          width: '100%',
-                          height: 120,
-                          bgcolor: 'grey.300',
-                          borderRadius: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: '2px dashed',
-                          borderColor: 'grey.400'
-                        }}
-                      >
-                        <Typography variant="body2" color="text.secondary">
-                          Example Image 1
-                        </Typography>
-                      </Box>
-                      <Box
-                        sx={{
-                          width: '100%',
-                          height: 120,
-                          bgcolor: 'grey.300',
-                          borderRadius: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: '2px dashed',
-                          borderColor: 'grey.400'
-                        }}
-                      >
-                        <Typography variant="body2" color="text.secondary">
-                          Example Video 1
-                        </Typography>
-                      </Box>
+                      {Array.from({ length: task.media_config.num_images }, (_, i) => (
+                        <Box
+                          key={`image-${i}`}
+                          sx={{
+                            width: '100%',
+                            height: 120,
+                            bgcolor: 'grey.300',
+                            borderRadius: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '2px dashed',
+                            borderColor: 'grey.400'
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            📷 Example Image {i + 1}
+                          </Typography>
+                        </Box>
+                      ))}
+                      {Array.from({ length: task.media_config.num_videos }, (_, i) => (
+                        <Box
+                          key={`video-${i}`}
+                          sx={{
+                            width: '100%',
+                            height: 120,
+                            bgcolor: 'grey.300',
+                            borderRadius: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '2px dashed',
+                            borderColor: 'grey.400'
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            🎥 Example Video {i + 1}
+                          </Typography>
+                        </Box>
+                      ))}
+                      {Array.from({ length: task.media_config.num_audios }, (_, i) => (
+                        <Box
+                          key={`audio-${i}`}
+                          sx={{
+                            width: '100%',
+                            height: 120,
+                            bgcolor: 'grey.300',
+                            borderRadius: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '2px dashed',
+                            borderColor: 'grey.400'
+                          }}
+                        >
+                          <Typography variant="body2" color="text.secondary">
+                            🎵 Example Audio {i + 1}
+                          </Typography>
+                        </Box>
+                      ))}
                     </>
                   )}
                 </Box>
@@ -250,18 +334,35 @@ const TaskIntroduction: React.FC = () => {
                 <Typography variant="caption" display="block" sx={{ mt: 2, textAlign: 'center' }}>
                   You'll analyze similar media items to identify various failure types
                 </Typography>
+
+                {/* Media Configuration Info */}
+                <Box sx={{ mt: 2, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Media Configuration:
+                  </Typography>
+                  <Typography variant="body2">
+                    Each question will contain {task.media_config.num_images + task.media_config.num_videos + task.media_config.num_audios} media files for comparison and analysis.
+                  </Typography>
+                </Box>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
 
-        {/* Start Button */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+        {/* Task Status and Start Button */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 4 }}>
+          {task.status !== 'active' && (
+            <Alert severity="warning" sx={{ mb: 2, maxWidth: 600 }}>
+              This task is currently {task.status}. You may not be able to complete labeling at this time.
+            </Alert>
+          )}
+          
           <Button
             variant="contained"
             size="large"
             startIcon={<PlayArrow />}
             onClick={handleStartLabeling}
+            disabled={task.status !== 'active'}
             sx={{ 
               px: 4, 
               py: 2, 
@@ -271,6 +372,12 @@ const TaskIntroduction: React.FC = () => {
           >
             Start Labeling
           </Button>
+
+          {task.questions_number === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
+              No questions have been generated for this task yet. Please contact your administrator.
+            </Typography>
+          )}
         </Box>
       </Container>
     </Box>

@@ -174,13 +174,13 @@ class TaskService(BaseService):
     async def get_task_with_questions_by_id(self, task_id: str) -> TaskWithQuestions:
         """Get enhanced task with questions information"""
         try:
-            result = self.supabase.from_("tasks_with_questions_view").select("*").eq("id", task_id).execute()
+            result = self.supabase.from_("tasks").select("*").eq("id", task_id).execute()
             
             if not result.data:
                 raise Exception("Task not found")
             
             task_data = result.data[0]
-            
+
             return TaskWithQuestions(
                 id=task_data["id"],
                 title=task_data["title"],
@@ -188,7 +188,7 @@ class TaskService(BaseService):
                 instructions=task_data.get("instructions"),
                 example_media=task_data.get("example_media", []),
                 status=task_data["status"],
-                questions_per_user=task_data["questions_per_user"],
+                questions_number=task_data["questions_number"],
                 required_agreements=task_data["required_agreements"],
                 question_template=task_data.get("question_template", {}),
                 media_config=task_data.get("media_config", {}),
@@ -196,7 +196,6 @@ class TaskService(BaseService):
                 created_at=task_data["created_at"],
                 updated_at=task_data.get("updated_at"),
                 deadline=task_data.get("deadline"),
-                total_questions_generated=task_data.get("total_questions_generated", 0)
             )
         except Exception as e:
             raise self._handle_supabase_error("fetching enhanced task", e)

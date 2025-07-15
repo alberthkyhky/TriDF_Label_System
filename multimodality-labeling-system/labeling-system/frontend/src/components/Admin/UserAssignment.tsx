@@ -26,7 +26,7 @@ import {
 } from '@mui/material';
 import { Assignment } from '@mui/icons-material';
 import { api } from '../../services/api';
-import { Task } from '../../types/tasks';
+import { TaskWithQuestionsData } from '../../types/createTask';
 
 interface LabelClass {
   id: string;
@@ -36,7 +36,7 @@ interface LabelClass {
 
 const UserAssignment: React.FC = () => {
   const [open, setOpen] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskWithQuestionsData[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [labelClasses, setLabelClasses] = useState<LabelClass[]>([]);
   const [loading, setLoading] = useState(false);
@@ -161,7 +161,7 @@ const UserAssignment: React.FC = () => {
                   <ListItem key={task.id}>
                     <ListItemText
                       primary={task.title}
-                      secondary={`${task.questions_per_user} questions per user`}
+                      secondary={`${task.questions_number} questions per user`}
                     />
                   </ListItem>
                 ))}
@@ -202,7 +202,7 @@ const UserAssignment: React.FC = () => {
             >
               {tasks.map((task) => (
                 <MenuItem key={task.id} value={task.id}>
-                  {task.title} ({task.questions_per_user} questions)
+                  {task.title} ({task.questions_number} questions)
                 </MenuItem>
               ))}
             </Select>

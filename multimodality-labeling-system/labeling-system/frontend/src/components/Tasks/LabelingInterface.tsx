@@ -12,42 +12,118 @@ import {
   Toolbar,
   LinearProgress,
   Alert,
-  Chip
+  Chip,
+  CircularProgress
 } from '@mui/material';
 import { ArrowBack, ArrowForward, CheckCircle, NavigateBefore } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
-import { getFakeQuestions } from '../../services/fakeData';
-import { Question, QuestionResponse } from '../../types/labeling';
+import { api } from '../../services/api';
+import MediaDisplay from './MediaDisplay';
 import FailureTypeSelector from './FailureTypeSelector';
+
+// Updated interfaces for real API data
+interface MediaFile {
+  filename: string;
+  file_path: string;
+  media_type: 'image' | 'video' | 'audio';
+  file_size?: number;
+  mime_type?: string;
+  duration_seconds?: number;
+  width?: number;
+  height?: number;
+}
+
+interface FailureChoice {
+  text: string;
+  options: string[];
+  multiple_select: boolean;
+}
+
+interface QuestionWithMedia {
+  id: string;
+  task_id: string;
+  question_text: string;
+  question_order: number;
+  status: string;
+  target_classes: string[];
+  media_files: MediaFile[];
+  choices: {
+    [key: string]: FailureChoice;
+  };
+  created_at: string;
+  updated_at?: string;
+}
+
+interface QuestionResponse {
+  question_id: string;
+  task_id: string;
+  responses: {
+    [failureType: string]: string[];
+  };
+  media_files: string[];
+  time_spent_seconds?: number;
+  started_at?: string;
+}
 
 const LabelingInterface: React.FC = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questions, setQuestions] = useState<QuestionWithMedia[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [responses, setResponses] = useState<Record<string, QuestionResponse>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [questionStartTime, setQuestionStartTime] = useState<Date>(new Date());
 
   useEffect(() => {
-    if (taskId) {
-      // Simulate API call
-      setTimeout(() => {
-        const questionsData = getFakeQuestions(taskId);
-        setQuestions(questionsData);
+    const fetchQuestions = async () => {
+      if (!taskId) {
+        setError('No task ID provided');
         setLoading(false);
-      }, 500);
-    }
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch questions with media from backend
+        const questionsData = await api.getTaskQuestionsWithMedia(taskId);
+        setQuestions(questionsData);
+        setQuestionStartTime(new Date());
+        
+        console.log('Fetched questions:', questionsData);
+        
+        if (questionsData.length === 0) {
+          setError('No questions found for this task. Please contact your administrator.');
+        }
+        
+      } catch (error: any) {
+        console.error('Error fetching questions:', error);
+        setError(error.message || 'Failed to load questions');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchQuestions();
   }, [taskId]);
+
+  // Reset timer when question changes
+  useEffect(() => {
+    setQuestionStartTime(new Date());
+  }, [currentQuestionIndex]);
 
   const currentQuestion = questions[currentQuestionIndex];
   const currentResponse = responses[currentQuestion?.id] || {
     question_id: currentQuestion?.id || '',
     task_id: taskId || '',
     responses: {},
-    media_files: currentQuestion?.media_files || []
+    media_files: currentQuestion?.media_files?.map(m => m.file_path) || [],
+    started_at: questionStartTime.toISOString()
   };
 
   const handleFailureTypeChange = (failureType: string, option: string, checked: boolean) => {
@@ -90,24 +166,39 @@ const LabelingInterface: React.FC = () => {
 
     setSubmitting(true);
     
-    // Simulate API call to submit response
     try {
-      console.log('Submitting response:', currentResponse);
+      // Calculate time spent on this question
+      const timeSpent = Math.round((Date.now() - questionStartTime.getTime()) / 1000);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const responseData = {
+        question_id: currentQuestion.id,
+        task_id: taskId!,
+        responses: currentResponse.responses,
+        media_files: currentQuestion.media_files.map(m => m.file_path),
+        time_spent_seconds: timeSpent,
+        started_at: questionStartTime.toISOString()
+      };
+
+      console.log('Submitting response:', responseData);
+      
+      // Submit response to backend
+      await api.createDetailedQuestionResponse(responseData);
+      
+      console.log('Response submitted successfully');
       
       // Move to next question or complete task
       if (currentQuestionIndex < questions.length - 1) {
         setCurrentQuestionIndex(prev => prev + 1);
+        // Clear any previous error
+        setError(null);
       } else {
         // Task completed
-        alert('Task completed! Redirecting to dashboard...');
+        alert('Task completed successfully! Redirecting to dashboard...');
         navigate('/dashboard');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting response:', error);
-      alert('Error submitting response. Please try again.');
+      setError(error.message || 'Error submitting response. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -116,6 +207,7 @@ const LabelingInterface: React.FC = () => {
   const handlePreviousQuestion = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
+      setError(null); // Clear any error when navigating
     }
   };
 
@@ -128,25 +220,35 @@ const LabelingInterface: React.FC = () => {
   };
 
   const isResponseValid = () => {
+    if (!currentQuestion) return false;
+    
     // Check if at least one failure type has a selection
-    return Object.values(currentResponse.responses).some(
-      selections => selections && selections.length > 0
-    );
+    const failureTypes = Object.keys(currentQuestion.choices || {});
+    return failureTypes.every(failureType => {
+      const selections = currentResponse.responses[failureType];
+      return selections && selections.length > 0;
+    });
   };
 
+  // Loading state
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Typography>Loading questions...</Typography>
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress size={60} sx={{ mb: 2 }} />
+        <Typography variant="h6">Loading questions...</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Fetching questions and media files for this task
+        </Typography>
       </Box>
     );
   }
 
-  if (!currentQuestion) {
+  // Error state
+  if (error || !currentQuestion) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
-        <Alert severity="error">
-          No questions found for this task.
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error || 'No questions found for this task.'}
         </Alert>
         <Button variant="contained" onClick={handleBackToTask} sx={{ mt: 2 }}>
           Back to Task
@@ -178,16 +280,30 @@ const LabelingInterface: React.FC = () => {
       </AppBar>
 
       <Container maxWidth="xl" sx={{ py: 3 }}>
+        {/* Error Alert */}
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
         {/* Progress Header */}
         <Box sx={{ mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h5">
               Question {currentQuestionIndex + 1} of {questions.length}
             </Typography>
-            <Chip 
-              label={`Task: ${taskId?.slice(0, 8)}...`}
-              variant="outlined"
-            />
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Chip 
+                label={`Task: ${taskId?.slice(0, 8)}...`}
+                variant="outlined"
+              />
+              <Chip 
+                label={`Order: ${currentQuestion.question_order}`}
+                variant="outlined"
+                color="primary"
+              />
+            </Box>
           </Box>
           <LinearProgress 
             variant="determinate" 
@@ -208,39 +324,21 @@ const LabelingInterface: React.FC = () => {
                   Compare these {currentQuestion.media_files.length} media items to identify failures:
                 </Typography>
                 
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {currentQuestion.media_files.map((mediaFile: string, index: number) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        height: 160,
-                        bgcolor: 'grey.100',
-                        borderRadius: 2,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        border: '2px dashed',
-                        borderColor: 'grey.300',
-                        position: 'relative'
-                      }}
-                    >
-                      <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant="h6" color="text.secondary">
-                          {mediaFile}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {mediaFile.includes('.jpg') || mediaFile.includes('.png') ? 'Image' :
-                           mediaFile.includes('.mp4') || mediaFile.includes('.avi') ? 'Video' :
-                           mediaFile.includes('.wav') || mediaFile.includes('.mp3') ? 'Audio' : 'Media'}
-                        </Typography>
-                      </Box>
-                      <Chip 
-                        label={`Item ${index + 1}`}
-                        size="small"
-                        sx={{ position: 'absolute', top: 8, right: 8 }}
-                      />
-                    </Box>
-                  ))}
+                {/* Use the new MediaDisplay component */}
+                <MediaDisplay 
+                  mediaFiles={currentQuestion.media_files}
+                  taskId={taskId!}
+                />
+
+                {/* Media Summary */}
+                <Box sx={{ mt: 2, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Media Summary:
+                  </Typography>
+                  <Typography variant="body2">
+                    Total files: {currentQuestion.media_files.length} • 
+                    Types: {[...new Set(currentQuestion.media_files.map(m => m.media_type))].join(', ')}
+                  </Typography>
                 </Box>
               </CardContent>
             </Card>
@@ -257,7 +355,7 @@ const LabelingInterface: React.FC = () => {
                   For each failure type, first indicate if failures are present, then specify the types.
                 </Typography>
 
-                {/* Import and use FailureTypeSelector component */}
+                {/* Use FailureTypeSelector component with real data */}
                 <FailureTypeSelector
                   choices={currentQuestion.choices}
                   responses={currentResponse.responses}
@@ -269,18 +367,31 @@ const LabelingInterface: React.FC = () => {
                   <Typography variant="subtitle2" gutterBottom>
                     Current Selections:
                   </Typography>
-                  {Object.entries(currentResponse.responses).map(([failureType, selections]) => (
-                    selections && selections.length > 0 && (
-                      <Typography key={failureType} variant="caption" display="block">
-                        <strong>{failureType}:</strong> {selections.join(', ')}
-                      </Typography>
-                    )
-                  ))}
+                  {Object.entries(currentResponse.responses).length > 0 ? (
+                    Object.entries(currentResponse.responses).map(([failureType, selections]) => (
+                      selections && selections.length > 0 && (
+                        <Typography key={failureType} variant="caption" display="block">
+                          <strong>{failureType}:</strong> {selections.join(', ')}
+                        </Typography>
+                      )
+                    ))
+                  ) : (
+                    <Typography variant="caption" color="text.secondary">
+                      No selections made yet.
+                    </Typography>
+                  )}
                   {!isResponseValid() && (
-                    <Typography variant="caption" color="error">
+                    <Typography variant="caption" color="error" display="block" sx={{ mt: 1 }}>
                       Please make a selection for each failure type.
                     </Typography>
                   )}
+                </Box>
+
+                {/* Question Metadata */}
+                <Box sx={{ mt: 2, p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Question ID: {currentQuestion.id} • Status: {currentQuestion.status}
+                  </Typography>
                 </Box>
               </CardContent>
             </Card>
@@ -313,6 +424,11 @@ const LabelingInterface: React.FC = () => {
             <Typography variant="caption" color="text.secondary">
               {currentQuestionIndex === questions.length - 1 ? 'Final question' : 'Continue to next question'}
             </Typography>
+            {submitting && (
+              <Typography variant="caption" color="primary" display="block">
+                Submitting response...
+              </Typography>
+            )}
           </Box>
 
           <Button

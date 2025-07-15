@@ -1,7 +1,37 @@
-// Fixed services/api.ts - Use FastAPI backend instead of direct Supabase
+// Merged services/api.ts - Use FastAPI backend instead of direct Supabase
 import { LabelClass, Task, TaskAssignment } from '../types/tasks';
+import { TaskWithQuestionsData, MediaConfiguration, TaskFormData } from '../types/createTask';
+import { QuestionResponseCreate, QuestionResponseDetailed, QuestionWithMedia } from '../types/labeling';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
+// Enhanced TaskWithQuestionsResponse interface
+interface TaskWithQuestionsResponse {
+  id: string;
+  title: string;
+  description: string;
+  instructions: string;
+  example_media: string[];
+  status: string;
+  questions_per_user: number;
+  required_agreements: number;
+  question_template: {
+    question_text: string;
+    choices: {
+      [key: string]: {
+        text: string;
+        options: string[];
+        multiple_select: boolean;
+      };
+    };
+  };
+  media_config: MediaConfiguration;
+  created_by: string;
+  created_at: string;
+  updated_at?: string;
+  deadline?: string;
+  total_questions_generated: number;
+}
 
 // Get auth headers for FastAPI
 const getAuthHeaders = async () => {
@@ -10,6 +40,18 @@ const getAuthHeaders = async () => {
     'Authorization': `Bearer ${session?.access_token}`,
     'Content-Type': 'application/json',
   };
+};
+
+// Helper function to get auth token (alternative method)
+export const getToken = (): string | null => {
+  // First try the session storage approach
+  const session = JSON.parse(localStorage.getItem('sb-rtbwupulnejwsdfgzuek-auth-token') || '{}');
+  if (session?.access_token) {
+    return session.access_token;
+  }
+  
+  // Fallback to direct token storage
+  return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
 };
 
 // Generic API helper with timeout
@@ -88,14 +130,17 @@ export const api = {
   },
 
   // Tasks
-  async getTasks(): Promise<Task[]> {
+  async getTasks(): Promise<TaskWithQuestionsData[]> {
     return apiCall('/tasks/');
   },
 
-  async getTask(id: string): Promise<Task> {
+  async getTask(id: string): Promise<TaskWithQuestionsData> {
     return apiCall(`/tasks/${id}`);
   },
 
+  /**
+   * Create basic task (legacy method for backward compatibility)
+   */
   async createTask(data: {
     title: string;
     description?: string;
@@ -106,6 +151,75 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  },
+
+  /**
+   * Create task with questions using the enhanced endpoint
+   */
+  async createTaskWithQuestions(taskData: TaskFormData): Promise<TaskWithQuestionsResponse> {
+    console.log('Creating task with questions:', taskData);
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/with-questions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(taskData)
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to create task with questions';
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorMessage;
+      } catch (e) {
+        // If JSON parsing fails, use status text
+        errorMessage = response.statusText || errorMessage;
+      }
+      
+      // Handle specific error codes
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please log in again.');
+      } else if (response.status === 403) {
+        throw new Error('Permission denied. Admin access required.');
+      } else if (response.status === 422) {
+        throw new Error(`Validation error: ${errorMessage}`);
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Get enhanced task by ID
+   */
+  async getTaskWithQuestions(taskId: string): Promise<TaskWithQuestionsData> {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/${taskId}/enhanced`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to fetch enhanced task');
+    }
+
+    return response.json();
   },
 
   async updateTask(taskId: string, data: Partial<Task>): Promise<Task> {
@@ -127,7 +241,7 @@ export const api = {
   },
 
   async assignTask(taskId: string, data: {
-    user_id_to_assign: string;  // ← Fixed field name
+    user_id_to_assign: string;
     assigned_classes: string[];
     target_labels: number;
   }): Promise<TaskAssignment> {
@@ -140,6 +254,47 @@ export const api = {
 
   async getTaskAssignments(taskId: string): Promise<TaskAssignment[]> {
     return apiCall(`/tasks/${taskId}/assignments`);
+  },
+
+  async getAllAssignments(): Promise<any[]> {
+    return apiCall('/assignments/all');
+  },
+  
+  async getAssignmentStats(): Promise<any> {
+    return apiCall('/assignments/stats');
+  },
+  
+  async getAssignment(id: string): Promise<any> {
+    return apiCall(`/assignments/${id}`);
+  },
+  
+  async updateAssignmentStatus(id: string, isActive: boolean): Promise<any> {
+    return apiCall(`/assignments/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ is_active: isActive }),
+    });
+  },
+  
+  async getUserAssignments(userId: string): Promise<any[]> {
+    return apiCall(`/users/${userId}/assignments`);
+  },
+  
+  async exportAssignmentReport(format: 'csv' | 'json' = 'csv'): Promise<Blob> {
+    const headers = await getAuthHeaders();
+    const url = `${API_URL}/api/v1/assignments/export?format=${format}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': headers.Authorization,
+      },
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Export failed: ${response.status} - ${errorText}`);
+    }
+    
+    return response.blob();
   },
 
   // Questions
@@ -165,6 +320,85 @@ export const api = {
   async getMyResponses(taskId?: string): Promise<any[]> {
     const endpoint = taskId ? `/tasks/responses/my?task_id=${taskId}` : '/tasks/responses/my';
     return apiCall(endpoint);
+  },
+
+  // Media Management
+  /**
+   * Get available media files (for admin preview)
+   */
+  async getAvailableMedia() {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/media/available`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to fetch available media');
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Sample media files for preview
+   */
+  async sampleMediaFiles(sampleRequest: {
+    num_images: number;
+    num_videos: number;
+    num_audios: number;
+  }) {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/media/sample`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(sampleRequest)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to sample media files');
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Create sample media files for testing (development only)
+   */
+  async createSampleMediaFiles() {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/media/create-samples`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to create sample media files');
+    }
+
+    return response.json();
   },
 
   // Users (Admin only)
@@ -221,46 +455,116 @@ export const api = {
   async getUserActivity(id: string): Promise<any> {
     return apiCall(`/users/${id}/activity`);
   },
-  
-  async getAllAssignments(): Promise<any[]> {
-    return apiCall('/assignments/all');
-  },
-  
-  async getAssignmentStats(): Promise<any> {
-    return apiCall('/assignments/stats');
-  },
-  
-  async getAssignment(id: string): Promise<any> {
-    return apiCall(`/assignments/${id}`);
-  },
-  
-  async updateAssignmentStatus(id: string, isActive: boolean): Promise<any> {
-    return apiCall(`/assignments/${id}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ is_active: isActive }),
-    });
-  },
-  
-  async getUserAssignments(userId: string): Promise<any[]> {
-    return apiCall(`/users/${userId}/assignments`);
-  },
-  
-  async exportAssignmentReport(format: 'csv' | 'json' = 'csv'): Promise<Blob> {
-    const headers = await getAuthHeaders();
-    const url = `${API_URL}/api/v1/assignments/export?format=${format}`;
-    
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': headers.Authorization,
-      },
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Export failed: ${response.status} - ${errorText}`);
+
+  getTaskQuestionsWithMedia: async (taskId: string): Promise<QuestionWithMedia[]> => {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
     }
-    
-    return response.blob();
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/${taskId}/questions-with-media`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to fetch questions with media';
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorMessage;
+      } catch (e) {
+        errorMessage = response.statusText || errorMessage;
+      }
+      
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please log in again.');
+      } else if (response.status === 403) {
+        throw new Error('Access denied to this task.');
+      } else if (response.status === 404) {
+        throw new Error('Task not found or no questions available.');
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
   },
+
+  /**
+   * Submit detailed question response
+   */
+  createDetailedQuestionResponse: async (responseData: QuestionResponseCreate): Promise<QuestionResponseDetailed> => {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/responses/detailed`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(responseData)
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to submit response';
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorMessage;
+      } catch (e) {
+        errorMessage = response.statusText || errorMessage;
+      }
+      
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please log in again.');
+      } else if (response.status === 403) {
+        throw new Error('Permission denied. You may not have access to this task.');
+      } else if (response.status === 422) {
+        throw new Error(`Validation error: ${errorMessage}`);
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Get user's detailed responses for a task (optional - for review)
+   */
+  getMyDetailedResponses: async (taskId?: string): Promise<QuestionResponseDetailed[]> => {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const url = taskId 
+      ? `${API_URL}/api/v1/tasks/responses/detailed/my?task_id=${taskId}`
+      : `${API_URL}/api/v1/tasks/responses/detailed/my`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to fetch detailed responses');
+    }
+
+    return response.json();
+  }
 };
 
+// Export types for use in components
+export type {
+  TaskWithQuestionsResponse
+};
