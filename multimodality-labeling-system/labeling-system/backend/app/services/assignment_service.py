@@ -4,6 +4,8 @@ import json
 import csv
 from io import StringIO
 from app.database import get_supabase_client
+from app.models.tasks import TaskAssignment, TaskAssignmentRequest
+import uuid
 
 class AssignmentService:
     def __init__(self):
@@ -196,6 +198,119 @@ class AssignmentService:
         except Exception as e:
             print(f"Error in export_assignments_json: {str(e)}")
             raise e
+    
+    async def get_user_assignments(self, user_id: str, active_only: bool = True) -> List[TaskAssignment]:
+        """Get user's task assignments"""
+        try:
+            query = self.supabase.table("task_assignments").select("*").eq("user_id", user_id)
+            if active_only:
+                query = query.eq("is_active", True)
+            
+            result = query.execute()
+            return [TaskAssignment(**assignment) for assignment in result.data]
+        except Exception as e:
+            raise Exception(f"Error fetching assignments: {str(e)}")
+    
+    async def create_task_assignment(self, assignment_data: TaskAssignmentRequest, task_id: str) -> TaskAssignment:
+        """Create task assignment"""
+        try:
+            # Validate task exists
+            from app.services.task_service import TaskService
+            task_service = TaskService()
+            task = await task_service.get_task_by_id(task_id)
+            if not task:
+                raise Exception("Task not found")
+            
+            # Validate user exists
+            user_check = self.supabase.table("user_profiles").select("id").eq("id", assignment_data.user_id_to_assign).execute()
+            if not user_check.data:
+                raise Exception("User not found")
+            
+            # Convert label class names to IDs if necessary
+            assigned_class_ids = await self._resolve_label_class_ids(assignment_data.assigned_classes)
+            
+            assignment_dict = {
+                "task_id": task_id,
+                "user_id": assignment_data.user_id_to_assign,
+                "assigned_classes": assigned_class_ids,
+                "target_labels": assignment_data.target_labels,
+                "completed_labels": 0,
+                "is_active": True
+            }
+            
+            result = self.supabase.table("task_assignments").insert(assignment_dict).execute()
+            if result.data:
+                return TaskAssignment(**result.data[0])
+            raise Exception("Failed to create assignment")
+            
+        except Exception as e:
+            raise Exception(f"Error creating assignment: {str(e)}")
+    
+    async def update_assignment_progress(self, assignment_id: str, completed_labels: int) -> TaskAssignment:
+        """Update assignment progress"""
+        try:
+            result = self.supabase.table("task_assignments").update({
+                "completed_labels": completed_labels
+            }).eq("id", assignment_id).execute()
+            
+            if result.data:
+                assignment = TaskAssignment(**result.data[0])
+                
+                # Mark as completed if target reached
+                if assignment.completed_labels >= assignment.target_labels:
+                    self.supabase.table("task_assignments").update({
+                        "completed_at": datetime.utcnow().isoformat()
+                    }).eq("id", assignment_id).execute()
+                
+                return assignment
+            raise Exception("Failed to update assignment progress")
+        except Exception as e:
+            raise self._handle_supabase_error("updating assignment progress", e)
+    
+    async def update_assignment_progress_from_response(self, assignment_id: str):
+        """Update assignment progress when a response is submitted"""
+        try:
+            responses = self.supabase.table("question_responses").select("id").eq("task_assignment_id", assignment_id).execute()
+            completed_count = len(responses.data)
+            
+            self.supabase.table("task_assignments").update({
+                "completed_labels": completed_count
+            }).eq("id", assignment_id).execute()
+        except Exception as e:
+            print(f"Error updating assignment progress: {str(e)}")
+    
+    # Private methods
+    async def _resolve_label_class_ids(self, assigned_classes: List[str]) -> List[str]:
+        """Convert label class names to IDs if necessary"""
+        if not assigned_classes:
+            return []
+        
+        first_class = assigned_classes[0]
+        
+        # Check if we're receiving names or IDs
+        try:
+            uuid.UUID(first_class)
+            # They're already UUIDs/IDs, validate they exist
+            class_check = self.supabase.table("label_classes").select("id").in_("id", assigned_classes).execute()
+            assigned_class_ids = assigned_classes
+        except ValueError:
+            # They're names, convert to IDs
+            class_check = self.supabase.table("label_classes").select("id, name").in_("name", assigned_classes).execute()
+            if not class_check.data:
+                raise Exception(f"No label classes found for names: {assigned_classes}")
+            
+            assigned_class_ids = [item["id"] for item in class_check.data]
+            
+            # Verify all names were found
+            found_names = [item["name"] for item in class_check.data]
+            missing_names = set(assigned_classes) - set(found_names)
+            if missing_names:
+                raise Exception(f"Label classes not found: {list(missing_names)}")
+        
+        if len(class_check.data) != len(assigned_classes):
+            raise Exception("One or more label classes not found")
+        
+        return assigned_class_ids
 
 # Create service instance
 assignment_service = AssignmentService()

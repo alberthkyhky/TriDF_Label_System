@@ -16,7 +16,7 @@ class Settings:
     VERSION: str = "1.0.0"
     
     # CORS Configuration
-    BACKEND_CORS_ORIGINS: list = ["http://localhost:3000"]
+    BACKEND_CORS_ORIGINS: list = ["http://localhost:3000", "http://127.0.0.1:3000"]
     
     # File Upload Configuration
     MAX_FILE_SIZE: int = 100 * 1024 * 1024  # 100MB
