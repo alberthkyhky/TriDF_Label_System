@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -71,12 +72,35 @@ const LabelingInterface: React.FC = () => {
   const { user, signOut } = useAuth();
   
   const [questions, setQuestions] = useState<QuestionWithMedia[]>([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1);
   const [responses, setResponses] = useState<Record<string, QuestionResponse>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [questionStartTime, setQuestionStartTime] = useState<Date>(new Date());
+  const [totalQuestions, setTotalQuestions] = useState(-1);
+
+  useEffect(() => {
+    const fetchAssignment = async () => {
+      if (!taskId) {
+        setError('No task ID provided');
+        setLoading(true);
+        return;
+      }
+      try {
+        setError(null);
+        const assignmentData = await api.getTaskAssignment(taskId);
+        setCurrentQuestionIndex(assignmentData.completed_labels);
+        setTotalQuestions(assignmentData.target_labels);
+      } catch (error: any) {
+        console.error('Error fetching assignment:', error);
+        setError(error.message || 'Failed to load assignment');
+      }
+    };
+    if (currentQuestionIndex === -1) {
+      fetchAssignment();
+    }
+  }, []);
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -89,20 +113,10 @@ const LabelingInterface: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        
-        // Fetch questions with media from backend
-
-        // TODO: fetch questions idx from backend
-
         const questionsData = await api.getTaskQuestionsWithMedia(taskId, currentQuestionIndex);
         console.log('Fetched questions:', questionsData);
         setQuestions(questionsData);
         setQuestionStartTime(new Date());
-        
-        if (questionsData.length === 0) {
-          setError('No questions found for this task. Please contact your administrator.');
-        }
-        
       } catch (error: any) {
         console.error('Error fetching questions:', error);
         setError(error.message || 'Failed to load questions');
@@ -110,8 +124,9 @@ const LabelingInterface: React.FC = () => {
         setLoading(false);
       }
     };
-
-    fetchQuestions();
+    if (currentQuestionIndex !== -1) {
+      fetchQuestions();
+    }
   }, [taskId, currentQuestionIndex]);
 
   // Reset timer when question changes
@@ -119,7 +134,7 @@ const LabelingInterface: React.FC = () => {
     setQuestionStartTime(new Date());
   }, [currentQuestionIndex]);
 
-  const currentQuestion = questions[currentQuestionIndex];
+  const currentQuestion = questions[0];
   const currentResponse = responses[currentQuestion?.id] || {
     question_id: currentQuestion?.id || '',
     task_id: taskId || '',
@@ -184,15 +199,12 @@ const LabelingInterface: React.FC = () => {
       // Submit response to backend
       await api.createDetailedQuestionResponse(responseData);
       
-      console.log('Response submitted successfully');
-      
       // Move to next question or complete task
-      if (currentQuestionIndex < questions.length - 1) {
+      if (currentQuestionIndex < totalQuestions) {
         setCurrentQuestionIndex(prev => prev + 1);
-        // Clear any previous error
+        setQuestions([]);
         setError(null);
       } else {
-        // Task completed
         alert('Task completed successfully! Redirecting to dashboard...');
         navigate('/dashboard');
       }
@@ -291,7 +303,7 @@ const LabelingInterface: React.FC = () => {
         <Box sx={{ mb: 3 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h5">
-              Question {currentQuestionIndex + 1} of {questions.length}
+              Question {currentQuestionIndex + 1} of {totalQuestions}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Chip 
@@ -419,10 +431,10 @@ const LabelingInterface: React.FC = () => {
 
           <Box sx={{ textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
-              Question {currentQuestionIndex + 1} of {questions.length}
+              Question {currentQuestionIndex + 1} of {totalQuestions}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {currentQuestionIndex === questions.length - 1 ? 'Final question' : 'Continue to next question'}
+              {currentQuestionIndex === totalQuestions - 1 ? 'Final question' : 'Continue to next question'}
             </Typography>
             {submitting && (
               <Typography variant="caption" color="primary" display="block">
@@ -433,13 +445,13 @@ const LabelingInterface: React.FC = () => {
 
           <Button
             variant="contained"
-            endIcon={currentQuestionIndex === questions.length - 1 ? <CheckCircle /> : <ArrowForward />}
+            endIcon={currentQuestionIndex === totalQuestions - 1 ? <CheckCircle /> : <ArrowForward />}
             onClick={handleSubmitResponse}
             disabled={!isResponseValid() || submitting}
             sx={{ minWidth: 160 }}
           >
             {submitting ? 'Submitting...' : 
-             currentQuestionIndex === questions.length - 1 ? 'Complete Task' : 'Next Question'}
+             currentQuestionIndex === totalQuestions - 1 ? 'Complete Task' : 'Next Question'}
           </Button>
         </Box>
       </Container>

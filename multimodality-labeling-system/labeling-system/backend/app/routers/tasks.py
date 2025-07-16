@@ -351,16 +351,53 @@ async def update_assignment_progress(
             detail=str(e)
         )
 
-@router.get("/{task_id}/assignments", response_model=List[TaskAssignment])
+@router.get("/{task_id}/assignments", response_model=TaskAssignment)
 async def get_task_assignments(
     task_id: str,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(get_current_user)
 ):
-    """Get all assignments for a task (admin only)"""
+    """Get current user's assignment for a specific task"""
     try:
-        # This would need to be implemented in assignment_service
-        # For now, return empty list
-        return []
+        # Update last active
+        await user_service.update_user_last_active(current_user["id"])
+        
+        # Verify task exists
+        task = await task_service.get_task_by_id(task_id)
+        if not task:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found"
+            )
+        
+        # Check if user has access to this task (unless admin)
+        if current_user["role"] != "admin":
+            user_tasks = await task_service.get_tasks_for_user(
+                current_user["id"], 
+                current_user["role"]
+            )
+            task_ids = [t.id for t in user_tasks]
+            if task_id not in task_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied to this task"
+                )
+        
+        # Get assignment for this task and current user
+        assignment = await assignment_service.get_task_assignment_for_user(
+            task_id=task_id, 
+            user_id=current_user["id"]
+        )
+        
+        if not assignment:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No assignment found for this task"
+            )
+        
+        return assignment
+        
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

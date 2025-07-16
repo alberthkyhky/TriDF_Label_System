@@ -16,9 +16,5 @@ class LocalDataSampler:
         if isinstance(idx, int):
             idx = [idx]
         sampled = []
-        for i in idx:
-            if i < 0 or i >= len(self.paths):
-                raise IndexError(f"Index {i} is out of range (0 to {len(self.paths)-1})")
-            sampled.append(self.paths[i])
         return ["/Users/yangping/Studio/side-project/ICLR2026_MMID/multimodality-labeling-system/labeling-system/backend/uploads/videos/sample-5s.mp4"]
         # return sampled

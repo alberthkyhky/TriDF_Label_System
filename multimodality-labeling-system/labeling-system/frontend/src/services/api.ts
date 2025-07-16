@@ -252,7 +252,7 @@ export const api = {
     });
   },
 
-  async getTaskAssignments(taskId: string): Promise<TaskAssignment[]> {
+  async getTaskAssignment(taskId: string): Promise<TaskAssignment> {
     return apiCall(`/tasks/${taskId}/assignments`);
   },
 

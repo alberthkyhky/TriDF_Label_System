@@ -67,6 +67,26 @@ class AssignmentService:
             print(f"Error in get_all_assignments_with_details: {str(e)}")
             raise e
 
+    async def get_task_assignment_for_user(self, task_id: str, user_id: str) -> TaskAssignment:
+        """Get assignment for a specific task and user (should be unique)"""
+        try:
+            result = self.supabase.table("task_assignments")\
+                .select("*")\
+                .eq("task_id", task_id)\
+                .eq("user_id", user_id)\
+                .execute()
+            
+            if not result.data:
+                return None
+            
+            if len(result.data) > 1:
+                # Log warning if multiple assignments found (shouldn't happen)
+                print(f"Warning: Multiple assignments found for user {user_id} and task {task_id}")
+            
+            return TaskAssignment(**result.data[0])
+        except Exception as e:
+            raise Exception(f"Error fetching task assignment for user: {str(e)}")
+
     async def get_assignment_stats(self) -> Dict[str, Any]:
         """Calculate assignment statistics"""
         try:
