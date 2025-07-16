@@ -48,7 +48,6 @@ class ResponseService(BaseService):
                 "task_assignment_id": assignment_id,
                 "selected_choices": [],  # Keep for backward compatibility
                 "responses": response_data.responses,  # New structured format
-                "media_files": response_data.media_files,
                 "confidence_level": response_data.confidence_level,
                 "time_spent_seconds": response_data.time_spent_seconds,
                 "metadata": {
@@ -81,7 +80,6 @@ class ResponseService(BaseService):
                 time_spent_seconds=created_response.get("time_spent_seconds"),
                 started_at=created_response.get("started_at"),
                 submitted_at=created_response["submitted_at"],
-                media_files=response_data.media_files,
                 is_honeypot_response=created_response.get("is_honeypot_response", False),
                 is_flagged=created_response.get("is_flagged", False),
                 flag_reason=created_response.get("flag_reason"),
@@ -89,6 +87,7 @@ class ResponseService(BaseService):
             )
             
         except Exception as e:
+            print(e)
             raise self._handle_supabase_error("creating detailed response", e)
     
     async def get_user_responses(self, user_id: str, task_id: Optional[str] = None) -> List[QuestionResponse]:

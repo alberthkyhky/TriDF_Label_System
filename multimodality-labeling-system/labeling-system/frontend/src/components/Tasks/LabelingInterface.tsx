@@ -77,7 +77,6 @@ const LabelingInterface: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [questionStartTime, setQuestionStartTime] = useState<Date>(new Date());
-  const [idx, setIdx] = useState(0);
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -92,7 +91,10 @@ const LabelingInterface: React.FC = () => {
         setError(null);
         
         // Fetch questions with media from backend
-        const questionsData = await api.getTaskQuestionsWithMedia(taskId, idx);
+
+        // TODO: fetch questions idx from backend
+
+        const questionsData = await api.getTaskQuestionsWithMedia(taskId, currentQuestionIndex);
         console.log('Fetched questions:', questionsData);
         setQuestions(questionsData);
         setQuestionStartTime(new Date());
@@ -110,7 +112,7 @@ const LabelingInterface: React.FC = () => {
     };
 
     fetchQuestions();
-  }, [taskId, idx]);
+  }, [taskId, currentQuestionIndex]);
 
   // Reset timer when question changes
   useEffect(() => {
@@ -122,7 +124,6 @@ const LabelingInterface: React.FC = () => {
     question_id: currentQuestion?.id || '',
     task_id: taskId || '',
     responses: {},
-    media_files: currentQuestion?.media_files?.map(m => m.file_path) || [],
     started_at: questionStartTime.toISOString()
   };
 
@@ -171,10 +172,9 @@ const LabelingInterface: React.FC = () => {
       const timeSpent = Math.round((Date.now() - questionStartTime.getTime()) / 1000);
       
       const responseData = {
-        question_id: currentQuestion.id,
+        question_id: currentQuestionIndex,
         task_id: taskId!,
         responses: currentResponse.responses,
-        media_files: currentQuestion.media_files.map(m => m.file_path),
         time_spent_seconds: timeSpent,
         started_at: questionStartTime.toISOString()
       };
@@ -320,7 +320,7 @@ const LabelingInterface: React.FC = () => {
                 <Typography variant="h6" gutterBottom>
                   📱 Media Analysis
                 </Typography>
-                <Typography variant="body2" color="text.secondary" paragraph>
+                <Typography variant="body2" color="text.secondary">
                   Compare these {currentQuestion.media_files.length} media items to identify failures:
                 </Typography>
                 

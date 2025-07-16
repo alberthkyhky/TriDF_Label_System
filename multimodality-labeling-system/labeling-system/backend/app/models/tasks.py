@@ -185,7 +185,7 @@ class QuestionWithMedia(BaseModel):
 class QuestionResponseDetailed(BaseModel):
     """Enhanced question response with full context"""
     id: str
-    question_id: str
+    question_id: int
     user_id: str
     task_id: str
     task_assignment_id: str
@@ -210,14 +210,11 @@ class QuestionResponseDetailed(BaseModel):
 
 class QuestionResponseDetailedCreate(BaseModel):
     """Create detailed question response"""
-    question_id: str
+    question_id: int
     task_id: str
     
     # Response data matching frontend structure  
     responses: Dict[str, List[str]]
-    
-    # Media files that were shown (for reference)
-    media_files: List[str] = []
     
     # Optional metadata
     confidence_level: Optional[int] = None

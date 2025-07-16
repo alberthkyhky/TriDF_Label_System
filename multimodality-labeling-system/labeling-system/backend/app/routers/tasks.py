@@ -523,7 +523,6 @@ async def serve_media_file_by_path(
         
         # Validate and resolve file path
         file_path = Path(request.file_path)
-        print(file_path)
         
         # Security: Ensure the file path is within allowed directories
         # You can customize these allowed base paths

@@ -106,7 +106,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, taskId }) => {
         key={index}
         sx={{
           position: 'relative',
-          height: 180,
+          height: 480,
           bgcolor: 'grey.100',
           borderRadius: 2,
           overflow: 'hidden',
@@ -303,7 +303,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, taskId }) => {
                   alt={selectedMedia.filename}
                   style={{
                     maxWidth: '100%',
-                    maxHeight: '70vh',
+                    maxHeight: '140vh',
                     objectFit: 'contain'
                   }}
                 />
@@ -314,7 +314,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, taskId }) => {
                   controls
                   style={{
                     maxWidth: '100%',
-                    maxHeight: '70vh'
+                    maxHeight: '140vh'
                   }}
                 >
                   Your browser does not support the video tag.

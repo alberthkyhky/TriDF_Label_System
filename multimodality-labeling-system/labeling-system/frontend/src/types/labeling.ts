@@ -62,12 +62,11 @@ export interface QuestionWithMedia {
 }
 
 export interface QuestionResponseCreate {
-  question_id: string;
+  question_id: number;
   task_id: string;
   responses: {
     [failureType: string]: string[];
   };
-  media_files: string[];
   time_spent_seconds?: number;
   started_at?: string;
 }
