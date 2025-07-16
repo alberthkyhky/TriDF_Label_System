@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 from app.models.tasks import MediaFile, MediaType, QuestionWithMedia
 from app.database import get_supabase_client
+from app.customer.sampleLocalData import LocalDataSampler
 
 class QuestionService:
     def __init__(self):
@@ -20,7 +21,7 @@ class QuestionService:
         except Exception as e:
             raise Exception(f"Error fetching task by ID: {str(e)}")
 
-    async def get_questions_with_media(self, task_id: str) -> List[QuestionWithMedia]:
+    async def get_questions_with_media(self, task_id: str, idx: int = 0) -> List[QuestionWithMedia]:
         """Get questions from DB and attach locally sampled media files"""
         try:
             # 1. Get task info to get task name
@@ -31,18 +32,12 @@ class QuestionService:
             # 2. Get questions from database (NO media)
             question = task['question_template']
             
-            # 3. Get task's media configuration
-            media_config = task['media_config']
-            
             # 4. For each question, sample local media files
             questions_with_media = []
             
             
             sampled_media = await self._sample_local_media_for_task(
-                task_name=task['title'],  # Use task title as folder name
-                num_images=media_config.get('num_images', 0),
-                num_videos=media_config.get('num_videos', 0),
-                num_audios=media_config.get('num_audios', 0)
+                task_name=task['title'], idx=idx
             )
 
             # Create QuestionWithMedia object
@@ -60,6 +55,7 @@ class QuestionService:
             )
             
             questions_with_media.append(question_with_media)
+            print(question_with_media)
         
             return questions_with_media
             
@@ -75,32 +71,17 @@ class QuestionService:
         except Exception as e:
             raise Exception(f"Error fetching questions from DB: {str(e)}")
     
-    async def _sample_local_media_for_task(self, task_name: str, num_images: int = 0, num_videos: int = 0, num_audios: int = 0) -> List[MediaFile]:
+    async def _sample_local_media_for_task(self, task_name: str, idx: int = 0) -> List[MediaFile]:
         """Sample media files from local task folder"""
         try:
-            # Sanitize task name for folder path
-            folder_name = self._sanitize_folder_name(task_name)
-            task_media_path = self.base_media_path / 'images'
-            
+            sampler = LocalDataSampler(
+                root='/Users/yangping/Studio/side-project/ICLR2026_MMID/multimodality-labeling-system/labeling-system/backend/uploads',
+                subfolder='videos'
+            )
             sampled_media = []
-            
-            # Sample images
-            if num_images > 0:
-                images = await self._get_media_files_by_type(task_media_path, ['jpg', 'jpeg', 'png', 'gif', 'bmp'])
-                sampled_images = random.sample(images, min(num_images, len(images))) if images else []
-                sampled_media.extend(sampled_images)
-            
-            # Sample videos
-            if num_videos > 0:
-                videos = await self._get_media_files_by_type(task_media_path, ['mp4', 'avi', 'mov', 'wmv', 'flv'])
-                sampled_videos = random.sample(videos, min(num_videos, len(videos))) if videos else []
-                sampled_media.extend(sampled_videos)
-            
-            # Sample audio
-            if num_audios > 0:
-                audios = await self._get_media_files_by_type(task_media_path, ['wav', 'mp3', 'flac', 'aac', 'ogg'])
-                sampled_audios = random.sample(audios, min(num_audios, len(audios))) if audios else []
-                sampled_media.extend(sampled_audios)
+            data_paths = sampler.sample_by_idx(idx)
+            for data_path in data_paths:
+                sampled_media.append(await self._create_media_file_from_path(Path(data_path)))
             
             return sampled_media
             

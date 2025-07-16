@@ -1,6 +1,6 @@
 // Merged services/api.ts - Use FastAPI backend instead of direct Supabase
 import { LabelClass, Task, TaskAssignment } from '../types/tasks';
-import { TaskWithQuestionsData, MediaConfiguration, TaskFormData } from '../types/createTask';
+import { TaskWithQuestionsData, MediaConfiguration, TaskFormData, MediaFile } from '../types/createTask';
 import { QuestionResponseCreate, QuestionResponseDetailed, QuestionWithMedia } from '../types/labeling';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -456,13 +456,53 @@ export const api = {
     return apiCall(`/users/${id}/activity`);
   },
 
-  getTaskQuestionsWithMedia: async (taskId: string): Promise<QuestionWithMedia[]> => {
+  async getMediaFile(taskId: string, mediaFile: MediaFile): Promise<string> {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+  
+    const mediaUrl = `${API_URL}/api/v1/tasks/${taskId}/media`;
+      
+      try {
+        const response = await fetch(mediaUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            file_path: mediaFile.file_path  // Send absolute file path
+          })
+        });
+  
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+  
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        
+        return blobUrl;
+      } catch (error) {
+        console.error('Error fetching media:', error);
+        throw error;
+      }
+  },
+
+  getTaskQuestionsWithMedia: async (taskId: string, idx?: number): Promise<QuestionWithMedia[]> => {
     const token = getToken();
     if (!token) {
       throw new Error('Authentication required. Please log in.');
     }
 
-    const response = await fetch(`${API_URL}/api/v1/tasks/${taskId}/questions-with-media`, {
+    // Build URL with optional idx parameter
+    let url = `${API_URL}/api/v1/tasks/${taskId}/questions-with-media`;
+    if (idx !== undefined) {
+      url += `?idx=${idx}`;
+    }
+
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`

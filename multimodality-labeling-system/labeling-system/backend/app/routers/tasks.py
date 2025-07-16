@@ -22,6 +22,7 @@ from app.services.user_service import user_service
 import re
 from pathlib import Path
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 # Create service instances (or use dependency injection)
 label_service = LabelService()
@@ -32,6 +33,9 @@ question_service = QuestionService()
 response_service = ResponseService()
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+class MediaFileRequest(BaseModel):
+    file_path: str
 
 # ===== LABEL CLASSES =====
 @router.get("/label-classes", response_model=List[LabelClass])
@@ -396,6 +400,7 @@ async def get_task_questions(
 @router.get("/{task_id}/questions-with-media", response_model=List[QuestionWithMedia])
 async def get_task_questions_with_media(
     task_id: str,
+    idx: Optional[int] = None,  # NEW: Optional index parameter
     current_user: dict = Depends(get_current_user)
 ):
     """Get questions for a task with locally sampled media files"""
@@ -413,8 +418,8 @@ async def get_task_questions_with_media(
                     detail="Access denied to this task"
                 )
         
-        # Use the updated service method
-        return await question_service.get_questions_with_media(task_id)
+        # Use the updated service method with idx parameter
+        return await question_service.get_questions_with_media(task_id, idx=idx)
         
     except HTTPException:
         raise
@@ -487,19 +492,15 @@ async def create_question(
             detail=str(e)
         )
 
-@router.get("/test-media")
-async def test_media_endpoint():
-    return {"message": "Media router is working"}
-
-@router.get("/media/{task_id}/{filename}")
-async def serve_media_file(
+@router.post("/{task_id}/media")
+async def serve_media_file_by_path(
     task_id: str,
-    filename: str,
+    request: MediaFileRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    """Serve media files for a specific task"""
+    """Serve media files using absolute file path (POST method)"""
     try:
-        # Get task to verify access and get task name
+        # Get task to verify access
         task = await task_service.get_task_by_id(task_id)
         if not task:
             raise HTTPException(
@@ -520,31 +521,37 @@ async def serve_media_file(
                     detail="Access denied to this task"
                 )
         
-        # Sanitize task name and construct file path
-        sanitized_task_name = _sanitize_folder_name(task.title)
-        base_media_path = Path("uploads")
-        file_path = base_media_path / 'images' / filename
+        # Validate and resolve file path
+        file_path = Path(request.file_path)
+        print(file_path)
         
-        # Security: Ensure the file path is within the expected directory
-        try:
-            expected_dir = (base_media_path / 'images').resolve()
-            actual_path = file_path.resolve()
-            if not str(actual_path).startswith(str(expected_dir)):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Invalid file path"
-                )
-        except Exception:
+        # Security: Ensure the file path is within allowed directories
+        # You can customize these allowed base paths
+        allowed_base_paths = [
+            Path("uploads").resolve(),
+            Path("/uploads").resolve() if Path("/uploads").exists() else None,
+            # Add other allowed base paths as needed
+        ]
+        allowed_base_paths = [p for p in allowed_base_paths if p is not None]
+        
+        # Check if the file path is within allowed directories
+        file_path_resolved = file_path.resolve()
+        is_allowed = any(
+            str(file_path_resolved).startswith(str(base_path))
+            for base_path in allowed_base_paths
+        )
+
+        if not is_allowed:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Invalid file path"
+                detail="Access denied: File path not in allowed directories"
             )
         
         # Check if file exists
         if not file_path.exists() or not file_path.is_file():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Media file not found: {filename}"
+                detail=f"Media file not found: {request.file_path}"
             )
         
         # Determine media type for proper headers
@@ -560,11 +567,11 @@ async def serve_media_file(
         file_extension = file_path.suffix.lower()
         media_type = media_types.get(file_extension, 'application/octet-stream')
         
-        # Return the file - IMPORTANT: Return FileResponse directly
+        # Return the file
         return FileResponse(
-            path=str(file_path),
+            path=str(file_path_resolved),
             media_type=media_type,
-            filename=filename,
+            filename=file_path.name,
             headers={
                 "Cache-Control": "public, max-age=3600",
                 "Access-Control-Allow-Origin": "*"
@@ -574,7 +581,7 @@ async def serve_media_file(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error serving media file: {str(e)}")  # Debug logging
+        print(f"Error serving media file: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error serving media file: {str(e)}"

@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -15,13 +14,10 @@ import {
 } from '@mui/material';
 import {
   ZoomIn,
-  PlayArrow,
-  Pause,
   VolumeUp,
   Error as ErrorIcon,
-  Fullscreen
 } from '@mui/icons-material';
-import { getToken } from '../../services/api';
+import { api } from '../../services/api';
 
 interface MediaFile {
   filename: string;
@@ -46,42 +42,10 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, taskId }) => {
   const [errorStates, setErrorStates] = useState<Record<string, boolean>>({});
   const [mediaBlobUrls, setMediaBlobUrls] = useState<Record<string, string>>({});
 
-  const getMediaUrl = (mediaFile: MediaFile): string => {
-    // Construct the URL to serve media files from your backend
-    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-    // Updated to match your backend router structure
-    return `${baseUrl}/api/v1/tasks/media/${taskId}/${mediaFile.filename}`;
-  };
-
-  // Fetch media with authentication and create blob URL
+  // Fetch media with authentication using POST with file path
   const fetchMediaWithAuth = async (mediaFile: MediaFile): Promise<string> => {
-    const token = getToken();
-    if (!token) {
-      throw new Error('Authentication required');
-    }
-
-    const mediaUrl = getMediaUrl(mediaFile);
-    
-    try {
-      const response = await fetch(mediaUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      
-      return blobUrl;
-    } catch (error) {
-      console.error('Error fetching media:', error);
-      throw error;
-    }
+    const response = await api.getMediaFile(taskId, mediaFile);
+    return response;
   };
 
   // Load media file with authentication
@@ -115,7 +79,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, taskId }) => {
         }
       });
     };
-  }, [mediaFiles, taskId])
+  }, [mediaFiles, taskId]);
 
   const handleMediaError = (filename: string) => {
     setLoadingStates(prev => ({ ...prev, [filename]: false }));

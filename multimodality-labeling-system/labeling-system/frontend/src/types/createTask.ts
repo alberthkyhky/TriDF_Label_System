@@ -90,8 +90,8 @@ export interface MediaFile {
   duration_seconds?: number;
   width?: number;
   height?: number;
-  tags: string[];
-  metadata: Record<string, any>;
+  // tags: string[];
+  // metadata: Record<string, any>;
 }
 
 export interface MediaAvailableResponse {

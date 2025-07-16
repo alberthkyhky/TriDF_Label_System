@@ -77,6 +77,7 @@ const LabelingInterface: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [questionStartTime, setQuestionStartTime] = useState<Date>(new Date());
+  const [idx, setIdx] = useState(0);
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -91,11 +92,10 @@ const LabelingInterface: React.FC = () => {
         setError(null);
         
         // Fetch questions with media from backend
-        const questionsData = await api.getTaskQuestionsWithMedia(taskId);
+        const questionsData = await api.getTaskQuestionsWithMedia(taskId, idx);
+        console.log('Fetched questions:', questionsData);
         setQuestions(questionsData);
         setQuestionStartTime(new Date());
-        
-        console.log('Fetched questions:', questionsData);
         
         if (questionsData.length === 0) {
           setError('No questions found for this task. Please contact your administrator.');
@@ -110,7 +110,7 @@ const LabelingInterface: React.FC = () => {
     };
 
     fetchQuestions();
-  }, [taskId]);
+  }, [taskId, idx]);
 
   // Reset timer when question changes
   useEffect(() => {
