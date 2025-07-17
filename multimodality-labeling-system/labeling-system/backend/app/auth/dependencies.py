@@ -48,7 +48,6 @@ async def get_current_user(user_id: str = Depends(verify_token)) -> dict:
     try:
         supabase = get_supabase_client()
         result = supabase.table("user_profiles").select("*").eq("id", user_id).execute()
-        
         if not result.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

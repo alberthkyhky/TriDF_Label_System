@@ -6,21 +6,19 @@ import {
   Container,
   Typography,
   Button,
-  Card,
-  CardContent,
   Grid,
   AppBar,
   Toolbar,
-  LinearProgress,
   Alert,
-  Chip,
   CircularProgress
 } from '@mui/material';
-import { ArrowBack, ArrowForward, CheckCircle, NavigateBefore } from '@mui/icons-material';
+import { ArrowBack } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
-import MediaDisplay from './MediaDisplay';
-import FailureTypeSelector from './FailureTypeSelector';
+import { ProgressIndicator } from './LabelingInterface/ProgressIndicator';
+import { MediaSection } from './LabelingInterface/MediaSection';
+import { ResponseForm } from './LabelingInterface/ResponseForm';
+import { NavigationControls } from './LabelingInterface/NavigationControls';
 
 // Updated interfaces for real API data
 interface MediaFile {
@@ -139,6 +137,7 @@ const LabelingInterface: React.FC = () => {
     question_id: currentQuestion?.id || '',
     task_id: taskId || '',
     responses: {},
+    media_files: currentQuestion?.media_files?.map(f => f.file_path) || [],
     started_at: questionStartTime.toISOString()
   };
 
@@ -227,9 +226,6 @@ const LabelingInterface: React.FC = () => {
     navigate(`/task/${taskId}`);
   };
 
-  const getProgressPercentage = () => {
-    return questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
-  };
 
   const isResponseValid = () => {
     if (!currentQuestion) return false;
@@ -300,160 +296,39 @@ const LabelingInterface: React.FC = () => {
         )}
 
         {/* Progress Header */}
-        <Box sx={{ mb: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h5">
-              Question {currentQuestionIndex + 1} of {totalQuestions}
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <Chip 
-                label={`Task: ${taskId?.slice(0, 8)}...`}
-                variant="outlined"
-              />
-              <Chip 
-                label={`Order: ${currentQuestion.question_order}`}
-                variant="outlined"
-                color="primary"
-              />
-            </Box>
-          </Box>
-          <LinearProgress 
-            variant="determinate" 
-            value={getProgressPercentage()}
-            sx={{ height: 8, borderRadius: 4 }}
-          />
-        </Box>
+        <ProgressIndicator
+          currentQuestionIndex={currentQuestionIndex}
+          totalQuestions={totalQuestions}
+          taskId={taskId!}
+          questionOrder={currentQuestion.question_order}
+        />
 
         <Grid container spacing={3}>
           {/* Media Display Section */}
-          <Grid size={{ xs: 12, lg: 6 }}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  📱 Media Analysis
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Compare these {currentQuestion.media_files.length} media items to identify failures:
-                </Typography>
-                
-                {/* Use the new MediaDisplay component */}
-                <MediaDisplay 
-                  mediaFiles={currentQuestion.media_files}
-                  taskId={taskId!}
-                />
-
-                {/* Media Summary */}
-                <Box sx={{ mt: 2, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Media Summary:
-                  </Typography>
-                  <Typography variant="body2">
-                    Total files: {currentQuestion.media_files.length} • 
-                    Types: {[...new Set(currentQuestion.media_files.map(m => m.media_type))].join(', ')}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+          <MediaSection
+            mediaFiles={currentQuestion.media_files}
+            taskId={taskId!}
+            questionText={currentQuestion.question_text}
+          />
 
           {/* Question and Choices Section */}
-          <Grid size={{ xs: 12, lg: 6 }}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  ❓ {currentQuestion.question_text}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" paragraph>
-                  For each failure type, first indicate if failures are present, then specify the types.
-                </Typography>
-
-                {/* Use FailureTypeSelector component with real data */}
-                <FailureTypeSelector
-                  choices={currentQuestion.choices}
-                  responses={currentResponse.responses}
-                  onSelectionChange={handleFailureTypeChange}
-                />
-
-                {/* Response Summary */}
-                <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    Current Selections:
-                  </Typography>
-                  {Object.entries(currentResponse.responses).length > 0 ? (
-                    Object.entries(currentResponse.responses).map(([failureType, selections]) => (
-                      selections && selections.length > 0 && (
-                        <Typography key={failureType} variant="caption" display="block">
-                          <strong>{failureType}:</strong> {selections.join(', ')}
-                        </Typography>
-                      )
-                    ))
-                  ) : (
-                    <Typography variant="caption" color="text.secondary">
-                      No selections made yet.
-                    </Typography>
-                  )}
-                  {!isResponseValid() && (
-                    <Typography variant="caption" color="error" display="block" sx={{ mt: 1 }}>
-                      Please make a selection for each failure type.
-                    </Typography>
-                  )}
-                </Box>
-
-                {/* Question Metadata */}
-                <Box sx={{ mt: 2, p: 1, bgcolor: 'grey.100', borderRadius: 1 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Question ID: {currentQuestion.id} • Status: {currentQuestion.status}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+          <ResponseForm
+            currentQuestion={currentQuestion}
+            currentResponse={currentResponse}
+            onFailureTypeChange={handleFailureTypeChange}
+            isResponseValid={isResponseValid}
+          />
         </Grid>
 
         {/* Navigation Controls */}
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          mt: 4,
-          p: 3,
-          bgcolor: 'grey.50',
-          borderRadius: 2
-        }}>
-          <Button
-            variant="outlined"
-            startIcon={<NavigateBefore />}
-            onClick={handlePreviousQuestion}
-            disabled={currentQuestionIndex === 0}
-          >
-            Previous Question
-          </Button>
-
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              Question {currentQuestionIndex + 1} of {totalQuestions}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {currentQuestionIndex === totalQuestions - 1 ? 'Final question' : 'Continue to next question'}
-            </Typography>
-            {submitting && (
-              <Typography variant="caption" color="primary" display="block">
-                Submitting response...
-              </Typography>
-            )}
-          </Box>
-
-          <Button
-            variant="contained"
-            endIcon={currentQuestionIndex === totalQuestions - 1 ? <CheckCircle /> : <ArrowForward />}
-            onClick={handleSubmitResponse}
-            disabled={!isResponseValid() || submitting}
-            sx={{ minWidth: 160 }}
-          >
-            {submitting ? 'Submitting...' : 
-             currentQuestionIndex === totalQuestions - 1 ? 'Complete Task' : 'Next Question'}
-          </Button>
-        </Box>
+        <NavigationControls
+          currentQuestionIndex={currentQuestionIndex}
+          totalQuestions={totalQuestions}
+          isResponseValid={isResponseValid()}
+          isSubmitting={submitting}
+          onPrevious={handlePreviousQuestion}
+          onSubmit={handleSubmitResponse}
+        />
       </Container>
     </Box>
   );

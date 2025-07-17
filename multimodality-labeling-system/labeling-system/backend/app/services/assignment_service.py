@@ -222,6 +222,7 @@ class AssignmentService:
     async def get_user_assignments(self, user_id: str, active_only: bool = True) -> List[TaskAssignment]:
         """Get user's task assignments"""
         try:
+            print(user_id)
             query = self.supabase.table("task_assignments").select("*").eq("user_id", user_id)
             if active_only:
                 query = query.eq("is_active", True)

@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from typing import List, Optional
 from app.auth.dependencies import require_admin, get_current_user
-from app.services.assignment_service import assignment_service
+from app.services.assignment_service import AssignmentService
 from app.services.task_service import TaskService
 from app.services.user_service import user_service
 from app.models.tasks import TaskAssignment, TaskAssignmentRequest
@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 # Create service instances
 task_service = TaskService()
+assignment_service = AssignmentService()
 
 router = APIRouter(prefix="/assignments", tags=["assignments"])
 
@@ -123,8 +124,9 @@ async def get_my_assignments(current_user: dict = Depends(get_current_user)):
     """Get current user's task assignments"""
     try:
         # Update last active
-        await user_service.update_user_last_active(current_user["id"])
+        print(current_user)
         
+        await user_service.update_user_last_active(current_user["id"])
         return await assignment_service.get_user_assignments(current_user["id"])
     except Exception as e:
         raise HTTPException(

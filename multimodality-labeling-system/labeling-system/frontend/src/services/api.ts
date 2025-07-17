@@ -36,6 +36,7 @@ interface TaskWithQuestionsResponse {
 // Get auth headers for FastAPI
 const getAuthHeaders = async () => {
   const session = JSON.parse(localStorage.getItem('sb-rtbwupulnejwsdfgzuek-auth-token') || '{}');
+  console.log(session);
   return {
     'Authorization': `Bearer ${session?.access_token}`,
     'Content-Type': 'application/json',
