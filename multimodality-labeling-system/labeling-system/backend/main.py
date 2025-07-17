@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import settings
-from app.routers.init import auth_router, tasks_router, users_router, assignments_router
+from app.routers.init import auth_router, tasks_router, users_router, assignments_router, questions_router, media_router, responses_router
 import os
 
 # Create FastAPI app
@@ -32,6 +32,9 @@ app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(tasks_router, prefix=settings.API_V1_STR)
 app.include_router(users_router, prefix=settings.API_V1_STR)
 app.include_router(assignments_router, prefix=settings.API_V1_STR)
+app.include_router(questions_router, prefix=settings.API_V1_STR)
+app.include_router(media_router, prefix=settings.API_V1_STR)
+app.include_router(responses_router, prefix=settings.API_V1_STR)
 
 # Root endpoints
 @app.get("/")

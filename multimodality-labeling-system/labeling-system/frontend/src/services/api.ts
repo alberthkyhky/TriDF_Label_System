@@ -237,7 +237,7 @@ export const api = {
 
   // Task Assignments
   async getMyAssignments(): Promise<TaskAssignment[]> {
-    return apiCall('/tasks/assignments/my');
+    return apiCall('/assignments/my');
   },
 
   async assignTask(taskId: string, data: {
@@ -246,14 +246,14 @@ export const api = {
     target_labels: number;
   }): Promise<TaskAssignment> {
     console.log('Assigning task:', taskId, data);
-    return apiCall(`/tasks/${taskId}/assign`, {
+    return apiCall(`/assignments/task/${taskId}/assign`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
   async getTaskAssignment(taskId: string): Promise<TaskAssignment> {
-    return apiCall(`/tasks/${taskId}/assignments`);
+    return apiCall(`/assignments/task/${taskId}`);
   },
 
   async getAllAssignments(): Promise<any[]> {
@@ -299,11 +299,11 @@ export const api = {
 
   // Questions
   async getTaskQuestions(taskId: string): Promise<any[]> {
-    return apiCall(`/tasks/${taskId}/questions`);
+    return apiCall(`/questions/${taskId}/questions`);
   },
 
   async createQuestion(taskId: string, data: any): Promise<any> {
-    return apiCall(`/tasks/${taskId}/questions`, {
+    return apiCall(`/questions/${taskId}/questions`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -311,14 +311,14 @@ export const api = {
 
   // Responses
   async submitResponse(data: any): Promise<any> {
-    return apiCall('/tasks/responses', {
+    return apiCall('/responses/', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
   async getMyResponses(taskId?: string): Promise<any[]> {
-    const endpoint = taskId ? `/tasks/responses/my?task_id=${taskId}` : '/tasks/responses/my';
+    const endpoint = taskId ? `/responses/my?task_id=${taskId}` : '/responses/my';
     return apiCall(endpoint);
   },
 
@@ -462,7 +462,7 @@ export const api = {
       throw new Error('Authentication required');
     }
   
-    const mediaUrl = `${API_URL}/api/v1/tasks/${taskId}/media`;
+    const mediaUrl = `${API_URL}/api/v1/media/${taskId}/serve`;
       
       try {
         const response = await fetch(mediaUrl, {
@@ -497,7 +497,7 @@ export const api = {
     }
 
     // Build URL with optional idx parameter
-    let url = `${API_URL}/api/v1/tasks/${taskId}/questions-with-media`;
+    let url = `${API_URL}/api/v1/questions/${taskId}/questions-with-media`;
     if (idx !== undefined) {
       url += `?idx=${idx}`;
     }
@@ -542,7 +542,7 @@ export const api = {
       throw new Error('Authentication required. Please log in.');
     }
 
-    const response = await fetch(`${API_URL}/api/v1/tasks/responses/detailed`, {
+    const response = await fetch(`${API_URL}/api/v1/responses/detailed`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -585,8 +585,8 @@ export const api = {
     }
 
     const url = taskId 
-      ? `${API_URL}/api/v1/tasks/responses/detailed/my?task_id=${taskId}`
-      : `${API_URL}/api/v1/tasks/responses/detailed/my`;
+      ? `${API_URL}/api/v1/responses/my?task_id=${taskId}`
+      : `${API_URL}/api/v1/responses/my`;
 
     const response = await fetch(url, {
       method: 'GET',

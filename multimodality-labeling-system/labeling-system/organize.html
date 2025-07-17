@@ -1,0 +1,2284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Organization & Refactoring Plan</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f7fa;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .progress-overview {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .progress-bar {
+            background: #e9ecef;
+            border-radius: 10px;
+            height: 20px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #28a745, #20c997);
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .phase {
+            background: white;
+            margin-bottom: 25px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .phase-header {
+            background: #6c757d;
+            color: white;
+            padding: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s ease;
+        }
+
+        .phase-header:hover {
+            background: #5a6268;
+        }
+
+        .phase-header.completed {
+            background: #28a745;
+        }
+
+        .phase-header.in-progress {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .phase-title {
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+
+        .phase-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .phase-toggle {
+            font-size: 1.2em;
+            transition: transform 0.3s ease;
+        }
+
+        .phase-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        .phase-content {
+            display: none;
+            padding: 25px;
+        }
+
+        .phase-content.expanded {
+            display: block;
+        }
+
+        .week {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+
+        .week-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+
+        .task {
+            background: white;
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            position: relative;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .task-title {
+            font-weight: 600;
+            color: #495057;
+            flex: 1;
+        }
+
+        .task-checkbox {
+            width: 20px;
+            height: 20px;
+            margin-left: 15px;
+            cursor: pointer;
+        }
+
+        .task-description {
+            color: #6c757d;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .task-details {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+
+        .task-impact {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+
+        .task-files {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+
+        .task.completed {
+            background: #d4edda;
+            border-color: #c3e6cb;
+        }
+
+        .task.completed .task-title {
+            text-decoration: line-through;
+            color: #155724;
+        }
+
+        .priority-high {
+            border-left-color: #dc3545;
+        }
+
+        .priority-medium {
+            border-left-color: #ffc107;
+        }
+
+        .priority-low {
+            border-left-color: #28a745;
+        }
+
+        .benefits {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .benefits h3 {
+            color: #495057;
+            margin-bottom: 15px;
+        }
+
+        .benefit-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .benefit-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #0056b3;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .task-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .task-checkbox {
+                margin-left: 0;
+                margin-top: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Code Organization & Refactoring Plan</h1>
+            <p>Multi-Modal Labeling System - Clean Code Initiative</p>
+        </div>
+
+        <div class="progress-overview">
+            <h3>📊 Overall Progress</h3>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="completed-tasks">0</div>
+                    <div class="stat-label">Completed Tasks</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="total-tasks">47</div>
+                    <div class="stat-label">Total Tasks</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="completion-percentage">0%</div>
+                    <div class="stat-label">Progress</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="estimated-time">8</div>
+                    <div class="stat-label">Weeks Estimated</div>
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-text" id="progress-text">0% Complete</div>
+            
+            <div class="alert alert-info">
+                <strong>🛡️ Safe Migration Approach:</strong> This plan uses incremental changes with thorough testing. Keep old code until new code is fully tested and working.
+            </div>
+        </div>
+
+        <!-- Phase 1: Foundation & Structure -->
+        <div class="phase">
+            <div class="phase-header" onclick="togglePhase('phase1')">
+                <div class="phase-title">📗 Phase 1: Foundation & Structure (Week 1-2)</div>
+                <div class="phase-status">
+                    <span class="phase-toggle" id="phase1-toggle">▼</span>
+                </div>
+            </div>
+            <div class="phase-content" id="phase1-content">
+                
+                <div class="week">
+                    <div class="week-title">🗓️ Week 1: Backend Router Splitting</div>
+                    
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">1.1 Create Questions Router</div>
+                            <input type="checkbox" class="task-checkbox" data-task="1.1">
+                        </div>
+                        <div class="task-description">Extract question-related endpoints from tasks.py into a dedicated questions.py router</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> backend/app/routers/questions.py
+                        </div>
+                        <div class="task-details">
+# Create backend/app/routers/questions.py
+from fastapi import APIRouter, Depends, HTTPException
+from app.auth.dependencies import get_current_user, require_admin
+from app.services.question_service import QuestionService
+
+router = APIRouter(prefix="/questions", tags=["questions"])
+question_service = QuestionService()
+
+# Move these endpoints from tasks.py:
+# - GET /{task_id}/questions-with-media
+# - POST /{task_id}/questions
+# - POST /{task_id}/create-sample-media
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Reduces tasks.py from 708 to ~600 lines. Improves code organization and maintainability.
+                        </div>
+                    </div>
+
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">1.2 Create Media Router</div>
+                            <input type="checkbox" class="task-checkbox" data-task="1.2">
+                        </div>
+                        <div class="task-description">Extract media-related endpoints into a dedicated media.py router</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> backend/app/routers/media.py
+                        </div>
+                        <div class="task-details">
+# Create backend/app/routers/media.py
+from fastapi import APIRouter, Depends
+from app.services.media_service import MediaService
+
+router = APIRouter(prefix="/media", tags=["media"])
+media_service = MediaService()
+
+# Move these endpoints from tasks.py:
+# - POST /{task_id}/media (serve_media_file_by_path)
+# - GET /media/available
+# - POST /media/sample
+# - POST /media/create-samples
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Further reduces tasks.py. Centralizes media handling logic.
+                        </div>
+                    </div>
+
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">1.3 Create Responses Router</div>
+                            <input type="checkbox" class="task-checkbox" data-task="1.3">
+                        </div>
+                        <div class="task-description">Extract response-related endpoints into a dedicated responses.py router</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> backend/app/routers/responses.py
+                        </div>
+                        <div class="task-details">
+# Create backend/app/routers/responses.py
+from fastapi import APIRouter, Depends
+from app.services.response_service import ResponseService
+
+router = APIRouter(prefix="/responses", tags=["responses"])
+response_service = ResponseService()
+
+# Move these endpoints from tasks.py:
+# - POST /responses/detailed
+# - GET /responses/my
+# - GET /responses/detailed/my
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Clean separation of response handling. Makes tasks.py focused on task CRUD only.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">1.4 Update Router Registration</div>
+                            <input type="checkbox" class="task-checkbox" data-task="1.4">
+                        </div>
+                        <div class="task-description">Register new routers in main.py and update imports</div>
+                        <div class="task-files">
+                            <strong>Files to modify:</strong> backend/main.py, backend/app/routers/__init__.py
+                        </div>
+                        <div class="task-details">
+# Update backend/main.py
+from app.routers.questions import router as questions_router
+from app.routers.media import router as media_router
+from app.routers.responses import router as responses_router
+
+app.include_router(questions_router, prefix=settings.API_V1_STR)
+app.include_router(media_router, prefix=settings.API_V1_STR)
+app.include_router(responses_router, prefix=settings.API_V1_STR)
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Ensures all endpoints remain accessible after refactoring.
+                        </div>
+                    </div>
+
+                    <div class="task priority-low">
+                        <div class="task-header">
+                            <div class="task-title">1.5 Test All Endpoints</div>
+                            <input type="checkbox" class="task-checkbox" data-task="1.5">
+                        </div>
+                        <div class="task-description">Verify all moved endpoints work correctly with new router structure</div>
+                        <div class="task-details">
+# Test checklist:
+- Questions: GET /api/v1/questions/{task_id}/questions-with-media
+- Media: POST /api/v1/media/{task_id}/media
+- Responses: POST /api/v1/responses/detailed
+- Verify frontend still works correctly
+- Check API documentation at /docs
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Ensures no functionality is broken during refactoring.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="week">
+                    <div class="week-title">🗓️ Week 2: Frontend Component Breakdown</div>
+                    
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">1.6 Break Down LabelingInterface Component</div>
+                            <input type="checkbox" class="task-checkbox" data-task="1.6">
+                        </div>
+                        <div class="task-description">Split the massive 462-line LabelingInterface.tsx into smaller, focused components</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/components/Tasks/LabelingInterface/ (directory)
+                        </div>
+                        <div class="task-details">
+// Create directory structure:
+components/Tasks/LabelingInterface/
+├── index.tsx                    # Main orchestrator (80-100 lines)
+├── QuestionHeader.tsx          # Progress display
+├── MediaSection.tsx           # Media container
+├── ResponseSection.tsx        # Form container
+├── NavigationControls.tsx     # Submit/nav buttons
+└── hooks/
+    ├── useQuestionManagement.ts
+    ├── useResponseHandling.ts
+    └── useProgressTracking.ts
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Transforms unmanageable 462-line component into maintainable pieces. Improves testability and reusability.
+                        </div>
+                    </div>
+
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">1.7 Create QuestionHeader Component</div>
+                            <input type="checkbox" class="task-checkbox" data-task="1.7">
+                        </div>
+                        <div class="task-description">Extract progress display and question metadata into dedicated component</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/components/Tasks/LabelingInterface/QuestionHeader.tsx
+                        </div>
+                        <div class="task-details">
+// Extract lines 303-325 from LabelingInterface.tsx
+interface QuestionHeaderProps {
+  currentQuestionIndex: number;
+  totalQuestions: number;
+  taskId: string;
+  questionOrder: number;
+}
+
+export const QuestionHeader: React.FC<QuestionHeaderProps> = ({
+  currentQuestionIndex, totalQuestions, taskId, questionOrder
+}) => {
+  // Progress display logic
+  // Question metadata display
+  // Progress bar component
+};
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Reusable progress display component. Reduces main component complexity.
+                        </div>
+                    </div>
+
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">1.8 Create MediaSection Component</div>
+                            <input type="checkbox" class="task-checkbox" data-task="1.8">
+                        </div>
+                        <div class="task-description">Extract media display logic into focused component</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/components/Tasks/LabelingInterface/MediaSection.tsx
+                        </div>
+                        <div class="task-details">
+// Extract lines 327-357 from LabelingInterface.tsx
+interface MediaSectionProps {
+  mediaFiles: MediaFile[];
+  taskId: string;
+  questionText: string;
+}
+
+export const MediaSection: React.FC<MediaSectionProps> = ({
+  mediaFiles, taskId, questionText
+}) => {
+  // Media display wrapper
+  // Question text display
+  // Media summary information
+};
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Focused media handling. Easier to optimize and maintain media-related functionality.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">1.9 Create NavigationControls Component</div>
+                            <input type="checkbox" class="task-checkbox" data-task="1.9">
+                        </div>
+                        <div class="task-description">Extract navigation and submission logic</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/components/Tasks/LabelingInterface/NavigationControls.tsx
+                        </div>
+                        <div class="task-details">
+// Extract lines 413-457 from LabelingInterface.tsx
+interface NavigationControlsProps {
+  currentQuestionIndex: number;
+  totalQuestions: number;
+  isResponseValid: boolean;
+  isSubmitting: boolean;
+  onPrevious: () => void;
+  onSubmit: () => void;
+}
+
+export const NavigationControls: React.FC<NavigationControlsProps> = (props) => {
+  // Previous/Next buttons
+  // Submit button with validation
+  // Progress indicators
+};
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Reusable navigation component. Centralizes button state logic.
+                        </div>
+                    </div>
+
+                    <div class="task priority-low">
+                        <div class="task-header">
+                            <div class="task-title">1.10 Test Component Refactoring</div>
+                            <input type="checkbox" class="task-checkbox" data-task="1.10">
+                        </div>
+                        <div class="task-description">Verify labeling workflow still works correctly after component breakup</div>
+                        <div class="task-details">
+# Test checklist:
+- Navigate between questions works
+- Response submission works
+- Media display works correctly
+- Progress tracking works
+- Error handling still functions
+- Performance hasn't degraded
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Ensures user experience remains unchanged after refactoring.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 2: Extract Reusable Patterns -->
+        <div class="phase">
+            <div class="phase-header" onclick="togglePhase('phase2')">
+                <div class="phase-title">📘 Phase 2: Extract Reusable Patterns (Week 3-4)</div>
+                <div class="phase-status">
+                    <span class="phase-toggle" id="phase2-toggle">▼</span>
+                </div>
+            </div>
+            <div class="phase-content" id="phase2-content">
+                
+                <div class="week">
+                    <div class="week-title">🗓️ Week 3: Backend Pattern Standardization</div>
+                    
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">2.1 Create Centralized Error Handling</div>
+                            <input type="checkbox" class="task-checkbox" data-task="2.1">
+                        </div>
+                        <div class="task-description">Replace repeated try-catch blocks with centralized error handling</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> backend/app/utils/error_handling.py
+                        </div>
+                        <div class="task-details">
+# Create backend/app/utils/error_handling.py
+from contextlib import contextmanager
+from fastapi import HTTPException
+from app.utils.exceptions import ValidationError, NotFoundError
+
+@contextmanager
+def handle_api_errors():
+    try:
+        yield
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Decorator version for convenience
+def api_error_handler(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        with handle_api_errors():
+            return await func(*args, **kwargs)
+    return wrapper
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Eliminates 30+ repeated try-catch blocks. Consistent error handling across all endpoints.
+                        </div>
+                    </div>
+
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">2.2 Create Access Control Decorator</div>
+                            <input type="checkbox" class="task-checkbox" data-task="2.2">
+                        </div>
+                        <div class="task-description">Replace repeated access control checks with reusable decorator</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> backend/app/auth/access_control.py
+                        </div>
+                        <div class="task-details">
+# Create backend/app/auth/access_control.py
+from functools import wraps
+from fastapi import HTTPException
+
+async def has_task_access(user: dict, task_id: str) -> bool:
+    # Consolidated access checking logic
+    if user["role"] == "admin":
+        return True
+    # Check if user has assignment for this task
+    # ... access checking logic
+
+def require_task_access(func):
+    @wraps(func)
+    async def wrapper(task_id: str, current_user: dict, *args, **kwargs):
+        if not await has_task_access(current_user, task_id):
+            raise HTTPException(403, "Access denied to this task")
+        return await func(task_id, current_user, *args, **kwargs)
+    return wrapper
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Eliminates 15+ repeated access control checks. Ensures consistent security across endpoints.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">2.3 Create Configuration Management</div>
+                            <input type="checkbox" class="task-checkbox" data-task="2.3">
+                        </div>
+                        <div class="task-description">Move hard-coded values to centralized configuration</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> backend/app/config/constants.py
+                        </div>
+                        <div class="task-details">
+# Create backend/app/config/constants.py
+class APIConfig:
+    PAGINATION_LIMIT = 50
+    PAGINATION_MAX_LIMIT = 200
+    FILE_UPLOAD_MAX_SIZE = 100 * 1024 * 1024  # 100MB
+    MEDIA_TIMEOUT_SECONDS = 30
+    
+    # Media type configurations
+    ALLOWED_IMAGE_TYPES = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+    ALLOWED_VIDEO_TYPES = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv']
+    ALLOWED_AUDIO_TYPES = ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.m4a']
+    
+    # MIME type mappings
+    MIME_TYPE_MAP = {
+        '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+        '.png': 'image/png', '.gif': 'image/gif',
+        # ... complete mapping
+    }
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Centralizes configuration. Makes values easily configurable for different environments.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">2.4 Apply Error Handling to Routers</div>
+                            <input type="checkbox" class="task-checkbox" data-task="2.4">
+                        </div>
+                        <div class="task-description">Replace existing try-catch blocks with new error handling in all routers</div>
+                        <div class="task-files">
+                            <strong>Files to modify:</strong> All router files (tasks.py, questions.py, media.py, etc.)
+                        </div>
+                        <div class="task-details">
+# Example transformation in tasks.py:
+# Before:
+@router.get("/")
+async def get_tasks():
+    try:
+        return await task_service.get_tasks()
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+# After:
+@router.get("/")
+@api_error_handler
+async def get_tasks():
+    return await task_service.get_tasks()
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Reduces router code by 20-30%. Consistent error responses across all endpoints.
+                        </div>
+                    </div>
+
+                    <div class="task priority-low">
+                        <div class="task-header">
+                            <div class="task-title">2.5 Apply Access Control Decorators</div>
+                            <input type="checkbox" class="task-checkbox" data-task="2.5">
+                        </div>
+                        <div class="task-description">Replace manual access checks with access control decorators</div>
+                        <div class="task-files">
+                            <strong>Files to modify:</strong> questions.py, media.py, tasks.py
+                        </div>
+                        <div class="task-details">
+# Example transformation:
+# Before: Manual access checking in each endpoint
+@router.get("/{task_id}/questions-with-media")
+async def get_questions(task_id: str, current_user: dict):
+    if current_user["role"] != "admin":
+        # ... 12 lines of access checking logic
+    return await question_service.get_questions_with_media(task_id)
+
+# After: Decorator handles access checking
+@router.get("/{task_id}/questions-with-media")
+@require_task_access
+async def get_questions(task_id: str, current_user: dict):
+    return await question_service.get_questions_with_media(task_id)
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Removes 100+ lines of repeated code. Ensures consistent access control.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="week">
+                    <div class="week-title">🗓️ Week 4: Frontend Reusable Components</div>
+                    
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">2.6 Create Reusable UI Components</div>
+                            <input type="checkbox" class="task-checkbox" data-task="2.6">
+                        </div>
+                        <div class="task-description">Extract commonly used UI patterns into reusable components</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/components/ui/ (directory)
+                        </div>
+                        <div class="task-details">
+// Create components/ui/ directory with:
+├── LoadingSpinner.tsx        # Standardized loading states
+├── ErrorBoundary.tsx         # Error handling wrapper
+├── ConfirmDialog.tsx         # Reusable confirmation modals
+├── DataTable.tsx            # Standardized table component
+├── FormField.tsx            # Consistent form inputs
+├── StatusChip.tsx           # Status indicators
+└── index.ts                 # Export all components
+
+// Each component should be 30-50 lines, focused, reusable
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Eliminates repeated UI code. Ensures consistent user experience. Easier to maintain design system.
+                        </div>
+                    </div>
+
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">2.7 Create Custom Hooks Library</div>
+                            <input type="checkbox" class="task-checkbox" data-task="2.7">
+                        </div>
+                        <div class="task-description">Extract repeated logic patterns into custom hooks</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/hooks/ (directory)
+                        </div>
+                        <div class="task-details">
+// Create hooks/ directory with:
+├── useApiCall.ts            # Standardized API interactions
+├── useFormValidation.ts     # Consistent form validation
+├── useLoadingState.ts       # Loading state management
+├── useErrorHandler.ts       # Error handling patterns
+├── useMediaAuthentication.ts # Media access patterns
+├── usePagination.ts         # Pagination logic
+└── index.ts                 # Export all hooks
+
+// Example useApiCall hook:
+export const useApiCall = <T>(apiFunction: () => Promise<T>) => {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  // ... standardized API call logic
+};
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Eliminates repeated business logic. Easier to test and maintain. Consistent patterns across components.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">2.8 Create Labeling Context</div>
+                            <input type="checkbox" class="task-checkbox" data-task="2.8">
+                        </div>
+                        <div class="task-description">Eliminate props drilling in labeling workflow with context</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/contexts/LabelingContext.tsx
+                        </div>
+                        <div class="task-details">
+// Create contexts/LabelingContext.tsx
+interface LabelingContextType {
+  // State
+  currentQuestion: QuestionWithMedia | null;
+  responses: Record<string, QuestionResponse>;
+  progress: ProgressInfo;
+  loading: boolean;
+  error: string | null;
+  
+  // Actions
+  updateResponse: (questionId: string, response: QuestionResponse) => void;
+  submitResponse: () => Promise<void>;
+  navigateToQuestion: (index: number) => void;
+  clearError: () => void;
+}
+
+export const LabelingProvider: React.FC<{children: React.ReactNode}> = ({children}) => {
+  // Context implementation with useReducer for complex state management
+};
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Eliminates props drilling through 4+ component levels. Centralizes labeling state management.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">2.9 Break Down TaskManagement Component</div>
+                            <input type="checkbox" class="task-checkbox" data-task="2.9">
+                        </div>
+                        <div class="task-description">Split the 801-line TaskManagement component into manageable pieces</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/components/Admin/TaskManagement/ (directory)
+                        </div>
+                        <div class="task-details">
+// Create TaskManagement/ directory with:
+├── index.tsx                    # Main orchestrator
+├── TaskCreationStepper.tsx     # Multi-step form container
+├── BasicInfoStep.tsx           # Basic task information
+├── QuestionTemplateStep.tsx    # Question configuration
+├── MediaConfigStep.tsx         # Media settings
+├── ReviewStep.tsx              # Final review before creation
+├── TaskList.tsx               # Task listing component
+└── hooks/
+    ├── useTaskCreation.ts      # Task creation logic
+    └── useTaskValidation.ts    # Form validation logic
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Transforms unmanageable 801-line component into maintainable pieces. Improves admin UX.
+                        </div>
+                    </div>
+
+                    <div class="task priority-low">
+                        <div class="task-header">
+                            <div class="task-title">2.10 Update Component Usage</div>
+                            <input type="checkbox" class="task-checkbox" data-task="2.10">
+                        </div>
+                        <div class="task-description">Replace old components/patterns with new reusable ones throughout the app</div>
+                        <div class="task-files">
+                            <strong>Files to modify:</strong> All component files using old patterns
+                        </div>
+                        <div class="task-details">
+// Replace patterns like:
+// Old: Inline loading states everywhere
+{loading && <CircularProgress />}
+
+// New: Consistent LoadingSpinner component
+<LoadingSpinner message="Loading questions..." />
+
+// Old: Different error handling in each component
+// New: Consistent ErrorBoundary wrapper and useErrorHandler hook
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Consistent UI/UX patterns throughout application. Easier maintenance and updates.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 3: Type Safety & API Consistency -->
+        <div class="phase">
+            <div class="phase-header" onclick="togglePhase('phase3')">
+                <div class="phase-title">📙 Phase 3: Type Safety & API Consistency (Week 5-6)</div>
+                <div class="phase-status">
+                    <span class="phase-toggle" id="phase3-toggle">▼</span>
+                </div>
+            </div>
+            <div class="phase-content" id="phase3-content">
+                
+                <div class="week">
+                    <div class="week-title">🗓️ Week 5: Type System Consolidation</div>
+                    
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">3.1 Consolidate Type Definitions</div>
+                            <input type="checkbox" class="task-checkbox" data-task="3.1">
+                        </div>
+                        <div class="task-description">Create single source of truth for all TypeScript types</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/types/index.ts (consolidated)
+                        </div>
+                        <div class="task-details">
+// Reorganize types/ directory:
+├── index.ts                 # Main export file
+├── api.types.ts            # API request/response types
+├── domain.types.ts         # Business domain types
+├── ui.types.ts             # UI component types
+└── shared.types.ts         # Shared utility types
+
+// Eliminate duplicate type definitions:
+// - MediaFile defined in 3 different files
+// - Task interfaces scattered across files
+// - Response types duplicated
+
+// Create strict type hierarchy with proper inheritance
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Eliminates type inconsistencies. Single source of truth for all types. Better IDE support.
+                        </div>
+                    </div>
+
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">3.2 Add Runtime Type Validation</div>
+                            <input type="checkbox" class="task-checkbox" data-task="3.2">
+                        </div>
+                        <div class="task-description">Implement runtime validation using Zod schemas</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/schemas/ (directory)
+                        </div>
+                        <div class="task-details">
+// Install and setup Zod for runtime validation
+npm install zod
+
+// Create schemas/ directory:
+├── api.schemas.ts          # API response validation
+├── form.schemas.ts         # Form input validation
+└── domain.schemas.ts       # Domain object validation
+
+// Example API response validation:
+import { z } from 'zod';
+
+const QuestionWithMediaSchema = z.object({
+  id: z.string(),
+  task_id: z.string(),
+  question_text: z.string(),
+  media_files: z.array(MediaFileSchema),
+  choices: z.record(FailureChoiceSchema),
+  // ... complete schema
+});
+
+// Use in API calls to validate responses
+const validateApiResponse = <T>(schema: z.ZodSchema<T>) => (data: unknown): T => {
+  return schema.parse(data);
+};
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Prevents runtime errors from API changes. Better error messages. Type safety at runtime.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">3.3 Eliminate 'any' Types</div>
+                            <input type="checkbox" class="task-checkbox" data-task="3.3">
+                        </div>
+                        <div class="task-description">Replace all 'any' types with proper TypeScript types</div>
+                        <div class="task-files">
+                            <strong>Files to modify:</strong> All .ts/.tsx files with 'any' types
+                        </div>
+                        <div class="task-details">
+// Find and replace all 'any' types:
+// Search for: ': any' and 'any[]' and 'any>'
+
+// Common replacements:
+// API responses: any → specific response type
+// Event handlers: any → proper event type
+// Props: any → specific prop interface
+// State: any → specific state type
+
+// Use TypeScript utilities for complex types:
+// Pick<T, K>, Omit<T, K>, Partial<T>, Required<T>
+
+// Enable strict TypeScript settings:
+// "strict": true,
+// "noImplicitAny": true,
+// "strictNullChecks": true
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Full type safety. Better IDE support. Catches errors at compile time instead of runtime.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">3.4 Create Type-Safe API Client</div>
+                            <input type="checkbox" class="task-checkbox" data-task="3.4">
+                        </div>
+                        <div class="task-description">Enhance API client with full type safety and consistent patterns</div>
+                        <div class="task-files">
+                            <strong>Files to modify:</strong> frontend/src/services/api.ts
+                        </div>
+                        <div class="task-details">
+// Enhance APIClient with generics and type safety:
+class APIClient {
+  private async request<TResponse>(
+    config: RequestConfig
+  ): Promise<TResponse> {
+    // Type-safe request/response handling
+    // Automatic retry logic
+    // Consistent error handling
+    // Response validation with Zod schemas
+  }
+  
+  // Type-safe CRUD methods:
+  async get<TResponse>(endpoint: string): Promise<TResponse>
+  async post<TResponse, TRequest>(endpoint: string, data: TRequest): Promise<TResponse>
+  async put<TResponse, TRequest>(endpoint: string, data: TRequest): Promise<TResponse>
+  async delete(endpoint: string): Promise<void>
+
+  // Specific API methods with full type safety:
+  async getTaskQuestions(taskId: string): Promise<QuestionWithMedia[]>
+  async submitResponse(response: QuestionResponseCreate): Promise<QuestionResponseDetailed>
+}
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Type-safe API calls. Compile-time error checking for API usage. Better developer experience.
+                        </div>
+                    </div>
+
+                    <div class="task priority-low">
+                        <div class="task-header">
+                            <div class="task-title">3.5 Update All API Usages</div>
+                            <input type="checkbox" class="task-checkbox" data-task="3.5">
+                        </div>
+                        <div class="task-description">Update all components to use the new type-safe API client</div>
+                        <div class="task-files">
+                            <strong>Files to modify:</strong> All components making API calls
+                        </div>
+                        <div class="task-details">
+// Replace old API usage patterns:
+// Old: Untyped API calls
+const response = await api.getTaskQuestions(taskId);
+// response is 'any' type
+
+// New: Type-safe API calls
+const questions: QuestionWithMedia[] = await api.getTaskQuestions(taskId);
+// questions is properly typed
+
+// Update all components to use:
+// - Proper error handling
+// - Loading states
+// - Type-safe responses
+// - Consistent patterns
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Consistent API usage patterns. Type safety throughout the application.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="week">
+                    <div class="week-title">🗓️ Week 6: API Pattern Standardization</div>
+                    
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">3.6 Implement Request/Response Interceptors</div>
+                            <input type="checkbox" class="task-checkbox" data-task="3.6">
+                        </div>
+                        <div class="task-description">Add centralized request/response processing</div>
+                        <div class="task-files">
+                            <strong>Files to modify:</strong> frontend/src/services/api.ts
+                        </div>
+                        <div class="task-details">
+// Add interceptors to API client:
+class APIClient {
+  private requestInterceptors: RequestInterceptor[] = [];
+  private responseInterceptors: ResponseInterceptor[] = [];
+
+  // Request interceptor for authentication
+  addRequestInterceptor((config) => {
+    const token = getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
+
+  // Response interceptor for error handling
+  addResponseInterceptor(
+    (response) => response, // Success handler
+    (error) => {
+      if (error.status === 401) {
+        // Handle authentication errors
+        redirectToLogin();
+      }
+      return Promise.reject(error);
+    }
+  );
+
+  // Automatic retry logic for failed requests
+  private async retryRequest(config: RequestConfig, attempts: number = 3) {
+    // Exponential backoff retry logic
+  }
+}
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Consistent authentication, error handling, and retry logic across all API calls.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">3.7 Standardize Loading States</div>
+                            <input type="checkbox" class="task-checkbox" data-task="3.7">
+                        </div>
+                        <div class="task-description">Create consistent loading state management across all API calls</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/hooks/useApiCall.ts (enhanced)
+                        </div>
+                        <div class="task-details">
+// Enhanced useApiCall hook with standardized loading states:
+interface ApiCallState<T> {
+  data: T | null;
+  loading: boolean;
+  error: Error | null;
+  lastUpdated: Date | null;
+}
+
+interface ApiCallOptions {
+  immediate?: boolean;
+  retries?: number;
+  timeout?: number;
+  onSuccess?: (data: any) => void;
+  onError?: (error: Error) => void;
+}
+
+export const useApiCall = <T>(
+  apiFunction: () => Promise<T>,
+  options: ApiCallOptions = {}
+) => {
+  const [state, setState] = useState<ApiCallState<T>>({
+    data: null,
+    loading: false,
+    error: null,
+    lastUpdated: null
+  });
+
+  const execute = async () => {
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const data = await apiFunction();
+      setState({
+        data,
+        loading: false,
+        error: null,
+        lastUpdated: new Date()
+      });
+      options.onSuccess?.(data);
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        loading: false,
+        error: error as Error
+      }));
+      options.onError?.(error as Error);
+    }
+  };
+
+  // Automatic execution if immediate option is true
+  useEffect(() => {
+    if (options.immediate) {
+      execute();
+    }
+  }, []);
+
+  return {
+    ...state,
+    execute,
+    reset: () => setState({ data: null, loading: false, error: null, lastUpdated: null })
+  };
+};
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Consistent loading states and error handling patterns across all components.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">3.8 Create API Response Caching</div>
+                            <input type="checkbox" class="task-checkbox" data-task="3.8">
+                        </div>
+                        <div class="task-description">Implement smart caching for API responses to improve performance</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/services/apiCache.ts
+                        </div>
+                        <div class="task-details">
+// Create intelligent API response caching:
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  expiresAt: number;
+}
+
+class APICache {
+  private cache = new Map<string, CacheEntry<any>>();
+  private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
+
+  set<T>(key: string, data: T, ttl: number = this.DEFAULT_TTL): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      expiresAt: Date.now() + ttl
+    });
+  }
+
+  get<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry || Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.data;
+  }
+
+  invalidate(pattern: string): void {
+    // Invalidate cache entries matching pattern
+    for (const [key] of this.cache) {
+      if (key.includes(pattern)) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
+// Integration with API client:
+// Cache static data (tasks, questions) but not dynamic data (responses)
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Improved performance. Reduced API calls. Better user experience with faster loading.
+                        </div>
+                    </div>
+
+                    <div class="task priority-low">
+                        <div class="task-header">
+                            <div class="task-title">3.9 Add API Request Logging</div>
+                            <input type="checkbox" class="task-checkbox" data-task="3.9">
+                        </div>
+                        <div class="task-description">Implement comprehensive API request logging for debugging</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/utils/logger.ts
+                        </div>
+                        <div class="task-details">
+// Create configurable logging system:
+enum LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3
+}
+
+class Logger {
+  private level: LogLevel = process.env.NODE_ENV === 'development' ? LogLevel.DEBUG : LogLevel.WARN;
+
+  debug(message: string, data?: any): void {
+    if (this.level <= LogLevel.DEBUG) {
+      console.debug(`[DEBUG] ${message}`, data);
+    }
+  }
+
+  info(message: string, data?: any): void {
+    if (this.level <= LogLevel.INFO) {
+      console.info(`[INFO] ${message}`, data);
+    }
+  }
+
+  warn(message: string, data?: any): void {
+    if (this.level <= LogLevel.WARN) {
+      console.warn(`[WARN] ${message}`, data);
+    }
+  }
+
+  error(message: string, error?: Error): void {
+    if (this.level <= LogLevel.ERROR) {
+      console.error(`[ERROR] ${message}`, error);
+    }
+  }
+
+  logApiCall(method: string, url: string, duration: number, status: number): void {
+    const message = `API ${method} ${url} - ${status} (${duration}ms)`;
+    if (status >= 400) {
+      this.error(message);
+    } else {
+      this.debug(message);
+    }
+  }
+}
+
+export const logger = new Logger();
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Better debugging capabilities. Easier troubleshooting of API issues.
+                        </div>
+                    </div>
+
+                    <div class="task priority-low">
+                        <div class="task-header">
+                            <div class="task-title">3.10 Test Type Safety Implementation</div>
+                            <input type="checkbox" class="task-checkbox" data-task="3.10">
+                        </div>
+                        <div class="task-description">Verify all type safety improvements work correctly</div>
+                        <div class="task-details">
+# Type safety testing checklist:
+- TypeScript compilation with strict mode passes
+- No 'any' types remain in codebase
+- API responses are properly validated
+- Form inputs have proper validation
+- Error boundaries catch type-related errors
+- IDE provides proper autocomplete and error detection
+- Runtime type validation works for API responses
+- All existing functionality still works correctly
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Ensures type safety implementation doesn't break existing functionality.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 4: Performance & Polish -->
+        <div class="phase">
+            <div class="phase-header" onclick="togglePhase('phase4')">
+                <div class="phase-title">📕 Phase 4: Performance & Polish (Week 7-8)</div>
+                <div class="phase-status">
+                    <span class="phase-toggle" id="phase4-toggle">▼</span>
+                </div>
+            </div>
+            <div class="phase-content" id="phase4-content">
+                
+                <div class="week">
+                    <div class="week-title">🗓️ Week 7: Performance Optimization</div>
+                    
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">4.1 Implement React.memo for Expensive Components</div>
+                            <input type="checkbox" class="task-checkbox" data-task="4.1">
+                        </div>
+                        <div class="task-description">Add memoization to prevent unnecessary re-renders</div>
+                        <div class="task-files">
+                            <strong>Files to modify:</strong> MediaDisplay.tsx, FailureTypeSelector.tsx, TaskCard components
+                        </div>
+                        <div class="task-details">
+// Add React.memo to expensive components:
+import React, { memo } from 'react';
+
+// MediaDisplay - expensive due to media loading
+export const MediaDisplay = memo<MediaDisplayProps>(({
+  mediaFiles, taskId
+}) => {
+  // Component implementation
+}, (prevProps, nextProps) => {
+  // Custom comparison function for complex props
+  return (
+    prevProps.taskId === nextProps.taskId &&
+    JSON.stringify(prevProps.mediaFiles) === JSON.stringify(nextProps.mediaFiles)
+  );
+});
+
+// FailureTypeSelector - expensive due to complex form state
+export const FailureTypeSelector = memo<FailureTypeSelectorProps>(({
+  choices, responses, onSelectionChange
+}) => {
+  // Component implementation
+});
+
+// Add display names for debugging
+MediaDisplay.displayName = 'MediaDisplay';
+FailureTypeSelector.displayName = 'FailureTypeSelector';
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Significant performance improvement for components with complex props or expensive rendering.
+                        </div>
+                    </div>
+
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">4.2 Optimize State Updates with useReducer</div>
+                            <input type="checkbox" class="task-checkbox" data-task="4.2">
+                        </div>
+                        <div class="task-description">Replace multiple useState calls with useReducer for complex state</div>
+                        <div class="task-files">
+                            <strong>Files to modify:</strong> LabelingInterface components, TaskManagement components
+                        </div>
+                        <div class="task-details">
+// Replace multiple useState with useReducer for complex state:
+// Before: Multiple state variables causing multiple re-renders
+const [questions, setQuestions] = useState([]);
+const [currentIndex, setCurrentIndex] = useState(0);
+const [responses, setResponses] = useState({});
+const [loading, setLoading] = useState(false);
+const [error, setError] = useState(null);
+
+// After: Single state object with reducer
+interface LabelingState {
+  questions: QuestionWithMedia[];
+  currentIndex: number;
+  responses: Record<string, QuestionResponse>;
+  loading: boolean;
+  error: string | null;
+}
+
+type LabelingAction = 
+  | { type: 'SET_QUESTIONS'; payload: QuestionWithMedia[] }
+  | { type: 'SET_CURRENT_INDEX'; payload: number }
+  | { type: 'UPDATE_RESPONSE'; payload: { questionId: string; response: QuestionResponse } }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null };
+
+const labelingReducer = (state: LabelingState, action: LabelingAction): LabelingState => {
+  switch (action.type) {
+    case 'SET_QUESTIONS':
+      return { ...state, questions: action.payload, loading: false };
+    case 'UPDATE_RESPONSE':
+      return {
+        ...state,
+        responses: {
+          ...state.responses,
+          [action.payload.questionId]: action.payload.response
+        }
+      };
+    // ... other cases
+    default:
+      return state;
+  }
+};
+
+const [state, dispatch] = useReducer(labelingReducer, initialState);
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Reduces re-renders. Better performance with complex state updates. Predictable state changes.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">4.3 Implement Proper useMemo and useCallback</div>
+                            <input type="checkbox" class="task-checkbox" data-task="4.3">
+                        </div>
+                        <div class="task-description">Add memoization for expensive calculations and stable function references</div>
+                        <div class="task-files">
+                            <strong>Files to modify:</strong> Components with expensive calculations or frequently changing props
+                        </div>
+                        <div class="task-details">
+// Add useMemo for expensive calculations:
+const memoizedProgressCalculation = useMemo(() => {
+  return calculateProgress(responses, totalQuestions);
+}, [responses, totalQuestions]);
+
+const memoizedValidationResults = useMemo(() => {
+  return validateResponses(responses, questions);
+}, [responses, questions]);
+
+// Add useCallback for stable function references:
+const handleResponseChange = useCallback((questionId: string, response: QuestionResponse) => {
+  dispatch({ type: 'UPDATE_RESPONSE', payload: { questionId, response } });
+}, []);
+
+const handleNavigation = useCallback((direction: 'next' | 'previous') => {
+  const newIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
+  dispatch({ type: 'SET_CURRENT_INDEX', payload: newIndex });
+}, [currentIndex]);
+
+// Memoize complex objects to prevent unnecessary re-renders:
+const memoizedQuestionProps = useMemo(() => ({
+  question: currentQuestion,
+  responses: currentResponses,
+  onResponseChange: handleResponseChange
+}), [currentQuestion, currentResponses, handleResponseChange]);
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Prevents unnecessary calculations and re-renders. Improves performance with large datasets.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">4.4 Optimize Media Loading</div>
+                            <input type="checkbox" class="task-checkbox" data-task="4.4">
+                        </div>
+                        <div class="task-description">Implement lazy loading and preloading strategies for media files</div>
+                        <div class="task-files">
+                            <strong>Files to modify:</strong> MediaDisplay.tsx, media-related hooks
+                        </div>
+                        <div class="task-details">
+// Implement intelligent media loading:
+const useMediaPreloading = (mediaFiles: MediaFile[], currentIndex: number) => {
+  const [preloadedUrls, setPreloadedUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    // Preload current and next media files
+    const preloadIndexes = [currentIndex, currentIndex + 1, currentIndex + 2];
+    
+    preloadIndexes.forEach(async (index) => {
+      if (mediaFiles[index] && !preloadedUrls[mediaFiles[index].filename]) {
+        try {
+          const blobUrl = await fetchMediaWithAuth(mediaFiles[index]);
+          setPreloadedUrls(prev => ({
+            ...prev,
+            [mediaFiles[index].filename]: blobUrl
+          }));
+        } catch (error) {
+          console.warn(`Failed to preload media: ${mediaFiles[index].filename}`);
+        }
+      }
+    });
+
+    // Clean up old blob URLs that are no longer needed
+    const currentFiles = new Set(mediaFiles.slice(currentIndex, currentIndex + 3).map(f => f.filename));
+    Object.entries(preloadedUrls).forEach(([filename, blobUrl]) => {
+      if (!currentFiles.has(filename)) {
+        URL.revokeObjectURL(blobUrl);
+        setPreloadedUrls(prev => {
+          const { [filename]: _, ...rest } = prev;
+          return rest;
+        });
+      }
+    });
+  }, [mediaFiles, currentIndex]);
+
+  return preloadedUrls;
+};
+
+// Implement lazy loading with intersection observer:
+const useLazyLoading = (ref: RefObject<HTMLElement>) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return isVisible;
+};
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Faster media loading. Better user experience. Reduced bandwidth usage.
+                        </div>
+                    </div>
+
+                    <div class="task priority-low">
+                        <div class="task-header">
+                            <div class="task-title">4.5 Implement Virtual Scrolling (if needed)</div>
+                            <input type="checkbox" class="task-checkbox" data-task="4.5">
+                        </div>
+                        <div class="task-description">Add virtual scrolling for large lists (tasks, assignments, etc.)</div>
+                        <div class="task-files">
+                            <strong>Files to modify:</strong> Task list components, assignment lists
+                        </div>
+                        <div class="task-details">
+// Implement virtual scrolling for large lists:
+import { FixedSizeList as List } from 'react-window';
+
+const VirtualizedTaskList: React.FC<{tasks: Task[]}> = ({ tasks }) => {
+  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => (
+    <div style={style}>
+      <TaskCard task={tasks[index]} />
+    </div>
+  );
+
+  return (
+    <List
+      height={600}
+      itemCount={tasks.length}
+      itemSize={120}
+      width="100%"
+    >
+      {Row}
+    </List>
+  );
+};
+
+// Only implement if you expect > 100 items in lists
+// For current scope, this might be overkill
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Handles large datasets efficiently. May be overkill for current scope.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="week">
+                    <div class="week-title">🗓️ Week 8: Final Polish & Testing</div>
+                    
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">4.6 Implement Global Error Boundary</div>
+                            <input type="checkbox" class="task-checkbox" data-task="4.6">
+                        </div>
+                        <div class="task-description">Add comprehensive error boundaries for graceful error handling</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/components/ErrorBoundary.tsx
+                        </div>
+                        <div class="task-details">
+// Create comprehensive error boundary:
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
+}
+
+class ErrorBoundary extends Component<
+  { children: ReactNode; fallback?: ComponentType<ErrorBoundaryState> },
+  ErrorBoundaryState
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    this.setState({ error, errorInfo });
+    
+    // Log error to monitoring service
+    logger.error('React Error Boundary caught an error', error);
+    
+    // Optional: Send to error reporting service
+    // errorReporting.captureException(error, { extra: errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      const FallbackComponent = this.props.fallback || DefaultErrorFallback;
+      return <FallbackComponent {...this.state} />;
+    }
+
+    return this.props.children;
+  }
+}
+
+// Default error fallback component:
+const DefaultErrorFallback: React.FC<ErrorBoundaryState> = ({ error }) => (
+  <Box sx={{ p: 3, textAlign: 'center' }}>
+    <Typography variant="h5" color="error" gutterBottom>
+      Something went wrong
+    </Typography>
+    <Typography variant="body1" color="text.secondary" paragraph>
+      {error?.message || 'An unexpected error occurred'}
+    </Typography>
+    <Button 
+      variant="contained" 
+      onClick={() => window.location.reload()}
+    >
+      Reload Page
+    </Button>
+  </Box>
+);
+
+// Usage in App.tsx:
+<ErrorBoundary>
+  <Router>
+    {/* App content */}
+  </Router>
+</ErrorBoundary>
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Graceful error handling. Better user experience when errors occur. Error reporting capability.
+                        </div>
+                    </div>
+
+                    <div class="task priority-high">
+                        <div class="task-header">
+                            <div class="task-title">4.7 Create Comprehensive Testing Setup</div>
+                            <input type="checkbox" class="task-checkbox" data-task="4.7">
+                        </div>
+                        <div class="task-description">Add unit tests for new components and hooks</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> Test files for new components and hooks
+                        </div>
+                        <div class="task-details">
+// Create test files for key components:
+// frontend/src/components/ui/__tests__/
+// frontend/src/hooks/__tests__/
+// frontend/src/utils/__tests__/
+
+// Example test for useApiCall hook:
+import { renderHook, act } from '@testing-library/react';
+import { useApiCall } from '../useApiCall';
+
+describe('useApiCall', () => {
+  it('should handle successful API calls', async () => {
+    const mockApiFunction = jest.fn().mockResolvedValue({ data: 'test' });
+    
+    const { result } = renderHook(() => useApiCall(mockApiFunction, { immediate: true }));
+    
+    expect(result.current.loading).toBe(true);
+    
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data).toEqual({ data: 'test' });
+    expect(result.current.error).toBe(null);
+  });
+
+  it('should handle API errors', async () => {
+    const mockError = new Error('API Error');
+    const mockApiFunction = jest.fn().mockRejectedValue(mockError);
+    
+    const { result } = renderHook(() => useApiCall(mockApiFunction));
+    
+    await act(async () => {
+      await result.current.execute();
+    });
+    
+    expect(result.current.loading).toBe(false);
+    expect(result.current.data).toBe(null);
+    expect(result.current.error).toBe(mockError);
+  });
+});
+
+// Backend testing:
+# Add tests for new utilities and decorators
+# Test error handling patterns
+# Test access control decorators
+# Integration tests for refactored endpoints
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Ensures refactored code works correctly. Prevents regression. Better confidence in changes.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">4.8 Add Performance Monitoring</div>
+                            <input type="checkbox" class="task-checkbox" data-task="4.8">
+                        </div>
+                        <div class="task-description">Implement performance monitoring and analytics</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> frontend/src/utils/performance.ts
+                        </div>
+                        <div class="task-details">
+// Create performance monitoring utilities:
+class PerformanceMonitor {
+  private static instance: PerformanceMonitor;
+  private measurements: Map<string, number> = new Map();
+
+  static getInstance(): PerformanceMonitor {
+    if (!PerformanceMonitor.instance) {
+      PerformanceMonitor.instance = new PerformanceMonitor();
+    }
+    return PerformanceMonitor.instance;
+  }
+
+  startMeasurement(key: string): void {
+    this.measurements.set(key, performance.now());
+  }
+
+  endMeasurement(key: string): number {
+    const startTime = this.measurements.get(key);
+    if (!startTime) {
+      console.warn(`No start time found for measurement: ${key}`);
+      return 0;
+    }
+    
+    const duration = performance.now() - startTime;
+    this.measurements.delete(key);
+    
+    // Log slow operations
+    if (duration > 1000) {
+      logger.warn(`Slow operation detected: ${key} took ${duration.toFixed(2)}ms`);
+    }
+    
+    return duration;
+  }
+
+  measureAsync<T>(key: string, asyncOperation: () => Promise<T>): Promise<T> {
+    this.startMeasurement(key);
+    return asyncOperation().finally(() => {
+      this.endMeasurement(key);
+    });
+  }
+}
+
+// React hook for component render performance:
+export const usePerformanceMonitoring = (componentName: string) => {
+  useEffect(() => {
+    const monitor = PerformanceMonitor.getInstance();
+    monitor.startMeasurement(`${componentName}-render`);
+    
+    return () => {
+      monitor.endMeasurement(`${componentName}-render`);
+    };
+  });
+};
+
+// Usage in components:
+const LabelingInterface: React.FC = () => {
+  usePerformanceMonitoring('LabelingInterface');
+  // Component implementation
+};
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Identifies performance bottlenecks. Helps optimize user experience. Data for future improvements.
+                        </div>
+                    </div>
+
+                    <div class="task priority-medium">
+                        <div class="task-header">
+                            <div class="task-title">4.9 Create Development Documentation</div>
+                            <input type="checkbox" class="task-checkbox" data-task="4.9">
+                        </div>
+                        <div class="task-description">Document the new code organization and patterns</div>
+                        <div class="task-files">
+                            <strong>Files to create:</strong> DEV_GUIDE.md, ARCHITECTURE.md
+                        </div>
+                        <div class="task-details">
+// Create DEV_GUIDE.md:
+# Development Guide
+
+## Code Organization Principles
+- Single Responsibility: Each file/component has one clear purpose
+- DRY: Common patterns are extracted into reusable utilities
+- Type Safety: All code uses proper TypeScript types
+- Consistent Patterns: Similar functionality uses similar patterns
+
+## Component Guidelines
+- Maximum 200 lines per component
+- Use custom hooks for business logic
+- Implement proper error boundaries
+- Use React.memo for expensive components
+
+## API Integration Guidelines
+- Use type-safe API client
+- Implement proper error handling
+- Use consistent loading states
+- Cache appropriate responses
+
+## Testing Guidelines
+- Unit tests for utilities and hooks
+- Integration tests for API endpoints
+- Component tests for complex components
+- E2E tests for critical user flows
+
+## Performance Guidelines
+- Use React.memo for expensive components
+- Implement proper memoization
+- Optimize media loading
+- Monitor performance metrics
+
+// Create ARCHITECTURE.md:
+# System Architecture
+
+## Backend Architecture
+- Modular router design
+- Service layer pattern
+- Centralized error handling
+- Access control decorators
+- Configuration management
+
+## Frontend Architecture
+- Component composition
+- Custom hooks for business logic
+- Context for global state
+- Type-safe API integration
+- Performance optimizations
+
+## Data Flow
+- API requests → Type validation → Component state
+- User actions → Context/hooks → API calls
+- Error handling → Error boundaries → User feedback
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Easier onboarding for new developers. Consistent development practices. Better maintainability.
+                        </div>
+                    </div>
+
+                    <div class="task priority-low">
+                        <div class="task-header">
+                            <div class="task-title">4.10 Final Integration Testing</div>
+                            <input type="checkbox" class="task-checkbox" data-task="4.10">
+                        </div>
+                        <div class="task-description">Comprehensive testing of all refactored functionality</div>
+                        <div class="task-details">
+# Comprehensive testing checklist:
+
+## Functionality Testing
+- All existing features work exactly as before
+- New error handling doesn't break existing flows
+- Performance improvements don't cause regressions
+- Type safety doesn't introduce runtime errors
+
+## User Experience Testing
+- Loading states are consistent and informative
+- Error messages are helpful and user-friendly
+- Navigation flows work smoothly
+- Media loading is fast and reliable
+
+## Performance Testing
+- Page load times haven't degraded
+- Large datasets handle efficiently
+- Memory usage is reasonable
+- No memory leaks in media handling
+
+## Cross-browser Testing
+- All major browsers work correctly
+- Mobile experience is unchanged
+- Responsive design still works
+
+## API Testing
+- All endpoints return expected responses
+- Error handling works for all failure cases
+- Authentication and authorization work correctly
+- File uploads and media serving work properly
+
+## Developer Experience Testing
+- TypeScript compilation is fast
+- IDE provides good autocomplete and error detection
+- Debugging is easier with new structure
+- New patterns are consistent and learnable
+                        </div>
+                        <div class="task-impact">
+                            <strong>Impact:</strong> Ensures refactoring is successful and doesn't introduce regressions.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="benefits">
+            <h3>🎯 Expected Benefits After Completion</h3>
+            <div class="benefit-list">
+                <div class="benefit-item">
+                    <strong>📉 Code Reduction</strong><br>
+                    30-40% reduction in total lines of code through elimination of duplication
+                </div>
+                <div class="benefit-item">
+                    <strong>🎯 Maintainability</strong><br>
+                    Each file has single responsibility, maximum 200 lines per component
+                </div>
+                <div class="benefit-item">
+                    <strong>🔒 Type Safety</strong><br>
+                    100% TypeScript coverage, runtime validation, zero 'any' types
+                </div>
+                <div class="benefit-item">
+                    <strong>⚡ Performance</strong><br>
+                    Optimized re-renders, smart caching, lazy loading
+                </div>
+                <div class="benefit-item">
+                    <strong>🧪 Testability</strong><br>
+                    Isolated components, dependency injection, comprehensive test coverage
+                </div>
+                <div class="benefit-item">
+                    <strong>🔧 Developer Experience</strong><br>
+                    Better IDE support, consistent patterns, clear architecture
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-warning">
+            <strong>⚠️ Important Notes:</strong>
+            <ul style="margin: 10px 0 0 20px;">
+                <li>Always test thoroughly after each task before moving to the next</li>
+                <li>Keep git branches for easy rollback if needed</li>
+                <li>Use feature flags to toggle between old/new implementations during development</li>
+                <li>Document any changes to API contracts or component interfaces</li>
+                <li>Consider pair programming for complex refactoring tasks</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Progress tracking functionality
+        let completedTasks = parseInt(localStorage.getItem('completed-tasks') || '0');
+        const totalTasks = 47;
+
+        // Initialize progress
+        updateProgress();
+
+        // Toggle phase visibility
+        function togglePhase(phaseId) {
+            const content = document.getElementById(`${phaseId}-content`);
+            const toggle = document.getElementById(`${phaseId}-toggle`);
+            const header = content.previousElementSibling;
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                toggle.classList.remove('expanded');
+            } else {
+                content.classList.add('expanded');
+                toggle.classList.add('expanded');
+            }
+        }
+
+        // Handle task completion
+        document.addEventListener('change', function(e) {
+            if (e.target.type === 'checkbox' && e.target.classList.contains('task-checkbox')) {
+                const taskElement = e.target.closest('.task');
+                const taskId = e.target.dataset.task;
+                
+                if (e.target.checked) {
+                    taskElement.classList.add('completed');
+                    completedTasks++;
+                    localStorage.setItem(`task-${taskId}`, 'completed');
+                } else {
+                    taskElement.classList.remove('completed');
+                    completedTasks--;
+                    localStorage.removeItem(`task-${taskId}`);
+                }
+                
+                localStorage.setItem('completed-tasks', completedTasks.toString());
+                updateProgress();
+                updatePhaseStatus();
+            }
+        });
+
+        // Load saved progress
+        function loadProgress() {
+            document.querySelectorAll('.task-checkbox').forEach(checkbox => {
+                const taskId = checkbox.dataset.task;
+                const isCompleted = localStorage.getItem(`task-${taskId}`) === 'completed';
+                
+                if (isCompleted) {
+                    checkbox.checked = true;
+                    checkbox.closest('.task').classList.add('completed');
+                }
+            });
+        }
+
+        // Update progress display
+        function updateProgress() {
+            const percentage = Math.round((completedTasks / totalTasks) * 100);
+            
+            document.getElementById('completed-tasks').textContent = completedTasks;
+            document.getElementById('completion-percentage').textContent = `${percentage}%`;
+            document.getElementById('progress-fill').style.width = `${percentage}%`;
+            document.getElementById('progress-text').textContent = `${percentage}% Complete (${completedTasks}/${totalTasks} tasks)`;
+        }
+
+        // Update phase status based on completed tasks
+        function updatePhaseStatus() {
+            const phases = [
+                { id: 'phase1', tasks: [1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10] },
+                { id: 'phase2', tasks: [2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 2.10] },
+                { id: 'phase3', tasks: [3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10] },
+                { id: 'phase4', tasks: [4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10] }
+            ];
+
+            phases.forEach(phase => {
+                const completedInPhase = phase.tasks.filter(taskId => 
+                    localStorage.getItem(`task-${taskId}`) === 'completed'
+                ).length;
+                
+                const header = document.querySelector(`#${phase.id}-content`).previousElementSibling;
+                
+                if (completedInPhase === phase.tasks.length) {
+                    header.classList.remove('in-progress');
+                    header.classList.add('completed');
+                } else if (completedInPhase > 0) {
+                    header.classList.remove('completed');
+                    header.classList.add('in-progress');
+                } else {
+                    header.classList.remove('completed', 'in-progress');
+                }
+            });
+        }
+
+        // Export progress
+        function exportProgress() {
+            const progress = {
+                completedTasks,
+                totalTasks,
+                percentage: Math.round((completedTasks / totalTasks) * 100),
+                tasks: {}
+            };
+
+            document.querySelectorAll('.task-checkbox').forEach(checkbox => {
+                const taskId = checkbox.dataset.task;
+                progress.tasks[taskId] = checkbox.checked;
+            });
+
+            const dataStr = JSON.stringify(progress, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'refactoring-progress.json';
+            link.click();
+            
+            URL.revokeObjectURL(url);
+        }
+
+        // Reset progress
+        function resetProgress() {
+            if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
+                localStorage.clear();
+                completedTasks = 0;
+                document.querySelectorAll('.task-checkbox').forEach(checkbox => {
+                    checkbox.checked = false;
+                    checkbox.closest('.task').classList.remove('completed');
+                });
+                updateProgress();
+                updatePhaseStatus();
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProgress();
+            updatePhaseStatus();
+            
+            // Add export/reset buttons
+            const progressOverview = document.querySelector('.progress-overview');
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.marginTop = '20px';
+            buttonContainer.style.textAlign = 'center';
+            buttonContainer.innerHTML = `
+                <button class="btn" onclick="exportProgress()" style="margin-right: 10px;">
+                    📥 Export Progress
+                </button>
+                <button class="btn" onclick="resetProgress()" style="background: #dc3545;">
+                    🔄 Reset Progress
+                </button>
+            `;
+            progressOverview.appendChild(buttonContainer);
+        });
+
+        // Collapse all phases initially except first one
+        document.addEventListener('DOMContentLoaded', function() {
+            // Expand first phase by default
+            togglePhase('phase1');
+        });
+    </script>
+</body>
+</html>
