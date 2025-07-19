@@ -202,6 +202,7 @@ const LabelingInterface: React.FC = () => {
       if (currentQuestionIndex < totalQuestions) {
         setCurrentQuestionIndex(prev => prev + 1);
         setQuestions([]);
+        setResponses({});
         setError(null);
       } else {
         alert('Task completed successfully! Redirecting to dashboard...');
