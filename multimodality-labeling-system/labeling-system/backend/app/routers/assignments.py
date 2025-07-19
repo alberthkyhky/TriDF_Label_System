@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from typing import List, Optional
 from app.auth.dependencies import require_admin, get_current_user
 from app.utils.error_handling import handle_router_errors
+from app.utils.access_control import require_task_access
 from app.services.assignment_service import AssignmentService
 from app.services.task_service import TaskService
 from app.services.user_service import user_service
@@ -132,6 +133,7 @@ async def update_assignment_progress(
 
 @router.get("/task/{task_id}", response_model=TaskAssignment)
 @handle_router_errors
+@require_task_access()
 async def get_task_assignments(
     task_id: str,
     current_user: dict = Depends(get_current_user)
@@ -147,19 +149,6 @@ async def get_task_assignments(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
         )
-    
-    # Check if user has access to this task (unless admin)
-    if current_user["role"] != "admin":
-        user_tasks = await task_service.get_tasks_for_user(
-            current_user["id"], 
-            current_user["role"]
-        )
-        task_ids = [t.id for t in user_tasks]
-        if task_id not in task_ids:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied to this task"
-            )
     
     # Get assignment for this task and current user
     assignment = await assignment_service.get_task_assignment_for_user(

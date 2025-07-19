@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Optional
 from app.auth.dependencies import get_current_user, require_admin
 from app.utils.error_handling import handle_router_errors
+from app.utils.access_control import require_task_access
 from app.models.tasks import (
     Question, QuestionCreate, QuestionWithMedia
 )
@@ -17,48 +18,24 @@ router = APIRouter(prefix="/questions", tags=["questions"])
 
 @router.get("/{task_id}/questions", response_model=List[Question])
 @handle_router_errors
+@require_task_access()
 async def get_task_questions(
     task_id: str,
     current_user: dict = Depends(get_current_user)
 ):
     """Get questions for a task"""
-    # Check if user has access to this task
-    if current_user["role"] != "admin":
-        user_tasks = await task_service.get_tasks_for_user(
-            current_user["id"], 
-            current_user["role"]
-        )
-        task_ids = [t.id for t in user_tasks]
-        if task_id not in task_ids:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied to this task"
-            )
-    
     return await question_service.get_questions_for_task(task_id)
 
 
 @router.get("/{task_id}/questions-with-media", response_model=List[QuestionWithMedia])
 @handle_router_errors
+@require_task_access()
 async def get_task_questions_with_media(
     task_id: str,
     idx: Optional[int] = None,  # Optional index parameter
     current_user: dict = Depends(get_current_user)
 ):
     """Get questions for a task with locally sampled media files"""
-    # Check if user has access to this task
-    if current_user["role"] != "admin":
-        user_tasks = await task_service.get_tasks_for_user(
-            current_user["id"], 
-            current_user["role"]
-        )
-        task_ids = [t.id for t in user_tasks]
-        if task_id not in task_ids:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied to this task"
-            )
-    
     # Use the updated service method with idx parameter
     return await question_service.get_questions_with_media(task_id, idx=idx)
 
