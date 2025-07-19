@@ -45,6 +45,47 @@ async def get_assignment_statistics(
             detail=f"Error fetching stats: {str(e)}"
         )
 
+@router.get("/my", response_model=List[TaskAssignment])
+async def get_my_assignments(current_user: dict = Depends(get_current_user)):
+    """Get current user's task assignments"""
+    
+    try:
+        # Update last active
+        await user_service.update_user_last_active(current_user["id"])
+        return await assignment_service.get_user_assignments(current_user["id"])
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@router.get("/export")
+async def export_assignments(
+    format: str = Query("csv", regex="^(csv|json)$"),
+    current_user: dict = Depends(require_admin)
+):
+    """Export assignments data (admin only)"""
+    try:
+        if format == "csv":
+            data = await assignment_service.export_assignments_csv()
+            return Response(
+                content=data,
+                media_type="text/csv",
+                headers={"Content-Disposition": "attachment; filename=assignments.csv"}
+            )
+        else:
+            data = await assignment_service.export_assignments_json()
+            return Response(
+                content=data,
+                media_type="application/json",
+                headers={"Content-Disposition": "attachment; filename=assignments.json"}
+            )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error exporting assignments: {str(e)}"
+        )
+
 @router.get("/{assignment_id}")
 async def get_assignment_details(
     assignment_id: str,
@@ -89,50 +130,12 @@ async def update_assignment_status(
             detail=f"Error updating assignment: {str(e)}"
         )
 
-@router.get("/export")
-async def export_assignments(
-    format: str = Query("csv", regex="^(csv|json)$"),
-    current_user: dict = Depends(require_admin)
-):
-    """Export assignments data (admin only)"""
-    try:
-        if format == "csv":
-            data = await assignment_service.export_assignments_csv()
-            return Response(
-                content=data,
-                media_type="text/csv",
-                headers={"Content-Disposition": "attachment; filename=assignments.csv"}
-            )
-        else:
-            data = await assignment_service.export_assignments_json()
-            return Response(
-                content=data,
-                media_type="application/json",
-                headers={"Content-Disposition": "attachment; filename=assignments.json"}
-            )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error exporting assignments: {str(e)}"
-        )
+
 
 
 # ===== TASK-SPECIFIC ASSIGNMENT ENDPOINTS =====
 
-@router.get("/my", response_model=List[TaskAssignment])
-async def get_my_assignments(current_user: dict = Depends(get_current_user)):
-    """Get current user's task assignments"""
-    try:
-        # Update last active
-        print(current_user)
-        
-        await user_service.update_user_last_active(current_user["id"])
-        return await assignment_service.get_user_assignments(current_user["id"])
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+
 
 
 @router.post("/task/{task_id}/assign", response_model=TaskAssignment)
@@ -150,7 +153,6 @@ async def assign_task(
             detail=str(e)
         )
 
-
 @router.put("/{assignment_id}/progress")
 async def update_assignment_progress(
     assignment_id: str,
@@ -166,7 +168,6 @@ async def update_assignment_progress(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
-
 
 @router.get("/task/{task_id}", response_model=TaskAssignment)
 async def get_task_assignments(

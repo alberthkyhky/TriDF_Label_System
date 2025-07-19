@@ -12,7 +12,7 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
     """Verify JWT token and return user ID"""
     try:
         token = credentials.credentials
-        
+
         if not settings.SUPABASE_JWT_SECRET:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -34,7 +34,6 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token payload"
             )
-            
         return user_id
         
     except JWTError as e:
