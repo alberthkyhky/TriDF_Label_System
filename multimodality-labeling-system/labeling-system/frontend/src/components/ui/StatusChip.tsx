@@ -65,4 +65,5 @@ export const StatusChip: React.FC<StatusChipProps> = ({
   );
 };
 
-export default StatusChip;
+// Memoize StatusChip since it's used frequently in lists and tables
+export default React.memo(StatusChip);

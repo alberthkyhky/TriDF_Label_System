@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -132,16 +132,30 @@ const LabelingInterface: React.FC = () => {
     setQuestionStartTime(new Date());
   }, [currentQuestionIndex]);
 
-  const currentQuestion = questions[0];
-  const currentResponse = responses[currentQuestion?.id] || {
-    question_id: currentQuestion?.id || '',
-    task_id: taskId || '',
-    responses: {},
-    media_files: currentQuestion?.media_files?.map(f => f.file_path) || [],
-    started_at: questionStartTime.toISOString()
-  };
+  // Memoize expensive calculations to prevent re-computation on every render
+  const currentQuestion = useMemo(() => questions[0], [questions]);
+  
+  const currentResponse = useMemo(() => {
+    if (!currentQuestion) {
+      return {
+        question_id: '',
+        task_id: taskId || '',
+        responses: {},
+        media_files: [],
+        started_at: questionStartTime.toISOString()
+      };
+    }
+    return responses[currentQuestion.id] || {
+      question_id: currentQuestion.id,
+      task_id: taskId || '',
+      responses: {},
+      media_files: currentQuestion.media_files?.map(f => f.file_path) || [],
+      started_at: questionStartTime.toISOString()
+    };
+  }, [currentQuestion, responses, taskId, questionStartTime]);
 
-  const handleFailureTypeChange = (failureType: string, option: string, checked: boolean) => {
+  const handleFailureTypeChange = useCallback((failureType: string, option: string, checked: boolean) => {
+    if (!currentQuestion) return;
     const updatedResponse = { ...currentResponse };
     
     if (!updatedResponse.responses[failureType]) {
@@ -174,9 +188,9 @@ const LabelingInterface: React.FC = () => {
       ...prev,
       [currentQuestion.id]: updatedResponse
     }));
-  };
+  }, [currentResponse, currentQuestion]);
 
-  const handleSubmitResponse = async () => {
+  const handleSubmitResponse = useCallback(async () => {
     if (!currentQuestion) return;
 
     setSubmitting(true);
@@ -214,21 +228,22 @@ const LabelingInterface: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [currentQuestion, currentQuestionIndex, totalQuestions, currentResponse, questionStartTime, taskId, navigate]);
 
-  const handlePreviousQuestion = () => {
+  const handlePreviousQuestion = useCallback(() => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
       setError(null); // Clear any error when navigating
     }
-  };
+  }, [currentQuestionIndex]);
 
-  const handleBackToTask = () => {
+  const handleBackToTask = useCallback(() => {
     navigate(`/task/${taskId}`);
-  };
+  }, [navigate, taskId]);
 
 
-  const isResponseValid = () => {
+  // Memoize response validation to prevent expensive validation on every render
+  const isResponseValid = useCallback(() => {
     if (!currentQuestion) return false;
     
     // Check if at least one failure type has a selection
@@ -237,7 +252,7 @@ const LabelingInterface: React.FC = () => {
       const selections = currentResponse.responses[failureType];
       return selections && selections.length > 0;
     });
-  };
+  }, [currentQuestion, currentResponse]);
 
   // Loading state
   if (loading) {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Typography, Card, CardContent, Grid } from '@mui/material';
 import MediaDisplay from '../MediaDisplay';
 
@@ -24,6 +24,12 @@ export const MediaSection: React.FC<MediaSectionProps> = ({
   taskId,
   questionText
 }) => {
+  // Memoize expensive media type aggregation calculation
+  const mediaTypesSummary = useMemo(() => {
+    const uniqueTypes = [...new Set(mediaFiles.map(m => m.media_type))];
+    return `Total files: ${mediaFiles.length} • Types: ${uniqueTypes.join(', ')}`;
+  }, [mediaFiles]);
+
   return (
     <Grid size={{ xs: 12, lg: 6 }}>
       <Card>
@@ -47,8 +53,7 @@ export const MediaSection: React.FC<MediaSectionProps> = ({
               Media Summary:
             </Typography>
             <Typography variant="body2">
-              Total files: {mediaFiles.length} • 
-              Types: {[...new Set(mediaFiles.map(m => m.media_type))].join(', ')}
+              {mediaTypesSummary}
             </Typography>
           </Box>
         </CardContent>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -34,6 +34,27 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
   // Track which failure types user explicitly said "Yes" to
   const [yesStates, setYesStates] = React.useState<Record<string, boolean>>({});
 
+  // Memoize expensive selection summary calculations
+  const selectionSummaries = useMemo(() => {
+    const summaries: Record<string, string> = {};
+    
+    Object.keys(choices).forEach(failureType => {
+      const selections = responses[failureType] || [];
+      if (selections.length === 0 && !yesStates[failureType]) {
+        summaries[failureType] = 'No selection';
+      } else if (selections.includes('None')) {
+        summaries[failureType] = 'No failures detected';
+      } else if (yesStates[failureType] && selections.filter(s => s !== 'None').length === 0) {
+        summaries[failureType] = 'Ready to select failures';
+      } else {
+        const failureCount = selections.filter(s => s !== 'None').length;
+        summaries[failureType] = `${failureCount} failure${failureCount !== 1 ? 's' : ''} selected`;
+      }
+    });
+    
+    return summaries;
+  }, [choices, responses, yesStates]);
+
   const getFailureTypeColor = (failureType: string) => {
     if (failureType.includes('A-type')) return 'error';
     if (failureType.includes('B-type')) return 'warning';
@@ -61,15 +82,6 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
     return yesStates[failureType] || hasFailureSelections;
   };
 
-  // Get summary text for accordion header
-  const getSelectionSummary = (failureType: string) => {
-    const selections = responses[failureType] || [];
-    if (selections.length === 0 && !yesStates[failureType]) return 'No selection';
-    if (selections.includes('None')) return 'No failures detected';
-    if (yesStates[failureType] && selections.filter(s => s !== 'None').length === 0) return 'Ready to select failures';
-    const failureCount = selections.filter(s => s !== 'None').length;
-    return `${failureCount} failure${failureCount !== 1 ? 's' : ''} selected`;
-  };
 
   // Handle "No" checkbox click
   const handleNoSelection = (failureType: string, checked: boolean) => {
@@ -159,7 +171,7 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
                   {choiceData.text}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {getSelectionSummary(failureType)}
+                  {selectionSummaries[failureType]}
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', gap: 1 }}>
@@ -351,4 +363,39 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
   );
 };
 
-export default FailureTypeSelector;
+// Memoize FailureTypeSelector to prevent unnecessary re-renders of this expensive component
+export default React.memo(FailureTypeSelector, (prevProps, nextProps) => {
+  // Compare choices object
+  const prevChoicesKeys = Object.keys(prevProps.choices);
+  const nextChoicesKeys = Object.keys(nextProps.choices);
+  
+  if (prevChoicesKeys.length !== nextChoicesKeys.length) {
+    return false;
+  }
+  
+  for (const key of prevChoicesKeys) {
+    if (!nextProps.choices[key] || 
+        prevProps.choices[key].text !== nextProps.choices[key].text ||
+        prevProps.choices[key].multiple_select !== nextProps.choices[key].multiple_select ||
+        JSON.stringify(prevProps.choices[key].options) !== JSON.stringify(nextProps.choices[key].options)) {
+      return false;
+    }
+  }
+  
+  // Compare responses object deeply
+  const prevResponseKeys = Object.keys(prevProps.responses);
+  const nextResponseKeys = Object.keys(nextProps.responses);
+  
+  if (prevResponseKeys.length !== nextResponseKeys.length) {
+    return false;
+  }
+  
+  for (const key of prevResponseKeys) {
+    if (JSON.stringify(prevProps.responses[key]) !== JSON.stringify(nextProps.responses[key])) {
+      return false;
+    }
+  }
+  
+  // onSelectionChange function reference comparison (should be stable with useCallback)
+  return prevProps.onSelectionChange === nextProps.onSelectionChange;
+});

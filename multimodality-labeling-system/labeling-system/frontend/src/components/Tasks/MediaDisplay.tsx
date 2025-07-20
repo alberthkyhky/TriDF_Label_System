@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -81,20 +81,20 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, taskId }) => {
     };
   }, [mediaFiles, taskId]);
 
-  const handleMediaError = (filename: string) => {
+  const handleMediaError = useCallback((filename: string) => {
     setLoadingStates(prev => ({ ...prev, [filename]: false }));
     setErrorStates(prev => ({ ...prev, [filename]: true }));
-  };
+  }, []);
 
-  const openMediaDialog = (mediaFile: MediaFile) => {
+  const openMediaDialog = useCallback((mediaFile: MediaFile) => {
     setSelectedMedia(mediaFile);
     setDialogOpen(true);
-  };
+  }, []);
 
-  const closeMediaDialog = () => {
+  const closeMediaDialog = useCallback(() => {
     setSelectedMedia(null);
     setDialogOpen(false);
-  };
+  }, []);
 
   const renderMediaItem = (mediaFile: MediaFile, index: number) => {
     const blobUrl = mediaBlobUrls[mediaFile.filename];
@@ -344,4 +344,23 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, taskId }) => {
   );
 };
 
-export default MediaDisplay;
+// Memoize MediaDisplay to prevent unnecessary re-renders of this expensive component
+export default React.memo(MediaDisplay, (prevProps, nextProps) => {
+  // Compare mediaFiles array deeply (by length and file paths)
+  if (prevProps.mediaFiles.length !== nextProps.mediaFiles.length) {
+    return false;
+  }
+  
+  for (let i = 0; i < prevProps.mediaFiles.length; i++) {
+    if (prevProps.mediaFiles[i].file_path !== nextProps.mediaFiles[i].file_path) {
+      return false;
+    }
+  }
+  
+  // Compare taskId
+  if (prevProps.taskId !== nextProps.taskId) {
+    return false;
+  }
+  
+  return true; // Props are equal, skip re-render
+});

@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 // components/Admin/AssignmentOverview.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -68,12 +68,41 @@ interface AssignmentStats {
 
 const AssignmentOverview: React.FC = () => {
   const [assignments, setAssignments] = useState<AssignmentData[]>([]);
-  const [stats, setStats] = useState<AssignmentStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentData | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Memoize expensive statistical calculations
+  const stats = useMemo((): AssignmentStats => {
+    if (assignments.length === 0) {
+      return {
+        total_assignments: 0,
+        active_assignments: 0,
+        completed_assignments: 0,
+        avg_completion_rate: 0,
+        total_labels_completed: 0,
+        total_labels_target: 0,
+      };
+    }
+
+    const total = assignments.length;
+    const active = assignments.filter(a => a.is_active).length;
+    const completed = assignments.filter(a => a.completed_labels >= a.target_labels).length;
+    const totalCompleted = assignments.reduce((sum, a) => sum + a.completed_labels, 0);
+    const totalTarget = assignments.reduce((sum, a) => sum + a.target_labels, 0);
+    const avgCompletion = totalTarget > 0 ? (totalCompleted / totalTarget) * 100 : 0;
+
+    return {
+      total_assignments: total,
+      active_assignments: active,
+      completed_assignments: completed,
+      avg_completion_rate: avgCompletion,
+      total_labels_completed: totalCompleted,
+      total_labels_target: totalTarget,
+    };
+  }, [assignments]);
 
   useEffect(() => {
     fetchAssignments();
@@ -87,11 +116,7 @@ const AssignmentOverview: React.FC = () => {
       // Fetch all assignments
       const assignmentsData = await api.getAllAssignments();
       
-      // Calculate stats
-      const stats = calculateStats(assignmentsData);
-      
       setAssignments(assignmentsData);
-      setStats(stats);
     } catch (error) {
       console.error('Error fetching assignments:', error);
       setError('Failed to fetch assignments');
@@ -100,29 +125,12 @@ const AssignmentOverview: React.FC = () => {
     }
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchAssignments();
     setRefreshing(false);
-  };
+  }, []);
 
-  const calculateStats = (assignmentsData: AssignmentData[]): AssignmentStats => {
-    const total = assignmentsData.length;
-    const active = assignmentsData.filter(a => a.is_active).length;
-    const completed = assignmentsData.filter(a => a.completed_labels >= a.target_labels).length;
-    const totalCompleted = assignmentsData.reduce((sum, a) => sum + a.completed_labels, 0);
-    const totalTarget = assignmentsData.reduce((sum, a) => sum + a.target_labels, 0);
-    const avgCompletion = totalTarget > 0 ? (totalCompleted / totalTarget) * 100 : 0;
-
-    return {
-      total_assignments: total,
-      active_assignments: active,
-      completed_assignments: completed,
-      avg_completion_rate: avgCompletion,
-      total_labels_completed: totalCompleted,
-      total_labels_target: totalTarget,
-    };
-  };
 
   const getProgressPercentage = (completed: number, target: number): number => {
     return target > 0 ? Math.min((completed / target) * 100, 100) : 0;
@@ -142,7 +150,7 @@ const AssignmentOverview: React.FC = () => {
     return 'Not Started';
   };
 
-  const handleToggleActive = async (assignmentId: string, currentStatus: boolean) => {
+  const handleToggleActive = useCallback(async (assignmentId: string, currentStatus: boolean) => {
     try {
       await api.updateAssignmentStatus(assignmentId, !currentStatus);
       await fetchAssignments(); // Refresh data
@@ -150,7 +158,12 @@ const AssignmentOverview: React.FC = () => {
       console.error('Error updating assignment status:', error);
       setError('Failed to update assignment status');
     }
-  };
+  }, []);
+
+  const handleViewDetails = useCallback((assignment: AssignmentData) => {
+    setSelectedAssignment(assignment);
+    setDetailsOpen(true);
+  }, []);
 
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -162,7 +175,7 @@ const AssignmentOverview: React.FC = () => {
     });
   };
 
-  const StatCard = ({ title, value, subtitle, icon, color = 'primary' }: {
+  const StatCard = React.memo(({ title, value, subtitle, icon, color = 'primary' }: {
     title: string;
     value: string | number;
     subtitle?: string;
@@ -191,7 +204,7 @@ const AssignmentOverview: React.FC = () => {
         </Box>
       </CardContent>
     </Card>
-  );
+  ));
 
   if (loading) {
     return (
@@ -359,10 +372,7 @@ const AssignmentOverview: React.FC = () => {
                         <Tooltip title="View Details">
                           <IconButton
                             size="small"
-                            onClick={() => {
-                              setSelectedAssignment(assignment);
-                              setDetailsOpen(true);
-                            }}
+                            onClick={() => handleViewDetails(assignment)}
                           >
                             <InfoIcon />
                           </IconButton>

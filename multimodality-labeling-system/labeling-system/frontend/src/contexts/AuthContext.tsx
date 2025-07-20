@@ -1,5 +1,5 @@
 // AuthContext with fast fallback and shorter timeout
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { UserProfile, AuthContextType } from '../types/auth';
 
@@ -110,7 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName: string) => {
     setLoading(true);
     
     try {
@@ -132,16 +132,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
       throw error;
     }
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
     setUser(null);
     localStorage.clear();
     if (error) throw error;
-  };
+  }, []);
 
-  const updateProfile = async (data: Partial<UserProfile>) => {
+  const updateProfile = useCallback(async (data: Partial<UserProfile>) => {
     if (!user) return;
     
     try {
@@ -154,7 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Still update local state
       setUser({ ...user, ...data });
     }
-  };
+  }, [user]);
 
   const value = {
     user,
