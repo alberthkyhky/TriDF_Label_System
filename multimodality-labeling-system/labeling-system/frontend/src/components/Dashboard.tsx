@@ -22,9 +22,13 @@ import { TaskAssignment } from '../types/tasks';
 import { useNavigate } from 'react-router-dom';
 import ViewModeSwitch from './ui/ViewModeSwitch';
 
+interface EnhancedTaskAssignment extends TaskAssignment {
+  task_title?: string;
+}
+
 const Dashboard: React.FC = () => {
   const { user, signOut } = useAuth();
-  const [assignments, setAssignments] = useState<TaskAssignment[]>([]);
+  const [assignments, setAssignments] = useState<EnhancedTaskAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -36,8 +40,28 @@ const Dashboard: React.FC = () => {
   const fetchAssignments = async () => {
     try {
       setError(null);
-      const data = await api.getMyAssignments();
-      setAssignments(data);
+      const assignmentData = await api.getMyAssignments();
+      
+      // Fetch task details for each assignment to get task titles
+      const enhancedAssignments = await Promise.all(
+        assignmentData.map(async (assignment) => {
+          try {
+            const task = await api.getTask(assignment.task_id);
+            return {
+              ...assignment,
+              task_title: task.title
+            };
+          } catch (taskError) {
+            console.error(`Error fetching task ${assignment.task_id}:`, taskError);
+            return {
+              ...assignment,
+              task_title: undefined
+            };
+          }
+        })
+      );
+      
+      setAssignments(enhancedAssignments);
     } catch (error) {
       console.error('Error fetching assignments:', error);
       setError('Failed to fetch your assignments');
@@ -46,7 +70,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const calculateProgress = (assignment: TaskAssignment) => {
+  const calculateProgress = (assignment: EnhancedTaskAssignment) => {
     const completed = assignment.completed_labels || 0;
     const total = assignment.target_labels || 1;
     return Math.min((completed / total) * 100, 100);
@@ -137,7 +161,7 @@ const Dashboard: React.FC = () => {
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Typography variant="h6" gutterBottom>
-                    Task #{assignment.task_id.slice(0, 8)}
+                    {assignment.task_title || `Task #${assignment.task_id.slice(0, 8)}`}
                   </Typography>
                   
                   <Box sx={{ mb: 2 }}>

@@ -38,6 +38,10 @@ export interface MediaFile {
   duration_seconds?: number;
   width?: number;
   height?: number;
+  // New fields for multiple file format
+  key?: string; // The original key from the data (e.g., 'output_wav', 'other_wav')
+  caption?: string; // Alternative to key field (from backend)
+  display_name?: string; // Human-readable display name
 }
 
 export interface FailureChoice {

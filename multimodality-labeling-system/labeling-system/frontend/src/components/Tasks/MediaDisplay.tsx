@@ -30,6 +30,9 @@ interface MediaFile {
   duration_seconds?: number;
   width?: number;
   height?: number;
+  key?: string; // The original key from the data (e.g., 'output_wav', 'other_wav')
+  caption?: string; // Alternative to key field (from backend)
+  display_name?: string; // Human-readable display name
 }
 
 interface MediaDisplayProps {
@@ -158,22 +161,40 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     const isLoading = loadingStates[mediaFile.filename];
     const hasError = errorStates[mediaFile.filename];
 
+    // Debug logging for media file rendering
+    console.log(`🎨 Rendering media item ${index}:`, {
+      filename: mediaFile.filename,
+      has_key: !!mediaFile.key,
+      has_caption: !!mediaFile.caption,
+      has_display_name: !!mediaFile.display_name,
+      key_value: mediaFile.key,
+      caption_value: mediaFile.caption,
+      display_name: mediaFile.display_name
+    });
+
     return (
-      <Box
-        key={index}
-        sx={{
-          position: 'relative',
-          height: 480,
-          bgcolor: 'grey.100',
-          borderRadius: 2,
-          overflow: 'hidden',
-          border: '1px solid',
-          borderColor: 'grey.300',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
+      <Box key={index}>
+        {/* Key as H2 text above media */}
+        {mediaFile.key && (
+          <Typography variant="h5" sx={{ mb: 1, fontWeight: 600 }}>
+            {mediaFile.key}
+          </Typography>
+        )}
+        
+        <Box
+          sx={{
+            position: 'relative',
+            height: 480,
+            bgcolor: 'grey.100',
+            borderRadius: 2,
+            overflow: 'hidden',
+            border: '1px solid',
+            borderColor: 'grey.300',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
         {/* Loading State */}
         {isLoading && (
           <Box sx={{ 
@@ -255,7 +276,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
                 <audio
                   src={blobUrl}
                   controls
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', minWidth: '300px' }}
                   onError={() => handleMediaError(mediaFile.filename)}
                 >
                   Your browser does not support the audio tag.
@@ -321,6 +342,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
             }}
           />
         )}
+        </Box>
       </Box>
     );
   };
@@ -411,7 +433,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
                   <audio
                     src={mediaBlobUrls[selectedMedia.filename]}
                     controls
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', minWidth: '300px' }}
                     autoPlay
                   >
                     Your browser does not support the audio tag.

@@ -609,7 +609,108 @@ export const api = {
       throw new Error(errorMessage);
     }
 
-    return response.json();
+    const data = await response.json();
+    
+    console.log('🔍 Raw API response from backend:', JSON.stringify(data, null, 2));
+    
+    // Process the response to handle new data format
+    const processedQuestions = data.map((question: any) => {
+      console.log('🔍 Processing question:', question.id);
+      console.log('📋 Question structure:', {
+        has_media_files: !!question.media_files,
+        media_files_length: question.media_files?.length || 0,
+        has_raw_data: !!question.raw_data,
+        sample_media_file: question.media_files?.[0]
+      });
+      
+      // Handle new format with _sample_local_media_for_task that returns key as caption
+      if (question.media_files && Array.isArray(question.media_files)) {
+        console.log('📁 Processing media_files array...');
+        
+        // Check if media_files already contain key information from backend
+        const enhancedMediaFiles = question.media_files.map((mediaFile: any, index: number) => {
+          console.log(`🎵 Processing media file ${index}:`, {
+            filename: mediaFile.filename,
+            has_key: !!mediaFile.key,
+            has_caption: !!mediaFile.caption,
+            key_value: mediaFile.key,
+            caption_value: mediaFile.caption,
+            all_fields: Object.keys(mediaFile)
+          });
+          
+          // Use the key field from backend as the primary source
+          if (mediaFile.key) {
+            const { formatKeyToDisplayName } = require('../utils/mediaUtils');
+            const displayName = formatKeyToDisplayName(mediaFile.key);
+            
+            console.log(`✅ Using backend key as caption: ${mediaFile.key} -> ${displayName}`);
+            
+            return {
+              ...mediaFile,
+              caption: mediaFile.key,  // Use key as caption
+              display_name: displayName
+            };
+          }
+          
+          // Fallback to caption field if no key
+          if (mediaFile.caption) {
+            const { formatKeyToDisplayName } = require('../utils/mediaUtils');
+            const displayName = formatKeyToDisplayName(mediaFile.caption);
+            
+            console.log(`✅ Using backend caption: ${mediaFile.caption} -> ${displayName}`);
+            
+            return {
+              ...mediaFile,
+              display_name: displayName
+            };
+          }
+          
+          console.log(`⚠️ No key/caption found for media file: ${mediaFile.filename}`);
+          // Fallback to original filename-based approach
+          return mediaFile;
+        });
+        
+        const { sortMediaFilesByPriority } = require('../utils/mediaUtils');
+        const sortedMediaFiles = sortMediaFilesByPriority(enhancedMediaFiles);
+        
+        console.log('🎯 Final processed media files:', sortedMediaFiles.map((mf: any) => ({
+          filename: mf.filename,
+          key: mf.key,
+          display_name: mf.display_name
+        })));
+        
+        return {
+          ...question,
+          media_files: sortedMediaFiles
+        };
+      }
+      
+      // If the question has raw data with multiple file keys, process it (legacy support)
+      if (question.raw_data && typeof question.raw_data === 'object') {
+        console.log('📦 Processing raw_data format...');
+        const { parseMediaFilesFromData, sortMediaFilesByPriority } = require('../utils/mediaUtils');
+        const mediaFiles = parseMediaFilesFromData(question.raw_data);
+        const sortedMediaFiles = sortMediaFilesByPriority(mediaFiles);
+        
+        console.log('🎯 Processed from raw_data:', sortedMediaFiles.map((mf: any) => ({
+          filename: mf.filename,
+          key: mf.key,
+          display_name: mf.display_name
+        })));
+        
+        return {
+          ...question,
+          media_files: sortedMediaFiles
+        };
+      }
+      
+      console.log('❌ No processing needed for question');
+      // Fallback to original format if no enhanced processing needed
+      return question;
+    });
+    
+    console.log('Processed questions with media:', processedQuestions);
+    return processedQuestions;
   },
 
   /**

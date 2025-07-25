@@ -71,8 +71,8 @@ async def serve_media_file_by_path(
     # Security: Ensure the file path is within allowed directories
     # You can customize these allowed base paths
     allowed_base_paths = [
-        Path("uploads").resolve(),
-        Path("/uploads").resolve() if Path("/uploads").exists() else None,
+        Path("taskData").resolve(),
+        Path("/taskData").resolve() if Path("/taskData").exists() else None,
         # Add other allowed base paths as needed
     ]
     allowed_base_paths = [p for p in allowed_base_paths if p is not None]

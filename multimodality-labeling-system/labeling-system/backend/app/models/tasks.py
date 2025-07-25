@@ -141,6 +141,7 @@ class MediaFile(BaseModel):
     width: Optional[int] = None
     height: Optional[int] = None
     tags: List[str] = []
+    key: Optional[str] = None
     metadata: Dict[str, Any] = {}
 
 class MediaSampleRequest(BaseModel):

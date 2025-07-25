@@ -4,10 +4,9 @@ import random
 from typing import List, Union
 
 class LocalDataSampler:
-    def __init__(self, root: str, subfolder: str):
+    def __init__(self, root: str):
         self.root = root
-        self.subfolder = subfolder
-        pattern = os.path.join(self.root, self.subfolder, '*')
+        pattern = os.path.join(self.root, '*')
         self.paths = sorted(glob.glob(pattern))
         if not self.paths:
             raise ValueError(f"No files found in {pattern}")

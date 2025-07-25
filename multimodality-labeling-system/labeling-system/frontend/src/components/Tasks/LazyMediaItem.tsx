@@ -22,6 +22,9 @@ interface MediaFile {
   duration_seconds?: number;
   width?: number;
   height?: number;
+  key?: string; // The original key from the data (e.g., 'output_wav', 'other_wav')
+  caption?: string; // Alternative to key field (from backend)
+  display_name?: string; // Human-readable display name
 }
 
 interface LazyMediaItemProps {
@@ -211,24 +214,27 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
 
       case 'video':
         return (
-          <video
-            src={state.blobUrl}
-            controls
-            preload="metadata"
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain'
-            }}
-            onError={() => setState(prev => ({ ...prev, hasError: true }))}
-          >
-            Your browser does not support video playback.
-          </video>
+          <Box sx={{ position: 'relative', height: '100%' }}>
+            <video
+              src={state.blobUrl}
+              controls
+              preload="metadata"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain'
+              }}
+              onError={() => setState(prev => ({ ...prev, hasError: true }))}
+            >
+              Your browser does not support video playback.
+            </video>
+          </Box>
         );
 
       case 'audio':
         return (
           <Box sx={{
+            position: 'relative',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -243,7 +249,7 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
             <audio
               src={state.blobUrl}
               controls
-              style={{ width: '100%', maxWidth: 300 }}
+              style={{ width: '100%', minWidth: '300px' }}
               onError={() => setState(prev => ({ ...prev, hasError: true }))}
             >
               Your browser does not support audio playback.
@@ -288,21 +294,29 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
   };
 
   return (
-    <Box
-      ref={elementRef}
-      sx={{
-        position: 'relative',
-        height: 480,
-        bgcolor: 'grey.100',
-        borderRadius: 2,
-        overflow: 'hidden',
-        border: '1px solid',
-        borderColor: 'grey.300',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
-      }}
-    >
+    <Box>
+      {/* Key as H2 text above media */}
+      {mediaFile.key && (
+        <Typography variant="h5" sx={{ mb: 1, fontWeight: 600 }}>
+          {mediaFile.key}
+        </Typography>
+      )}
+      
+      <Box
+        ref={elementRef}
+        sx={{
+          position: 'relative',
+          height: 480,
+          bgcolor: 'grey.100',
+          borderRadius: 2,
+          overflow: 'hidden',
+          border: '1px solid',
+          borderColor: 'grey.300',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
       {/* File info chip */}
       <Box sx={{
         position: 'absolute',
@@ -321,6 +335,7 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
       </Box>
 
       {!state.isVisible ? renderPlaceholder() : renderMediaContent()}
+      </Box>
     </Box>
   );
 };

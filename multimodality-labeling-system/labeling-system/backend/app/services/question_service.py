@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 from app.models.tasks import MediaFile, MediaType, QuestionWithMedia
 from app.database import get_supabase_client
-from app.customer.sampleLocalData import LocalDataSampler
+from app.customer.LocalDataSampler import sampler
 
 class QuestionService:
     def __init__(self):
@@ -55,7 +55,8 @@ class QuestionService:
             )
             
             questions_with_media.append(question_with_media)
-            print(question_with_media)
+
+            print(questions_with_media)
         
             return questions_with_media
             
@@ -74,15 +75,11 @@ class QuestionService:
     async def _sample_local_media_for_task(self, task_name: str, idx: int = 0) -> List[MediaFile]:
         """Sample media files from local task folder"""
         try:
-            sampler = LocalDataSampler(
-                root='/Users/yangping/Studio/side-project/ICLR2026_MMID/multimodality-labeling-system/labeling-system/backend/uploads',
-                subfolder='videos'
-            )
             sampled_media = []
-            data_paths = sampler.sample_by_idx(idx)
-            for data_path in data_paths:
-                sampled_media.append(await self._create_media_file_from_path(Path(data_path)))
-            
+            raw_data = sampler.sample_by_idx(task_name, idx)
+            for key, data_path in raw_data.items():
+                if os.path.isfile(data_path):
+                    sampled_media.append(await self._create_media_file_from_path(Path(data_path), key))
             return sampled_media
             
         except Exception as e:
@@ -111,7 +108,7 @@ class QuestionService:
             print(f"Error scanning media files in {task_path}: {str(e)}")
             return []
     
-    async def _create_media_file_from_path(self, file_path: Path) -> MediaFile:
+    async def _create_media_file_from_path(self, file_path: Path, key: str = None) -> MediaFile:
         """Create MediaFile object from file path"""
         try:
             stat = file_path.stat()
@@ -142,6 +139,7 @@ class QuestionService:
             return MediaFile(
                 filename=file_path.name,
                 file_path=str(file_path),
+                key=key,
                 media_type=media_type,
                 file_size=stat.st_size,
                 mime_type=mime_type,
