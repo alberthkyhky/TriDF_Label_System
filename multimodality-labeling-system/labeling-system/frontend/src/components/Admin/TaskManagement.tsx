@@ -17,10 +17,13 @@ import { TaskWithQuestionsData } from '../../types/createTask';
 import { useTaskFormData, defaultTaskFormData } from './formDataHook';
 import TaskList from './TaskManagement/TaskList';
 import TaskCreationStepper from './TaskManagement/TaskCreationStepper';
+import TaskModificationDialog from './TaskManagement/TaskModificationDialog';
 
 const TaskManagement: React.FC = () => {
   const [tasks, setTasks] = useState<TaskWithQuestionsData[]>([]);
   const [open, setOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<TaskWithQuestionsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { formData, setFormData } = useTaskFormData();
@@ -58,6 +61,21 @@ const TaskManagement: React.FC = () => {
     }
   };
 
+  const handleEditTask = (task: TaskWithQuestionsData) => {
+    setSelectedTask(task);
+    setEditDialogOpen(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setEditDialogOpen(false);
+    setSelectedTask(null);
+  };
+
+  const handleSaveTask = () => {
+    fetchTasks(); // Refresh the task list
+    handleCloseEditDialog();
+  };
+
   if (loading && !open) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
@@ -85,7 +103,11 @@ const TaskManagement: React.FC = () => {
         </Button>
       </Box>
 
-      <TaskList tasks={tasks} onStatusChange={handleStatusChange} />
+      <TaskList 
+        tasks={tasks} 
+        onStatusChange={handleStatusChange} 
+        onEditTask={handleEditTask}
+      />
 
       <Dialog 
         open={open} 
@@ -112,6 +134,14 @@ const TaskManagement: React.FC = () => {
         </DialogContent>
         
       </Dialog>
+
+      {/* Task Modification Dialog */}
+      <TaskModificationDialog
+        open={editDialogOpen}
+        task={selectedTask}
+        onClose={handleCloseEditDialog}
+        onSave={handleSaveTask}
+      />
     </Box>
   );
 };

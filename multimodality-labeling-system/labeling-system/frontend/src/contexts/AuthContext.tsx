@@ -1,5 +1,5 @@
 // AuthContext with fast fallback and shorter timeout
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { UserProfile, AuthContextType } from '../types/auth';
 
@@ -17,19 +17,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'admin' | 'labeler'>('admin');
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
+    // Prevent multiple initializations
+    if (initialized) return;
+    
+    console.log('AuthContext: Initializing authentication...');
+    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('AuthContext: Initial session check', session ? 'Found session' : 'No session');
       if (session?.user) {
         fetchUserProfile(session.user.id, session.user.email, session.user.user_metadata);
       } else {
         setLoading(false);
       }
+      setInitialized(true);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('AuthContext: Auth state changed', event, session ? 'Has session' : 'No session');
       
       if (event === 'SIGNED_IN' && session?.user) {
         await fetchUserProfile(session.user.id, session.user.email, session.user.user_metadata);
@@ -39,11 +48,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log('AuthContext: Cleaning up auth listener');
+      subscription.unsubscribe();
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialized]);
 
   const fetchUserProfile = async (userId: string, userEmail?: string, userMetadata?: any) => {
+    console.log('AuthContext: Fetching user profile for:', userId, userEmail);
     
     try {
       setLoading(true);
@@ -52,6 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { api } = await import('../services/api');
       
       const profile = await api.getUserProfile();
+      console.log('AuthContext: User profile fetched successfully');
       
       setUser(profile);
     } catch (error) {
@@ -91,7 +105,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return 'labeler';
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
+    console.log('AuthContext: Signing in user:', email);
     setLoading(true);
     
     try {
@@ -109,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
       throw error;
     }
-  };
+  }, []);
 
   const signUp = useCallback(async (email: string, password: string, fullName: string) => {
     setLoading(true);
@@ -158,10 +173,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   const switchViewMode = useCallback((mode: 'admin' | 'labeler') => {
+    console.log('AuthContext: Switching view mode to:', mode);
     setViewMode(mode);
   }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     loading,
     viewMode,
@@ -170,8 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signOut,
     updateProfile,
     switchViewMode
-  };
-
+  }), [user, loading, viewMode, signIn, signUp, signOut, updateProfile, switchViewMode]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

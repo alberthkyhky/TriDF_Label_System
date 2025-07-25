@@ -3,8 +3,7 @@ import {
   Box,
   Typography,
   ToggleButton,
-  ToggleButtonGroup,
-  Chip
+  ToggleButtonGroup
 } from '@mui/material';
 import {
   AdminPanelSettings,

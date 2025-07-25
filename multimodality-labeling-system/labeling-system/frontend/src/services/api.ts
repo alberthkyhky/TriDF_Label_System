@@ -224,10 +224,58 @@ export const api = {
   },
 
   async updateTask(taskId: string, data: Partial<Task>): Promise<Task> {
+    console.log('Updating task via API:', taskId, data);
     return apiCall(`/tasks/${taskId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+  },
+
+  /**
+   * Update task with questions using the enhanced endpoint
+   */
+  async updateTaskWithQuestions(taskId: string, taskData: Partial<TaskWithQuestionsData>): Promise<TaskWithQuestionsData> {
+    console.log('Updating task with questions:', taskId, taskData);
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/${taskId}/with-questions`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(taskData)
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to update task with questions';
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorMessage;
+      } catch (e) {
+        // If JSON parsing fails, use status text
+        errorMessage = response.statusText || errorMessage;
+      }
+      
+      // Handle specific error codes
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please log in again.');
+      } else if (response.status === 403) {
+        throw new Error('Permission denied. Admin access required.');
+      } else if (response.status === 404) {
+        throw new Error('Task not found or endpoint not implemented.');
+      } else if (response.status === 422) {
+        throw new Error(`Validation error: ${errorMessage}`);
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
   },
 
   async deleteTask(taskId: string): Promise<void> {
@@ -259,6 +307,36 @@ export const api = {
 
   async getAllAssignments(): Promise<any[]> {
     return apiCall('/assignments/all');
+  },
+
+  async getTaskAssignments(taskId: string): Promise<any[]> {
+    console.log('Getting task assignments for taskId:', taskId);
+    
+    // Since /assignments/task/{taskId}/all doesn't exist, get all assignments and filter
+    try {
+      console.log('Trying /assignments/all endpoint...');
+      const allAssignments = await apiCall('/assignments/all');
+      console.log('All assignments received:', allAssignments);
+      
+      // Filter assignments by task_id
+      const filteredAssignments = allAssignments.filter((assignment: any) => assignment.task_id === taskId);
+      console.log('Filtered assignments for task:', filteredAssignments);
+      
+      return filteredAssignments;
+    } catch (error) {
+      console.error('Failed to get all assignments:', error);
+      
+      // Fallback: try to get single task assignment
+      try {
+        console.log('Trying fallback /assignments/task/{taskId} endpoint...');
+        const singleAssignment = await apiCall(`/assignments/task/${taskId}`);
+        console.log('Single assignment received:', singleAssignment);
+        return singleAssignment ? [singleAssignment] : [];
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+        return [];
+      }
+    }
   },
   
   async getAssignmentStats(): Promise<any> {

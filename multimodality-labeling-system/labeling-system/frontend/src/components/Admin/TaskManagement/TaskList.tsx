@@ -20,9 +20,10 @@ interface TaskListProps {
   loading?: boolean;
   onRefresh?: () => void;
   onStatusChange?: (taskId: string, status: string) => void;
+  onEditTask?: (task: TaskWithQuestionsData) => void;
 }
 
-const TaskList: React.FC<TaskListProps> = ({ tasks, loading, onRefresh, onStatusChange }) => {
+const TaskList: React.FC<TaskListProps> = ({ tasks, loading, onRefresh, onStatusChange, onEditTask }) => {
   
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -114,7 +115,11 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, loading, onRefresh, onStatus
               <MenuItem value="completed">Completed</MenuItem>
             </Select>
           </FormControl>
-          <IconButton size="small">
+          <IconButton 
+            size="small" 
+            onClick={() => onEditTask?.(task)}
+            title="Edit Task"
+          >
             <Edit />
           </IconButton>
         </ListItem>
@@ -148,7 +153,8 @@ export default React.memo(TaskList, (prevProps, nextProps) => {
   // Compare other props
   if (prevProps.loading !== nextProps.loading ||
       prevProps.onRefresh !== nextProps.onRefresh ||
-      prevProps.onStatusChange !== nextProps.onStatusChange) {
+      prevProps.onStatusChange !== nextProps.onStatusChange ||
+      prevProps.onEditTask !== nextProps.onEditTask) {
     return false;
   }
   
