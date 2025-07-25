@@ -1,0 +1,56 @@
+{
+  "title": "Audio Quality Assessment Task",
+  "description": "Evaluate the quality of generated audio samples compared to reference audio.",
+  "instructions": "Listen to both audio samples and identify any quality issues in the generated audio. Compare it against the reference audio to determine if there are any failures in the generation process.",
+  "questions_number": 50,
+  "required_agreements": 2,
+  "example_media": [
+    "example_audio_1.wav",
+    "example_audio_2.wav"
+  ],
+  "question_template": {
+    "question_text": "Compare the generated audio with the reference audio. What quality issues do you observe?",
+    "choices": {
+      "structural_issues": {
+        "text": "Structural Issues (A-type failures)",
+        "options": [
+          "None",
+          "Audio truncation",
+          "Silent segments",
+          "Incomplete generation",
+          "Audio corruption"
+        ],
+        "multiple_select": true
+      },
+      "functional_issues": {
+        "text": "Functional Issues (B-type failures)", 
+        "options": [
+          "None",
+          "Voice mismatch",
+          "Content deviation",
+          "Language inconsistency",
+          "Pronunciation errors",
+          "Accent problems"
+        ],
+        "multiple_select": true
+      },
+      "quality_issues": {
+        "text": "Quality Issues (C-type failures)",
+        "options": [
+          "None",
+          "Background noise",
+          "Audio artifacts",
+          "Volume inconsistency",
+          "Clarity problems",
+          "Distortion"
+        ],
+        "multiple_select": true
+      }
+    }
+  },
+  "media_config": {
+    "num_images": 0,
+    "num_videos": 0,
+    "num_audios": 2
+  }
+}

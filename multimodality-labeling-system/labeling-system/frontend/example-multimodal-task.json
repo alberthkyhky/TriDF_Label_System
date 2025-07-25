@@ -1,0 +1,69 @@
+{
+  "title": "Multimodal Content Analysis Task",
+  "description": "Analyze images, videos, and audio content to identify quality issues and classify different types of failures.",
+  "instructions": "Review each media item carefully. For images, check for visual artifacts and clarity. For videos, evaluate both visual and audio quality. For audio files, focus on sound quality and clarity. Select all applicable failure categories for each question.",
+  "questions_number": 100,
+  "required_agreements": 3,
+  "example_media": [
+    "example_image.jpg",
+    "example_video.mp4",
+    "example_audio.wav"
+  ],
+  "question_template": {
+    "question_text": "Analyze the provided media content and identify any quality issues or failures present.",
+    "choices": {
+      "technical_failures": {
+        "text": "Technical Failures",
+        "options": [
+          "None",
+          "Corruption or artifacts",
+          "Resolution issues",
+          "Format problems",
+          "Encoding errors",
+          "Incomplete rendering"
+        ],
+        "multiple_select": true
+      },
+      "content_failures": {
+        "text": "Content Quality Issues",
+        "options": [
+          "None", 
+          "Poor composition",
+          "Inadequate lighting",
+          "Blurry or out of focus",
+          "Color balance problems",
+          "Content mismatch"
+        ],
+        "multiple_select": true
+      },
+      "audio_specific": {
+        "text": "Audio-Specific Issues (for audio/video content)",
+        "options": [
+          "None",
+          "Background noise",
+          "Volume inconsistency", 
+          "Audio sync issues",
+          "Poor audio quality",
+          "Missing audio"
+        ],
+        "multiple_select": true
+      },
+      "overall_rating": {
+        "text": "Overall Quality Rating",
+        "options": [
+          "Excellent",
+          "Good", 
+          "Fair",
+          "Poor",
+          "Unacceptable"
+        ],
+        "multiple_select": false
+      }
+    }
+  },
+  "media_config": {
+    "num_images": 2,
+    "num_videos": 1,
+    "num_audios": 1
+  }
+}

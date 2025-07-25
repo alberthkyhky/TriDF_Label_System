@@ -2,7 +2,6 @@ import os
 import csv
 from typing import List, Union, Dict
 
-
 class LocalDataSampler:
     def __init__(self, root: str):
         """
