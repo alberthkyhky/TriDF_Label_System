@@ -18,6 +18,8 @@ import {
   Error as ErrorIcon,
 } from '@mui/icons-material';
 import { api } from '../../services/api';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
+import LazyMediaItem from './LazyMediaItem';
 
 interface MediaFile {
   filename: string;
@@ -33,9 +35,14 @@ interface MediaFile {
 interface MediaDisplayProps {
   mediaFiles: MediaFile[];
   taskId: string;
+  useLazyLoading?: boolean;
 }
 
-const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, taskId }) => {
+const MediaDisplay: React.FC<MediaDisplayProps> = ({ 
+  mediaFiles, 
+  taskId, 
+  useLazyLoading = true 
+}) => {
   const [selectedMedia, setSelectedMedia] = useState<MediaFile | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
@@ -43,18 +50,45 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, taskId }) => {
   const [mediaBlobUrls, setMediaBlobUrls] = useState<Record<string, string>>({});
 
   // Fetch media with authentication using POST with file path
-  const fetchMediaWithAuth = async (mediaFile: MediaFile): Promise<string> => {
+  const fetchMediaWithAuth = useCallback(async (mediaFile: MediaFile): Promise<string> => {
     const response = await api.getMediaFile(taskId, mediaFile);
     return response;
-  };
+  }, [taskId]);
 
-  // Load media file with authentication
+  // Load media files with authentication (only for eager loading mode)
   useEffect(() => {
+    if (useLazyLoading) {
+      // Skip eager loading when using lazy loading
+      return;
+    }
+
     const loadMediaFiles = async () => {
-      for (const mediaFile of mediaFiles) {
-        if (!mediaBlobUrls[mediaFile.filename] && !loadingStates[mediaFile.filename]) {
-          setLoadingStates(prev => ({ ...prev, [mediaFile.filename]: true }));
-          
+      // Prioritize images over videos/audio for faster perceived loading
+      const prioritizedFiles = [...mediaFiles].sort((a, b) => {
+        const priority = { image: 0, video: 1, audio: 2 };
+        return priority[a.media_type] - priority[b.media_type];
+      });
+
+      // Load images immediately in parallel
+      const imageFiles = prioritizedFiles.filter(f => f.media_type === 'image');
+      const otherFiles = prioritizedFiles.filter(f => f.media_type !== 'image');
+
+      // Set loading state for all files
+      const filesToLoad = prioritizedFiles.filter(
+        file => !mediaBlobUrls[file.filename] && !loadingStates[file.filename]
+      );
+
+      if (filesToLoad.length === 0) return;
+
+      // Set loading states
+      filesToLoad.forEach(file => {
+        setLoadingStates(prev => ({ ...prev, [file.filename]: true }));
+      });
+
+      // Load images first (parallel)
+      const imagePromises = imageFiles
+        .filter(file => !mediaBlobUrls[file.filename])
+        .map(async (mediaFile) => {
           try {
             const blobUrl = await fetchMediaWithAuth(mediaFile);
             setMediaBlobUrls(prev => ({ ...prev, [mediaFile.filename]: blobUrl }));
@@ -65,7 +99,30 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, taskId }) => {
             setLoadingStates(prev => ({ ...prev, [mediaFile.filename]: false }));
             setErrorStates(prev => ({ ...prev, [mediaFile.filename]: true }));
           }
-        }
+        });
+
+      await Promise.all(imagePromises);
+
+      // Load videos/audio with slight delay (parallel)
+      if (otherFiles.length > 0) {
+        setTimeout(() => {
+          const otherPromises = otherFiles
+            .filter(file => !mediaBlobUrls[file.filename])
+            .map(async (mediaFile) => {
+              try {
+                const blobUrl = await fetchMediaWithAuth(mediaFile);
+                setMediaBlobUrls(prev => ({ ...prev, [mediaFile.filename]: blobUrl }));
+                setLoadingStates(prev => ({ ...prev, [mediaFile.filename]: false }));
+                setErrorStates(prev => ({ ...prev, [mediaFile.filename]: false }));
+              } catch (error) {
+                console.error(`Error loading media ${mediaFile.filename}:`, error);
+                setLoadingStates(prev => ({ ...prev, [mediaFile.filename]: false }));
+                setErrorStates(prev => ({ ...prev, [mediaFile.filename]: true }));
+              }
+            });
+
+          Promise.all(otherPromises);
+        }, 100);
       }
     };
 
@@ -79,7 +136,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, taskId }) => {
         }
       });
     };
-  }, [mediaFiles, taskId]);
+  }, [mediaFiles, taskId, useLazyLoading, mediaBlobUrls, loadingStates, fetchMediaWithAuth]);
 
   const handleMediaError = useCallback((filename: string) => {
     setLoadingStates(prev => ({ ...prev, [filename]: false }));
@@ -268,16 +325,44 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaFiles, taskId }) => {
     );
   };
 
+  // Render method selection based on lazy loading preference
+  const renderMediaList = () => {
+    if (mediaFiles.length === 0) {
+      return (
+        <Alert severity="warning">
+          No media files available for this question.
+        </Alert>
+      );
+    }
+
+    if (useLazyLoading) {
+      // Use lazy loading components
+      return mediaFiles.map((mediaFile, index) => (
+        <ErrorBoundary key={index} level="component">
+          <LazyMediaItem
+            mediaFile={mediaFile}
+            taskId={taskId}
+            onMediaClick={openMediaDialog}
+            onMediaError={handleMediaError}
+            loadingThreshold={0.1}
+            rootMargin="100px"
+          />
+        </ErrorBoundary>
+      ));
+    } else {
+      // Use traditional eager loading (fallback)
+      return mediaFiles.map((mediaFile, index) => (
+        <ErrorBoundary key={index} level="component">
+          {renderMediaItem(mediaFile, index)}
+        </ErrorBoundary>
+      ));
+    }
+  };
+
   return (
     <>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {mediaFiles.length === 0 ? (
-          <Alert severity="warning">
-            No media files available for this question.
-          </Alert>
-        ) : (
-          mediaFiles.map((mediaFile, index) => renderMediaItem(mediaFile, index))
-        )}
+        {renderMediaList()}
       </Box>
 
       {/* Media Preview Dialog */}

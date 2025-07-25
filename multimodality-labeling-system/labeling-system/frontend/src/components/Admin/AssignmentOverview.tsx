@@ -26,6 +26,9 @@ import {
   Alert,
   Avatar,
   Stack,
+  Skeleton,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import {
   Assignment as AssignmentIcon,
@@ -36,8 +39,10 @@ import {
   Refresh as RefreshIconMui,
   Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import { api } from '../../services/api';
+import { useDebouncedSearch } from '../../hooks/useDebounce';
 
 interface AssignmentData {
   id: string;
@@ -73,6 +78,34 @@ const AssignmentOverview: React.FC = () => {
   const [selectedAssignment, setSelectedAssignment] = useState<AssignmentData | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filteredAssignments, setFilteredAssignments] = useState<AssignmentData[]>([]);
+
+  // Debounced search functionality
+  const { isSearching } = useDebouncedSearch(
+    searchQuery,
+    useCallback((query: string) => {
+      if (!query.trim()) {
+        setFilteredAssignments(assignments);
+      } else {
+        const filtered = assignments.filter(assignment => 
+          assignment.task_title.toLowerCase().includes(query.toLowerCase()) ||
+          assignment.user_name.toLowerCase().includes(query.toLowerCase()) ||
+          assignment.user_email.toLowerCase().includes(query.toLowerCase()) ||
+          assignment.assigned_classes.some(cls => cls.toLowerCase().includes(query.toLowerCase()))
+        );
+        setFilteredAssignments(filtered);
+      }
+    }, [assignments]),
+    300
+  );
+
+  // Update filtered assignments when assignments change
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredAssignments(assignments);
+    }
+  }, [assignments, searchQuery]);
 
   // Memoize expensive statistical calculations
   const stats = useMemo((): AssignmentStats => {
@@ -206,10 +239,110 @@ const AssignmentOverview: React.FC = () => {
     </Card>
   ));
 
+  // Skeleton components for loading state
+  const StatCardSkeleton = () => (
+    <Card>
+      <CardContent>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+          <Skeleton variant="circular" width={56} height={56} sx={{ mr: 2 }} />
+          <Box sx={{ flexGrow: 1 }}>
+            <Skeleton variant="text" width="40%" height={40} sx={{ mb: 1 }} />
+            <Skeleton variant="text" width="60%" height={28} />
+            <Skeleton variant="text" width="50%" height={20} />
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  );
+
+  const TableRowSkeleton = () => (
+    <TableRow>
+      <TableCell><Skeleton variant="text" width="80%" /></TableCell>
+      <TableCell><Skeleton variant="text" width="60%" /></TableCell>
+      <TableCell><Skeleton variant="rounded" width={60} height={24} /></TableCell>
+      <TableCell><Skeleton variant="text" width="40%" /></TableCell>
+      <TableCell><Skeleton variant="rectangular" width="100%" height={6} /></TableCell>
+      <TableCell><Skeleton variant="rounded" width={50} height={24} /></TableCell>
+      <TableCell><Skeleton variant="text" width="70%" /></TableCell>
+      <TableCell>
+        <Stack direction="row" spacing={1}>
+          <Skeleton variant="circular" width={32} height={32} />
+          <Skeleton variant="circular" width={32} height={32} />
+        </Stack>
+      </TableCell>
+    </TableRow>
+  );
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-        <Typography>Loading assignments...</Typography>
+      <Box>
+        {/* Header */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h5">Assignment Overview</Typography>
+          <Box>
+            <Button
+              startIcon={<RefreshIconMui />}
+              disabled
+              sx={{ mr: 1 }}
+            >
+              Refresh
+            </Button>
+          </Box>
+        </Box>
+
+        {/* Statistics Cards Skeleton */}
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <StatCardSkeleton />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <StatCardSkeleton />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <StatCardSkeleton />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <StatCardSkeleton />
+          </Grid>
+        </Grid>
+
+        {/* Assignments Table Skeleton */}
+        <Card>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">
+                Assignment Details
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {searchQuery.trim() 
+                  ? `${filteredAssignments.length} of ${assignments.length} assignments`
+                  : `${assignments.length} assignments`
+                }
+              </Typography>
+            </Box>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Task</TableCell>
+                    <TableCell>User</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Classes</TableCell>
+                    <TableCell>Progress</TableCell>
+                    <TableCell>Active</TableCell>
+                    <TableCell>Assigned</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <TableRowSkeleton key={index} />
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
       </Box>
     );
   }
@@ -225,12 +358,34 @@ const AssignmentOverview: React.FC = () => {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5">Assignment Overview</Typography>
-        <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <TextField
+            size="small"
+            placeholder="Search assignments..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+              ...(isSearching && {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <span style={{ fontSize: '0.75rem', color: '#666' }}>
+                      Searching...
+                    </span>
+                  </InputAdornment>
+                )
+              })
+            }}
+            sx={{ minWidth: 250 }}
+          />
           <Button
             startIcon={<RefreshIconMui />}
             onClick={handleRefresh}
             disabled={refreshing}
-            sx={{ mr: 1 }}
           >
             Refresh
           </Button>
@@ -279,9 +434,17 @@ const AssignmentOverview: React.FC = () => {
       {/* Assignments Table */}
       <Card>
         <CardContent>
-          <Typography variant="h6" gutterBottom>
-            All Assignments ({assignments.length})
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">
+              All Assignments
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {searchQuery.trim() 
+                ? `${filteredAssignments.length} of ${assignments.length} assignments`
+                : `${assignments.length} assignments`
+              }
+            </Typography>
+          </Box>
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
@@ -296,7 +459,7 @@ const AssignmentOverview: React.FC = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {assignments.map((assignment) => (
+                {filteredAssignments.map((assignment) => (
                   <TableRow key={assignment.id}>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>

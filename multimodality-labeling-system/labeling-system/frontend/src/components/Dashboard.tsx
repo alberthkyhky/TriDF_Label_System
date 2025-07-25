@@ -15,10 +15,12 @@ import {
   Alert
 } from '@mui/material';
 import { PlayArrow, CheckCircle } from '@mui/icons-material';
+import { Skeleton } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { TaskAssignment } from '../types/tasks';
 import { useNavigate } from 'react-router-dom';
+import ViewModeSwitch from './ui/ViewModeSwitch';
 
 const Dashboard: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -50,10 +52,55 @@ const Dashboard: React.FC = () => {
     return Math.min((completed / total) * 100, 100);
   };
 
+  // Skeleton card component for loading state
+  const AssignmentCardSkeleton = () => (
+    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+      <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <CardContent sx={{ flexGrow: 1 }}>
+          <Skeleton variant="text" width="60%" height={32} sx={{ mb: 2 }} />
+          
+          <Box sx={{ mb: 2 }}>
+            <Skeleton variant="text" width="40%" height={20} sx={{ mb: 1 }} />
+            <Skeleton variant="rectangular" width="100%" height={8} sx={{ borderRadius: 4 }} />
+          </Box>
+
+          <Skeleton variant="rounded" width={60} height={24} sx={{ mb: 2 }} />
+
+          <Skeleton variant="text" width="50%" height={16} sx={{ mb: 2 }} />
+
+          <Skeleton variant="rectangular" width="100%" height={36} sx={{ borderRadius: 1 }} />
+        </CardContent>
+      </Card>
+    </Grid>
+  );
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Typography>Loading your tasks...</Typography>
+      <Box sx={{ flexGrow: 1 }}>
+        {/* Top Navigation */}
+        <AppBar position="static">
+          <Toolbar>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              Labeler Dashboard - {user?.full_name || user?.email}
+            </Typography>
+            <Button color="inherit" onClick={signOut}>
+              Logout
+            </Button>
+          </Toolbar>
+        </AppBar>
+
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+          <Typography variant="h4" gutterBottom>
+            My Assigned Tasks
+          </Typography>
+          
+          <Grid container spacing={3}>
+            {/* Show 6 skeleton cards to simulate typical assignment load */}
+            {Array.from({ length: 6 }).map((_, index) => (
+              <AssignmentCardSkeleton key={index} />
+            ))}
+          </Grid>
+        </Container>
       </Box>
     );
   }
@@ -66,7 +113,8 @@ const Dashboard: React.FC = () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Labeler Dashboard - {user?.full_name || user?.email}
           </Typography>
-          <Button color="inherit" onClick={signOut}>
+          <ViewModeSwitch />
+          <Button color="inherit" onClick={signOut} sx={{ ml: 2 }}>
             Logout
           </Button>
         </Toolbar>

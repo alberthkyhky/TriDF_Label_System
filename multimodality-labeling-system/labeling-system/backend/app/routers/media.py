@@ -58,6 +58,9 @@ async def serve_media_file_by_path(
 ):
     """Serve media files using absolute file path (POST method)"""
     # Get task to verify access
+    print(current_user)
+    print(task_id)
+    print(request)
     task = await task_service.get_task_by_id(task_id)
     if not task:
         raise HTTPException(

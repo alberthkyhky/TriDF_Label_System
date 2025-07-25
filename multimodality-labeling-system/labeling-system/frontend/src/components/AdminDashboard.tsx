@@ -15,6 +15,8 @@ import { useAuth } from '../contexts/AuthContext';
 import TaskManagement from './Admin/TaskManagement';
 import UserAssignment from './Admin/UserAssignment';
 import AssignmentOverview from './Admin/AssignmentOverview';
+import { ErrorBoundary } from './ui/ErrorBoundary';
+import ViewModeSwitch from './ui/ViewModeSwitch';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -46,7 +48,8 @@ const AdminDashboard: React.FC = () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Admin Dashboard - {user?.full_name || user?.email}
           </Typography>
-          <Button color="inherit" onClick={signOut}>
+          <ViewModeSwitch />
+          <Button color="inherit" onClick={signOut} sx={{ ml: 2 }}>
             Logout
           </Button>
         </Toolbar>
@@ -68,15 +71,21 @@ const AdminDashboard: React.FC = () => {
 
         {/* Tab Content */}
         <TabPanel value={tabValue} index={0}>
-          <TaskManagement />
+          <ErrorBoundary level="section">
+            <TaskManagement />
+          </ErrorBoundary>
         </TabPanel>
         
         <TabPanel value={tabValue} index={1}>
-          <UserAssignment />
+          <ErrorBoundary level="section">
+            <UserAssignment />
+          </ErrorBoundary>
         </TabPanel>
         
         <TabPanel value={tabValue} index={2}>
-          <AssignmentOverview />
+          <ErrorBoundary level="section">
+            <AssignmentOverview />
+          </ErrorBoundary>
         </TabPanel>
       </Container>
     </Box>

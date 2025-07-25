@@ -19,6 +19,7 @@ import { ProgressIndicator } from './LabelingInterface/ProgressIndicator';
 import { MediaSection } from './LabelingInterface/MediaSection';
 import { ResponseForm } from './LabelingInterface/ResponseForm';
 import { NavigationControls } from './LabelingInterface/NavigationControls';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 
 // Updated interfaces for real API data
 interface MediaFile {
@@ -321,30 +322,36 @@ const LabelingInterface: React.FC = () => {
 
         <Grid container spacing={3}>
           {/* Media Display Section */}
-          <MediaSection
-            mediaFiles={currentQuestion.media_files}
-            taskId={taskId!}
-            questionText={currentQuestion.question_text}
-          />
+          <ErrorBoundary level="section">
+            <MediaSection
+              mediaFiles={currentQuestion.media_files}
+              taskId={taskId!}
+              questionText={currentQuestion.question_text}
+            />
+          </ErrorBoundary>
 
           {/* Question and Choices Section */}
-          <ResponseForm
-            currentQuestion={currentQuestion}
-            currentResponse={currentResponse}
-            onFailureTypeChange={handleFailureTypeChange}
-            isResponseValid={isResponseValid}
-          />
+          <ErrorBoundary level="section">
+            <ResponseForm
+              currentQuestion={currentQuestion}
+              currentResponse={currentResponse}
+              onFailureTypeChange={handleFailureTypeChange}
+              isResponseValid={isResponseValid}
+            />
+          </ErrorBoundary>
         </Grid>
 
         {/* Navigation Controls */}
-        <NavigationControls
-          currentQuestionIndex={currentQuestionIndex}
-          totalQuestions={totalQuestions}
-          isResponseValid={isResponseValid()}
-          isSubmitting={submitting}
-          onPrevious={handlePreviousQuestion}
-          onSubmit={handleSubmitResponse}
-        />
+        <ErrorBoundary level="component">
+          <NavigationControls
+            currentQuestionIndex={currentQuestionIndex}
+            totalQuestions={totalQuestions}
+            isResponseValid={isResponseValid()}
+            isSubmitting={submitting}
+            onPrevious={handlePreviousQuestion}
+            onSubmit={handleSubmitResponse}
+          />
+        </ErrorBoundary>
       </Container>
     </Box>
   );

@@ -9,7 +9,8 @@ import {
   Select,
   MenuItem,
   Typography,
-  Chip
+  Chip,
+  Skeleton
 } from '@mui/material';
 import { Edit } from '@mui/icons-material';
 import { TaskWithQuestionsData } from '../../../types/createTask';
@@ -31,6 +32,41 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, loading, onRefresh, onStatus
       default: return 'default';
     }
   };
+
+  // Skeleton component for loading state
+  const TaskListItemSkeleton = () => (
+    <ListItem divider>
+      <ListItemText
+        disableTypography
+        primary={
+          <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Skeleton variant="text" width="40%" height={24} />
+            <Skeleton variant="rounded" width={60} height={24} />
+          </Box>
+        }
+        secondary={
+          <Box sx={{ mt: 1 }}>
+            <Skeleton variant="text" width="60%" height={16} sx={{ mb: 0.5 }} />
+            <Skeleton variant="text" width="30%" height={14} />
+          </Box>
+        }
+      />
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Skeleton variant="rectangular" width={100} height={32} sx={{ borderRadius: 1 }} />
+        <Skeleton variant="circular" width={40} height={40} />
+      </Box>
+    </ListItem>
+  );
+
+  if (loading) {
+    return (
+      <List>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <TaskListItemSkeleton key={index} />
+        ))}
+      </List>
+    );
+  }
 
   if (tasks.length === 0) {
     return (

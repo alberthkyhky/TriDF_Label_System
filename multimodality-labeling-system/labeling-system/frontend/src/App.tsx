@@ -10,6 +10,7 @@ import AdminDashboard from './components/AdminDashboard';
 import ApiTest from './components/ApiTest';
 import TaskIntroduction from './components/Tasks/TaskIntroduction';
 import LabelingInterface from './components/Tasks/LabelingInterface';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 const theme = createTheme({
   palette: {
@@ -41,23 +42,23 @@ const ProtectedRoute = ({
   return <>{children}</>;
 };
 
-// Component to handle root route redirection based on user role
+// Component to handle root route redirection based on user role and view mode
 const RoleBasedRedirect = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, viewMode } = useAuth();
   
   if (loading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
   
-  // Redirect based on user role
+  // For admins, respect their view mode preference
   if (user.role === 'admin') {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to={viewMode === 'admin' ? '/admin' : '/dashboard'} replace />;
   } else {
     return <Navigate to="/dashboard" replace />;
   }
 };
 
 const AppContent = () => {
-  const { user } = useAuth();
+  const { user, viewMode } = useAuth();
   
   return (
     <Router>
@@ -68,7 +69,7 @@ const AppContent = () => {
           element={
             user ? (
               user.role === 'admin' ? 
-                <Navigate to="/admin" replace /> : 
+                <Navigate to={viewMode === 'admin' ? '/admin' : '/dashboard'} replace /> : 
                 <Navigate to="/dashboard" replace />
             ) : (
               <LoginForm />
@@ -94,7 +95,9 @@ const AppContent = () => {
           path="/admin" 
           element={
             <ProtectedRoute requiredRole="admin">
-              <AdminDashboard />
+              <ErrorBoundary level="page">
+                <AdminDashboard />
+              </ErrorBoundary>
             </ProtectedRoute>
           } 
         />
@@ -104,7 +107,9 @@ const AppContent = () => {
           path="/dashboard" 
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <ErrorBoundary level="page">
+                <Dashboard />
+              </ErrorBoundary>
             </ProtectedRoute>
           } 
         />
@@ -113,7 +118,9 @@ const AppContent = () => {
           path="/task/:taskId" 
           element={
             <ProtectedRoute>
-              <TaskIntroduction />
+              <ErrorBoundary level="page">
+                <TaskIntroduction />
+              </ErrorBoundary>
             </ProtectedRoute>
           } 
         />
@@ -121,7 +128,9 @@ const AppContent = () => {
           path="/task/:taskId/label" 
           element={
             <ProtectedRoute>
-              <LabelingInterface />
+              <ErrorBoundary level="page">
+                <LabelingInterface />
+              </ErrorBoundary>
             </ProtectedRoute>
           } 
         />
@@ -138,12 +147,20 @@ const AppContent = () => {
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary 
+      level="page"
+      onError={(error, errorInfo) => {
+        // Log to error reporting service in production
+        console.error('App-level error:', error, errorInfo);
+      }}
+    >
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

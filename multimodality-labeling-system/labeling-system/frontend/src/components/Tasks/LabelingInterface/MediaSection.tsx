@@ -41,10 +41,11 @@ export const MediaSection: React.FC<MediaSectionProps> = ({
             Compare these {mediaFiles.length} media items to identify failures:
           </Typography>
           
-          {/* Use the existing MediaDisplay component */}
+          {/* Use the existing MediaDisplay component with lazy loading enabled */}
           <MediaDisplay 
             mediaFiles={mediaFiles}
             taskId={taskId}
+            useLazyLoading={true}
           />
 
           {/* Media Summary */}

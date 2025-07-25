@@ -16,6 +16,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'admin' | 'labeler'>('admin');
 
   useEffect(() => {
     // Get initial session
@@ -156,13 +157,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
+  const switchViewMode = useCallback((mode: 'admin' | 'labeler') => {
+    setViewMode(mode);
+  }, []);
+
   const value = {
     user,
     loading,
+    viewMode,
     signIn,
     signUp,
     signOut,
-    updateProfile
+    updateProfile,
+    switchViewMode
   };
 
 

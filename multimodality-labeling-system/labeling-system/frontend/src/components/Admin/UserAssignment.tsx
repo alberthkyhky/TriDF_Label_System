@@ -22,7 +22,8 @@ import {
   Card,
   CardContent,
   OutlinedInput,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Skeleton
 } from '@mui/material';
 import { Assignment } from '@mui/icons-material';
 import { api } from '../../services/api';
@@ -121,10 +122,65 @@ const UserAssignment: React.FC = () => {
     }
   };
 
+  // Skeleton components for loading state
+  const ListItemSkeleton = () => (
+    <ListItem>
+      <ListItemText
+        primary={<Skeleton variant="text" width="70%" height={20} />}
+        secondary={<Skeleton variant="text" width="50%" height={16} />}
+      />
+      <Skeleton variant="rounded" width={60} height={24} />
+    </ListItem>
+  );
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-        <Typography>Loading assignments...</Typography>
+      <Box>
+        {/* Header */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h6">Task Assignment</Typography>
+          <Button 
+            variant="contained" 
+            startIcon={<Assignment />}
+            disabled
+          >
+            Assign Task to User
+          </Button>
+        </Box>
+
+        <Grid container spacing={3}>
+          {/* Tasks Card Skeleton */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Active Tasks
+                </Typography>
+                <List>
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <ListItemSkeleton key={index} />
+                  ))}
+                </List>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Users Card Skeleton */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  Available Users
+                </Typography>
+                <List>
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <ListItemSkeleton key={index} />
+                  ))}
+                </List>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
       </Box>
     );
   }

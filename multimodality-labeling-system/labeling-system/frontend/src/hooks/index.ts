@@ -11,6 +11,7 @@ export { useMediaAuthentication } from './useMediaAuthentication';
 
 // UI and Interaction Hooks
 export { usePagination, PAGE_SIZE_OPTIONS, getPaginationText } from './usePagination';
+export { useDebounce, useDebouncedCallback, useDebouncedSearch } from './useDebounce';
 
 // Re-export defaults for convenience
 export { default as useApiCallDefault } from './useApiCall';
