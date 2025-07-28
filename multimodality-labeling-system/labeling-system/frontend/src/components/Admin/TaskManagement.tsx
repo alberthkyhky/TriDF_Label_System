@@ -131,6 +131,42 @@ const TaskManagement: React.FC = () => {
     fileInputRef.current?.click();
   };
 
+  const handleDownloadAnswers = async (taskId: string, taskTitle: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Download as CSV format
+      const blob = await api.exportTaskResponses(taskId, 'csv');
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Generate filename with task title and current date
+      const sanitizedTitle = taskTitle.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
+      const currentDate = new Date().toISOString().split('T')[0];
+      link.download = `${sanitizedTitle}_responses_${currentDate}.csv`;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      setUploadSuccess(`Downloaded responses for "${taskTitle}" successfully!`);
+      
+    } catch (error: any) {
+      console.error('Error downloading task responses:', error);
+      setError(error.message || 'Failed to download task responses');
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const handleStatusChange = async (taskId: string, status: string) => {
     try {
@@ -208,6 +244,7 @@ const TaskManagement: React.FC = () => {
         tasks={tasks} 
         onStatusChange={handleStatusChange} 
         onEditTask={handleEditTask}
+        onDownloadAnswers={handleDownloadAnswers}
       />
 
       <Dialog 

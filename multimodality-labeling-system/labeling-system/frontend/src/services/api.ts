@@ -376,6 +376,30 @@ export const api = {
     return response.blob();
   },
 
+  async exportTaskResponses(taskId: string, format: 'csv' | 'json' = 'csv'): Promise<Blob> {
+    const headers = await getAuthHeaders();
+    const url = `${API_URL}/api/v1/tasks/${taskId}/responses/export?format=${format}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': headers.Authorization,
+      },
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      
+      // Handle specific error for not implemented endpoint
+      if (response.status === 404) {
+        throw new Error(`Export endpoint not implemented yet. Please contact your backend developer to implement: GET /api/v1/tasks/{taskId}/responses/export`);
+      }
+      
+      throw new Error(`Export failed: ${response.status} - ${errorText}`);
+    }
+    
+    return response.blob();
+  },
+
   // Questions
   async getTaskQuestions(taskId: string): Promise<any[]> {
     return apiCall(`/questions/${taskId}/questions`);

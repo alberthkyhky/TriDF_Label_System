@@ -1,0 +1,10 @@
+tunnels:
+  web:
+    proto: http
+    addr: 3000
+  api:
+    proto: http
+    addr: 5000
+version: 2
+authtoken: 30PHWnU0XO5vrWVsblmRleAgc7D_2T3FFN4LrkNujt6irXSXv
+

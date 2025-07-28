@@ -1,5 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import StreamingResponse
 from typing import List, Optional
+import io
 from app.auth.dependencies import get_current_user, require_admin
 from app.utils.error_handling import handle_router_errors
 from app.utils.access_control import require_task_access
@@ -21,6 +23,7 @@ from app.services.assignment_service import AssignmentService
 from app.services.question_service import QuestionService
 from app.services.response_service import ResponseService
 from app.services.user_service import user_service
+from app.services.export_service import ExportService
 
 # Create service instances (or use dependency injection)
 label_service = LabelService()
@@ -29,6 +32,7 @@ task_service = TaskService()
 assignment_service = AssignmentService()
 question_service = QuestionService()
 response_service = ResponseService()
+export_service = ExportService()
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -177,6 +181,48 @@ async def delete_task(
     )
 
 
+# ===== TASK RESPONSE EXPORT =====
+@router.get("/{task_id}/responses/export")
+@handle_router_errors
+async def export_task_responses(
+    task_id: str,
+    format: str = Query(default="csv", regex="^(csv|json)$"),
+    current_user: dict = Depends(require_admin)
+):
+    """
+    Export all responses for a specific task.
+    
+    Args:
+        task_id: The ID of the task to export responses for
+        format: Export format (csv or json)
+        current_user: Current authenticated admin user
+    
+    Returns:
+        StreamingResponse with the exported data
+    """
+    try:
+        if format == "csv":
+            content, filename = await export_service.export_task_responses_csv(task_id)
+            media_type = "text/csv"
+        else:  # json
+            content, filename = await export_service.export_task_responses_json(task_id)
+            media_type = "application/json"
+        
+        # Create file-like object from string content
+        file_like = io.BytesIO(content.encode('utf-8'))
+        
+        return StreamingResponse(
+            file_like,
+            media_type=media_type,
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+        
+    except Exception as e:
+        print(f"Error exporting task responses: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Export failed: {str(e)}"
+        )
 
 
 

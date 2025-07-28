@@ -15,8 +15,13 @@ class Settings:
     PROJECT_NAME: str = "Labeling System API"
     VERSION: str = "1.0.0"
     
-    # CORS Configuration
-    BACKEND_CORS_ORIGINS: list = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    # CORS Configuration - Allow network access
+    BACKEND_CORS_ORIGINS: list = [
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000",
+        "http://172.20.10.2:3000",  # Your network IP
+        "*"  # Allow all origins for development (remove in production)
+    ]
     
     # File Upload Configuration
     MAX_FILE_SIZE: int = 100 * 1024 * 1024  # 100MB

@@ -12,7 +12,7 @@ import {
   Chip,
   Skeleton
 } from '@mui/material';
-import { Edit } from '@mui/icons-material';
+import { Edit, Download } from '@mui/icons-material';
 import { TaskWithQuestionsData } from '../../../types/createTask';
 
 interface TaskListProps {
@@ -21,9 +21,10 @@ interface TaskListProps {
   onRefresh?: () => void;
   onStatusChange?: (taskId: string, status: string) => void;
   onEditTask?: (task: TaskWithQuestionsData) => void;
+  onDownloadAnswers?: (taskId: string, taskTitle: string) => void;
 }
 
-const TaskList: React.FC<TaskListProps> = ({ tasks, loading, onRefresh, onStatusChange, onEditTask }) => {
+const TaskList: React.FC<TaskListProps> = ({ tasks, loading, onRefresh, onStatusChange, onEditTask, onDownloadAnswers }) => {
   
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -54,6 +55,7 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, loading, onRefresh, onStatus
       />
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <Skeleton variant="rectangular" width={100} height={32} sx={{ borderRadius: 1 }} />
+        <Skeleton variant="circular" width={40} height={40} />
         <Skeleton variant="circular" width={40} height={40} />
       </Box>
     </ListItem>
@@ -117,6 +119,13 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, loading, onRefresh, onStatus
           </FormControl>
           <IconButton 
             size="small" 
+            onClick={() => onDownloadAnswers?.(task.id, task.title)}
+            title="Download Labeling Answers"
+          >
+            <Download />
+          </IconButton>
+          <IconButton 
+            size="small" 
             onClick={() => onEditTask?.(task)}
             title="Edit Task"
           >
@@ -154,7 +163,8 @@ export default React.memo(TaskList, (prevProps, nextProps) => {
   if (prevProps.loading !== nextProps.loading ||
       prevProps.onRefresh !== nextProps.onRefresh ||
       prevProps.onStatusChange !== nextProps.onStatusChange ||
-      prevProps.onEditTask !== nextProps.onEditTask) {
+      prevProps.onEditTask !== nextProps.onEditTask ||
+      prevProps.onDownloadAnswers !== nextProps.onDownloadAnswers) {
     return false;
   }
   
