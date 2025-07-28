@@ -57,13 +57,21 @@ const UserAssignment: React.FC = () => {
     try {
       setError(null);
       setLoading(true);
-      const [tasksData, usersData, labelClassesData] = await Promise.all([
+      const [tasksData, labelersData, adminsData, labelClassesData] = await Promise.all([
         api.getTasks(),
         api.getUsersByRole('labeler'),
+        api.getUsersByRole('admin'),
         api.getLabelClasses().catch(() => []) // Fallback to empty array if endpoint doesn't exist
       ]);
+      
+      // Combine labelers and admins, marking their roles
+      const combinedUsers = [
+        ...labelersData.map(user => ({ ...user, userRole: 'labeler' })),
+        ...adminsData.map(user => ({ ...user, userRole: 'admin' }))
+      ].sort((a, b) => a.email.localeCompare(b.email)); // Sort by email for consistency
+      
       setTasks(tasksData.filter(task => task.status === 'active'));
-      setUsers(usersData);
+      setUsers(combinedUsers);
       setLabelClasses(labelClassesData);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -230,14 +238,19 @@ const UserAssignment: React.FC = () => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                Available Labelers ({users.length})
+                Available Users ({users.length})
               </Typography>
               <List dense>
                 {users.slice(0, 5).map((user) => (
                   <ListItem key={user.id}>
                     <ListItemText
                       primary={user.full_name || 'Unknown'}
-                      secondary={user.email}
+                      secondary={`${user.email} • ${user.userRole}`}
+                    />
+                    <Chip 
+                      label={user.userRole} 
+                      size="small" 
+                      color={user.userRole === 'admin' ? 'primary' : 'secondary'}
                     />
                   </ListItem>
                 ))}
@@ -250,6 +263,9 @@ const UserAssignment: React.FC = () => {
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Assign Task to User</DialogTitle>
         <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: 1 }}>
+            You can assign tasks to both labelers and admins. Admins can switch to labeler view to complete assigned tasks.
+          </Typography>
           <FormControl fullWidth sx={{ mb: 2, mt: 1 }}>
             <InputLabel>Select Task</InputLabel>
             <Select
@@ -272,7 +288,21 @@ const UserAssignment: React.FC = () => {
             >
               {users.map((user) => (
                 <MenuItem key={user.id} value={user.id}>
-                  {user.full_name || 'Unknown'} ({user.email})
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <Box>
+                      <Typography variant="body1">
+                        {user.full_name || 'Unknown'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {user.email}
+                      </Typography>
+                    </Box>
+                    <Chip 
+                      label={user.userRole} 
+                      size="small" 
+                      color={user.userRole === 'admin' ? 'primary' : 'secondary'}
+                    />
+                  </Box>
                 </MenuItem>
               ))}
             </Select>

@@ -6,7 +6,7 @@ from app.auth.dependencies import get_current_user, require_admin
 from app.utils.error_handling import handle_router_errors
 from app.utils.access_control import require_task_access
 from app.models.tasks import (
-    Task, TaskCreate, TaskUpdate, TaskAssignment, TaskAssignmentRequest,
+    Task, TaskCreate, TaskUpdate, TaskWithQuestionsUpdate, TaskAssignment, TaskAssignmentRequest,
     LabelClass, LabelClassCreate, Question, QuestionCreate,
     QuestionResponse, QuestionResponseCreate,
     # Add new enhanced models if you want to use the new features
@@ -156,6 +156,24 @@ async def update_task(
         )
     
     return await task_service.update_task(task_id, update_data)
+
+@router.put("/{task_id}/with-questions", response_model=TaskWithQuestions)
+@handle_router_errors
+async def update_task_with_questions(
+    task_id: str,
+    update_data: TaskWithQuestionsUpdate,
+    current_user: dict = Depends(require_admin)
+):
+    """Update task with question template and media config (admin only)"""
+    # Check if task exists
+    existing_task = await task_service.get_task_by_id(task_id)
+    if not existing_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    
+    return await task_service.update_task_with_questions(task_id, update_data)
 
 @router.delete("/{task_id}")
 @handle_router_errors

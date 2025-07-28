@@ -19,10 +19,8 @@ import {
   VisibilityOff,
   AdminPanelSettings,
   Assignment,
-  RateReview
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
-
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -54,10 +52,9 @@ const LoginForm: React.FC = () => {
 
     try {
       if (tab === 0) {
-        console.log('Signing in:', email);
         await signIn(email, password);
+        window.location.reload();
       } else {
-        console.log('Signing up:', email, fullName);
         await signUp(email, password, fullName);
         setSuccess('Account created successfully! Please check your email for verification.');
         // Reset form
@@ -86,14 +83,14 @@ const LoginForm: React.FC = () => {
   const DemoAccounts = () => (
     <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
       <Typography variant="subtitle2" gutterBottom color="text.secondary">
-        Demo Accounts (for testing):
+        Demo Accounts:
       </Typography>
       
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <AdminPanelSettings fontSize="small" color="primary" />
           <Typography variant="caption">
-            Admin: admin@example.com
+            Admin
           </Typography>
           <Chip label="Full Access" size="small" color="primary" />
         </Box>
@@ -101,66 +98,10 @@ const LoginForm: React.FC = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Assignment fontSize="small" color="success" />
           <Typography variant="caption">
-            Labeler: labeler@example.com
+            Labeler
           </Typography>
           <Chip label="Labeling Tasks" size="small" color="success" />
         </Box>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <RateReview fontSize="small" color="warning" />
-          <Typography variant="caption">
-            Reviewer: reviewer@example.com
-          </Typography>
-          <Chip label="Review Tasks" size="small" color="warning" />
-        </Box>
-      </Box>
-      
-      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-        Password for all demo accounts: password123
-      </Typography>
-    </Box>
-  );
-
-  // Quick login buttons for demo accounts
-  const QuickLoginButtons = () => (
-    <Box sx={{ mt: 2 }}>
-      <Typography variant="subtitle2" gutterBottom>
-        Quick Demo Login:
-      </Typography>
-      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<AdminPanelSettings />}
-          onClick={() => {
-            setEmail('admin@example.com');
-            setPassword('password123');
-          }}
-        >
-          Admin
-        </Button>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<Assignment />}
-          onClick={() => {
-            setEmail('labeler@example.com');
-            setPassword('password123');
-          }}
-        >
-          Labeler
-        </Button>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<RateReview />}
-          onClick={() => {
-            setEmail('reviewer@example.com');
-            setPassword('password123');
-          }}
-        >
-          Reviewer
-        </Button>
       </Box>
     </Box>
   );
@@ -277,7 +218,6 @@ const LoginForm: React.FC = () => {
               {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
             </Button>
 
-            <QuickLoginButtons />
             <DemoAccounts />
           </TabPanel>
 

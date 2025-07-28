@@ -340,6 +340,17 @@ class TaskUpdate(BaseModel):
     required_agreements: Optional[int] = None
     deadline: Optional[datetime] = None
 
+class TaskWithQuestionsUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    instructions: Optional[str] = None
+    status: Optional[TaskStatus] = None
+    questions_number: Optional[int] = None
+    required_agreements: Optional[int] = None
+    deadline: Optional[datetime] = None
+    question_template: Optional[QuestionTemplate] = None
+    media_config: Optional[MediaConfiguration] = None
+
 class QuestionStatus(str, Enum):
     PENDING = "pending"
     LABELED = "labeled"

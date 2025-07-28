@@ -159,6 +159,57 @@ class TaskService(BaseService):
         except Exception as e:
             raise self._handle_supabase_error("updating task", e)
     
+    async def update_task_with_questions(self, task_id: str, update_data) -> dict:
+        """Update task with question template and media config"""
+        try:
+            from app.models.tasks import TaskWithQuestionsUpdate
+            
+            # Convert to dict and filter out None values
+            update_dict = {}
+            
+            # Handle basic fields
+            if update_data.title is not None:
+                update_dict["title"] = update_data.title
+            if update_data.description is not None:
+                update_dict["description"] = update_data.description
+            if update_data.instructions is not None:
+                update_dict["instructions"] = update_data.instructions
+            if update_data.status is not None:
+                update_dict["status"] = update_data.status
+            if update_data.questions_number is not None:
+                update_dict["questions_number"] = update_data.questions_number
+            if update_data.required_agreements is not None:
+                update_dict["required_agreements"] = update_data.required_agreements
+            if update_data.deadline is not None:
+                update_dict["deadline"] = update_data.deadline.isoformat()
+            
+            # Handle question template (serialize to JSON)
+            if update_data.question_template is not None:
+                update_dict["question_template"] = update_data.question_template.dict()
+            
+            # Handle media config (serialize to JSON)
+            if update_data.media_config is not None:
+                update_dict["media_config"] = {
+                    "num_images": update_data.media_config.num_images,
+                    "num_videos": update_data.media_config.num_videos,
+                    "num_audios": update_data.media_config.num_audios,
+                }
+            
+            if not update_dict:
+                # Return existing task with questions format
+                return await self.get_task_with_questions_by_id(task_id)
+            
+            # Update the task
+            result = self.supabase.table("tasks").update(update_dict).eq("id", task_id).execute()
+            if result.data:
+                # Return the updated task in TaskWithQuestions format
+                return await self.get_task_with_questions_by_id(task_id)
+            
+            raise Exception("Failed to update task with questions")
+            
+        except Exception as e:
+            raise self._handle_supabase_error("updating task with questions", e)
+    
     async def delete_task(self, task_id: str) -> bool:
         """Delete task and related data"""
         try:

@@ -655,25 +655,25 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
             
             {/* Overall Progress Summary */}
             <Paper sx={{ p: 2, bgcolor: 'primary.50' }}>
-              <Typography variant="subtitle1" gutterBottom component="span">Overall Task Progress</Typography>
+              <Typography variant="subtitle1" gutterBottom component="span"> Overall Task Progress</Typography>
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 <Box sx={{ flex: 1, minWidth: 120, textAlign: 'center' }}>
                   <Typography variant="h4" color="primary" component="span">
                     {assignments.filter(a => a.is_active).length}
                   </Typography>
-                  <Typography variant="body2" component="span">Active Labelers</Typography>
+                  <Typography variant="body2" component="span"> Active Labelers</Typography>
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 120, textAlign: 'center' }}>
                   <Typography variant="h4" color="success.main" component="span">
                     {assignments.reduce((sum, a) => sum + (a.completed_labels || 0), 0)}
                   </Typography>
-                  <Typography variant="body2" component="span">Total Completed</Typography>
+                  <Typography variant="body2" component="span"> Total Completed</Typography>
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 120, textAlign: 'center' }}>
                   <Typography variant="h4" color="warning.main" component="span">
                     {assignments.reduce((sum, a) => sum + (a.target_labels || 0), 0)}
                   </Typography>
-                  <Typography variant="body2" component="span">Total Target</Typography>
+                  <Typography variant="body2" component="span"> Total Target</Typography>
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 120, textAlign: 'center' }}>
                   <Typography variant="h4" color="info.main" component="span">
@@ -685,7 +685,7 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
                       return ((totalCompleted / totalTarget) * 100).toFixed(1);
                     })()}%
                   </Typography>
-                  <Typography variant="body2" component="span">Overall Progress</Typography>
+                  <Typography variant="body2" component="span"> Overall Progress</Typography>
                 </Box>
               </Box>
             </Paper>
