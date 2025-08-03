@@ -4,6 +4,8 @@ import { TaskWithQuestionsData, MediaConfiguration, TaskFormData, MediaFile } fr
 import { QuestionResponseCreate, QuestionResponseDetailed, QuestionWithMedia } from '../types/labeling';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+console.log('API_URL from env:', process.env.REACT_APP_API_URL);
+console.log('Final API_URL:', API_URL);
 
 // Enhanced TaskWithQuestionsResponse interface
 interface TaskWithQuestionsResponse {
@@ -40,6 +42,7 @@ const getAuthHeaders = async () => {
   return {
     'Authorization': `Bearer ${session?.access_token}`,
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true', // Required for ngrok free tier
   };
 };
 
@@ -59,6 +62,7 @@ export const getToken = (): string | null => {
 const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   const headers = await getAuthHeaders();
   const url = `${API_URL}/api/v1${endpoint}`;
+  console.log(url);
   
   // Create timeout promise
   const timeoutPromise = new Promise((_, reject) => {
@@ -168,7 +172,8 @@ export const api = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
       },
       body: JSON.stringify(taskData)
     });
@@ -211,7 +216,8 @@ export const api = {
     const response = await fetch(`${API_URL}/api/v1/tasks/${taskId}/enhanced`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
       }
     });
 
@@ -245,7 +251,8 @@ export const api = {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
       },
       body: JSON.stringify(taskData)
     });
@@ -365,6 +372,7 @@ export const api = {
     const response = await fetch(url, {
       headers: {
         'Authorization': headers.Authorization,
+        'ngrok-skip-browser-warning': 'true'
       },
     });
     
@@ -383,6 +391,7 @@ export const api = {
     const response = await fetch(url, {
       headers: {
         'Authorization': headers.Authorization,
+        'ngrok-skip-browser-warning': 'true'
       },
     });
     
@@ -438,7 +447,8 @@ export const api = {
     const response = await fetch(`${API_URL}/api/v1/tasks/media/available`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
       }
     });
 
@@ -467,7 +477,8 @@ export const api = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
       },
       body: JSON.stringify(sampleRequest)
     });
@@ -492,7 +503,8 @@ export const api = {
     const response = await fetch(`${API_URL}/api/v1/tasks/media/create-samples`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
       }
     });
 
@@ -572,7 +584,8 @@ export const api = {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
           },
           body: JSON.stringify({
             file_path: mediaFile.file_path  // Send absolute file path
@@ -608,7 +621,8 @@ export const api = {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
       }
     });
 
@@ -750,7 +764,8 @@ export const api = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
       },
       body: JSON.stringify(responseData)
     });
@@ -795,7 +810,8 @@ export const api = {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
       }
     });
 

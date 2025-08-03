@@ -20,6 +20,7 @@ class Settings:
         "http://localhost:3000", 
         "http://127.0.0.1:3000",
         "http://172.20.10.2:3000",  # Your network IP
+        "https://a36ba7a35937.ngrok-free.app",  # ngrok frontend URL
         "*"  # Allow all origins for development (remove in production)
     ]
     

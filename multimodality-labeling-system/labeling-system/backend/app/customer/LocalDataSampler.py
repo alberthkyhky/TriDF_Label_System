@@ -49,4 +49,11 @@ sampler = LocalDataSampler(root)
 csv_file = "/Users/yangping/Studio/side-project/ICLR2026_MMID/multimodality-labeling-system/labeling-system/backend/taskData/aud_voice_cloning/collect.csv"
 sampler.load_csv("aud_voice_cloning", csv_file)
 
-# print(sampler.sample_by_idx("aud_voice_cloning", 0))
+# # init data root
+# root="dataset_root"
+# sampler = LocalDataSampler(root)
+
+# # append task and data to loader 
+# csv_file = "data_csv"
+# taskname = "aud_voice_cloning"
+# sampler.load_csv(taskname, csv_file)
