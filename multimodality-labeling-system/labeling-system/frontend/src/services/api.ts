@@ -66,7 +66,7 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
   
   // Create timeout promise
   const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error(`API call timeout after 5 seconds: ${url}`)), 5000);
+    setTimeout(() => reject(new Error(`API call timeout after 10 seconds: ${url}`)), 10000);
   });
   
   // Create fetch promise
@@ -313,7 +313,13 @@ export const api = {
   },
 
   async getAllAssignments(): Promise<any[]> {
-    return apiCall('/assignments/all');
+    // Get all assignments with high limit to ensure we get everything
+    return apiCall('/assignments/all?limit=1000');
+  },
+
+  async getUserAssignmentOverview(): Promise<any> {
+    // Get optimized user assignment overview data in single call
+    return apiCall('/assignments/user-assignment-overview');
   },
 
   async getTaskAssignments(taskId: string): Promise<any[]> {
@@ -359,10 +365,6 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ is_active: isActive }),
     });
-  },
-  
-  async getUserAssignments(userId: string): Promise<any[]> {
-    return apiCall(`/users/${userId}/assignments`);
   },
   
   async exportAssignmentReport(format: 'csv' | 'json' = 'csv'): Promise<Blob> {

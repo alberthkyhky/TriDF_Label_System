@@ -21,6 +21,7 @@ import { useTaskFormData, defaultTaskFormData } from './formDataHook';
 import TaskList from './TaskManagement/TaskList';
 import TaskCreationStepper from './TaskManagement/TaskCreationStepper';
 import TaskModificationDialog from './TaskManagement/TaskModificationDialog';
+import TaskDeleteDialog from './TaskManagement/TaskDeleteDialog';
 
 const TaskManagement: React.FC = () => {
   const [tasks, setTasks] = useState<TaskWithQuestionsData[]>([]);
@@ -30,6 +31,10 @@ const TaskManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [duplicateAlert, setDuplicateAlert] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<TaskWithQuestionsData | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const { formData, setFormData } = useTaskFormData();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,7 +83,16 @@ const TaskManagement: React.FC = () => {
       
     } catch (error: any) {
       console.error('Error uploading JSON:', error);
-      setError(error.message || 'Failed to create task from JSON file');
+      
+      // Check if it's a duplicate name error  
+      if (error.message && error.message.includes('already exists')) {
+        // Extract task name from the error message or use a generic message
+        const taskNameMatch = error.message.match(/'([^']+)' already exists/);
+        const taskName = taskNameMatch ? taskNameMatch[1] : 'Unknown';
+        setDuplicateAlert(taskName);
+      } else {
+        setError(error.message || 'Failed to create task from JSON file');
+      }
     } finally {
       setLoading(false);
       // Reset file input
@@ -193,6 +207,38 @@ const TaskManagement: React.FC = () => {
     handleCloseEditDialog();
   };
 
+  const handleDeleteTask = (task: TaskWithQuestionsData) => {
+    setTaskToDelete(task);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+    setTaskToDelete(null);
+  };
+
+  const handleConfirmDelete = async (taskId: string) => {
+    try {
+      setDeleteLoading(true);
+      setError(null);
+      
+      await api.deleteTask(taskId);
+      
+      // Close dialog and refresh tasks
+      handleCloseDeleteDialog();
+      fetchTasks();
+      
+      // Show success message
+      setUploadSuccess(`Task "${taskToDelete?.title}" has been deleted successfully.`);
+      
+    } catch (error: any) {
+      console.error('Error deleting task:', error);
+      setError(error.message || 'Failed to delete task');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   if (loading && !open) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
@@ -245,6 +291,7 @@ const TaskManagement: React.FC = () => {
         onStatusChange={handleStatusChange} 
         onEditTask={handleEditTask}
         onDownloadAnswers={handleDownloadAnswers}
+        onDeleteTask={handleDeleteTask}
       />
 
       <Dialog 
@@ -268,6 +315,10 @@ const TaskManagement: React.FC = () => {
               fetchTasks();
             }}
             onCancel={() => setOpen(false)}
+            onDuplicateError={(taskName) => {
+              setOpen(false);
+              setDuplicateAlert(taskName);
+            }}
           />
         </DialogContent>
         
@@ -279,6 +330,19 @@ const TaskManagement: React.FC = () => {
         task={selectedTask}
         onClose={handleCloseEditDialog}
         onSave={handleSaveTask}
+        onDuplicateError={(taskName) => {
+          handleCloseEditDialog();
+          setDuplicateAlert(taskName);
+        }}
+      />
+
+      {/* Task Delete Dialog */}
+      <TaskDeleteDialog
+        open={deleteDialogOpen}
+        task={taskToDelete}
+        onClose={handleCloseDeleteDialog}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
       />
 
       {/* Success Snackbar */}
@@ -288,6 +352,23 @@ const TaskManagement: React.FC = () => {
         onClose={() => setUploadSuccess(null)}
         message={uploadSuccess}
       />
+
+      {/* Duplicate Name Alert Snackbar */}
+      <Snackbar
+        open={!!duplicateAlert}
+        autoHideDuration={8000}
+        onClose={() => setDuplicateAlert(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          severity="warning" 
+          onClose={() => setDuplicateAlert(null)}
+          sx={{ width: '100%' }}
+        >
+          <strong>⚠️ Task Name Already Exists</strong><br />
+          A task with the name "{duplicateAlert}" already exists. Please choose a different name.
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

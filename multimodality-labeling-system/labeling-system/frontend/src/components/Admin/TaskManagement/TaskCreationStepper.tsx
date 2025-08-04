@@ -20,13 +20,15 @@ interface TaskCreationStepperProps {
   setFormData: (data: TaskFormData) => void;
   onSuccess: () => void;
   onCancel: () => void;
+  onDuplicateError: (taskName: string) => void;
 }
 
 const TaskCreationStepper: React.FC<TaskCreationStepperProps> = ({
   formData,
   setFormData,
   onSuccess,
-  onCancel
+  onCancel,
+  onDuplicateError
 }) => {
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -87,7 +89,15 @@ const TaskCreationStepper: React.FC<TaskCreationStepperProps> = ({
 
     } catch (err: any) {
       console.error('Error creating task:', err);
-      setError(err.message || 'Failed to create task');
+      
+      // Check if it's a duplicate name error
+      if (err.message && err.message.includes('already exists')) {
+        // Close the dialog and show popup alert
+        onCancel();
+        onDuplicateError(formData.title);
+      } else {
+        setError(err.message || 'Failed to create task');
+      }
     } finally {
       setLoading(false);
     }

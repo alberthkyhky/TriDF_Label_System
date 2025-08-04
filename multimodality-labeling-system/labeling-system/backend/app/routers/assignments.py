@@ -46,6 +46,14 @@ async def get_my_assignments(current_user: dict = Depends(get_current_user)):
     await user_service.update_user_last_active(current_user["id"])
     return await assignment_service.get_user_assignments(current_user["id"])
 
+@router.get("/user-assignment-overview")
+@handle_router_errors
+async def get_user_assignment_overview(
+    current_user: dict = Depends(require_admin)
+):
+    """Get complete user assignment overview data in single call (admin only)"""
+    return await assignment_service.get_user_assignment_overview()
+
 @router.get("/export")
 @handle_router_errors
 async def export_assignments(

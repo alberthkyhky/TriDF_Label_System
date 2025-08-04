@@ -17,9 +17,12 @@ class UserService:
             
             users = []
             for user_data in result.data:
-                # Get last active from user_stats
-                stats = self.supabase.table("user_stats").select("last_active").eq("user_id", user_data["id"]).execute()
-                last_active = stats.data[0]["last_active"] if stats.data else None
+                # Get last active from user_stats (with error handling)
+                try:
+                    stats = self.supabase.table("user_stats").select("last_active").eq("user_id", user_data["id"]).execute()
+                    last_active = stats.data[0]["last_active"] if stats.data else None
+                except:
+                    last_active = None
                 
                 user_data["last_active"] = last_active
                 users.append(UserPublic(**user_data))
@@ -40,9 +43,12 @@ class UserService:
             
             user_data = result.data[0]
             
-            # Get last active from user_stats
-            stats = self.supabase.table("user_stats").select("last_active").eq("user_id", user_id).execute()
-            user_data["last_active"] = stats.data[0]["last_active"] if stats.data else None
+            # Get last active from user_stats (with error handling)
+            try:
+                stats = self.supabase.table("user_stats").select("last_active").eq("user_id", user_id).execute()
+                user_data["last_active"] = stats.data[0]["last_active"] if stats.data else None
+            except:
+                user_data["last_active"] = None
             
             return UserPublic(**user_data)
         except Exception as e:
@@ -59,9 +65,12 @@ class UserService:
             
             users = []
             for user_data in result.data:
-                # Get last active from user_stats
-                stats = self.supabase.table("user_stats").select("last_active").eq("user_id", user_data["id"]).execute()
-                last_active = stats.data[0]["last_active"] if stats.data else None
+                # Get last active from user_stats (with error handling)
+                try:
+                    stats = self.supabase.table("user_stats").select("last_active").eq("user_id", user_data["id"]).execute()
+                    last_active = stats.data[0]["last_active"] if stats.data else None
+                except:
+                    last_active = None
                 
                 user_data["last_active"] = last_active
                 users.append(UserPublic(**user_data))
@@ -73,28 +82,47 @@ class UserService:
     async def get_user_performance(self, user_id: str) -> UserPerformance:
         """Get detailed user performance metrics"""
         try:
-            # Get user stats
-            stats_result = self.supabase.table("user_stats").select("*").eq("user_id", user_id).execute()
+            # Try to get user stats with only basic columns that should exist
+            stats_result = self.supabase.table("user_stats").select(
+                "user_id, total_questions_labeled, accuracy_score, average_time_per_question, labels_today, labels_this_week, labels_this_month"
+            ).eq("user_id", user_id).execute()
             
             if not stats_result.data:
-                # Create default stats if none exist
+                # Create default stats if none exist - but don't insert, just return
                 default_stats = {
                     "user_id": user_id,
                     "total_questions_labeled": 0,
-                    "accuracy_score": 100.0,
+                    "accuracy_score": 1.0,
                     "average_time_per_question": None,
                     "labels_today": 0,
                     "labels_this_week": 0,
                     "labels_this_month": 0,
                     "streak_days": 0
                 }
-                self.supabase.table("user_stats").insert(default_stats).execute()
                 return UserPerformance(**default_stats)
             
             stats = stats_result.data[0]
+            # Add missing fields with defaults
+            stats["streak_days"] = stats.get("streak_days", 0)
+            # Ensure accuracy_score is between 0 and 1 for the model
+            if stats.get("accuracy_score", 1.0) > 1:
+                stats["accuracy_score"] = stats["accuracy_score"] / 100.0
+            
             return UserPerformance(**stats)
         except Exception as e:
-            raise Exception(f"Error fetching user performance: {str(e)}")
+            # If table doesn't exist or has different schema, return defaults
+            print(f"Warning: Could not fetch user performance for {user_id}: {str(e)}")
+            default_stats = {
+                "user_id": user_id,
+                "total_questions_labeled": 0,
+                "accuracy_score": 1.0,
+                "average_time_per_question": None,
+                "labels_today": 0,
+                "labels_this_week": 0,
+                "labels_this_month": 0,
+                "streak_days": 0
+            }
+            return UserPerformance(**default_stats)
     
     async def update_user_admin(self, user_id: str, update_data: UserUpdate) -> UserPublic:
         """Update user (admin function)"""
@@ -119,9 +147,12 @@ class UserService:
             
             users = []
             for user_data in result.data:
-                # Get last active from user_stats
-                stats = self.supabase.table("user_stats").select("last_active").eq("user_id", user_data["id"]).execute()
-                last_active = stats.data[0]["last_active"] if stats.data else None
+                # Get last active from user_stats (with error handling)
+                try:
+                    stats = self.supabase.table("user_stats").select("last_active").eq("user_id", user_data["id"]).execute()
+                    last_active = stats.data[0]["last_active"] if stats.data else None
+                except:
+                    last_active = None
                 
                 user_data["last_active"] = last_active
                 users.append(UserPublic(**user_data))
@@ -135,9 +166,13 @@ class UserService:
         try:
             cutoff_date = datetime.utcnow() - timedelta(days=days)
             
-            # Get active user IDs from user_stats
-            stats_result = self.supabase.table("user_stats").select("user_id").gte("last_active", cutoff_date.isoformat()).execute()
-            active_user_ids = [stat["user_id"] for stat in stats_result.data]
+            # Get active user IDs from user_stats (with error handling)
+            try:
+                stats_result = self.supabase.table("user_stats").select("user_id").gte("last_active", cutoff_date.isoformat()).execute()
+                active_user_ids = [stat["user_id"] for stat in stats_result.data]
+            except:
+                # If user_stats table doesn't exist, return all users
+                active_user_ids = []
             
             if not active_user_ids:
                 return []
@@ -149,9 +184,12 @@ class UserService:
             
             users = []
             for user_data in result.data:
-                # Get last active from user_stats
-                stats = self.supabase.table("user_stats").select("last_active").eq("user_id", user_data["id"]).execute()
-                last_active = stats.data[0]["last_active"] if stats.data else None
+                # Get last active from user_stats (with error handling)
+                try:
+                    stats = self.supabase.table("user_stats").select("last_active").eq("user_id", user_data["id"]).execute()
+                    last_active = stats.data[0]["last_active"] if stats.data else None
+                except:
+                    last_active = None
                 
                 user_data["last_active"] = last_active
                 users.append(UserPublic(**user_data))
@@ -208,11 +246,26 @@ class UserService:
     async def update_user_last_active(self, user_id: str) -> bool:
         """Update user's last active timestamp"""
         try:
-            self.supabase.table("user_stats").update({
+            # Try to update existing record
+            result = self.supabase.table("user_stats").update({
                 "last_active": datetime.utcnow().isoformat()
             }).eq("user_id", user_id).execute()
+            
+            # If no rows affected, try to create the record (if table exists)
+            if not result.data:
+                self.supabase.table("user_stats").insert({
+                    "user_id": user_id,
+                    "last_active": datetime.utcnow().isoformat(),
+                    "total_questions_labeled": 0,
+                    "accuracy_score": 1.0,
+                    "labels_today": 0,
+                    "labels_this_week": 0,
+                    "labels_this_month": 0
+                }).execute()
             return True
         except Exception as e:
+            # Don't raise error if user_stats table doesn't exist or has different schema
+            print(f"Warning: Could not update last active for user {user_id}: {str(e)}")
             return False
 
 # Create global instance

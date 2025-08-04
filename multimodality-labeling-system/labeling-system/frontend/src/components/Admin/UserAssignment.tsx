@@ -23,9 +23,13 @@ import {
   CardContent,
   OutlinedInput,
   SelectChangeEvent,
-  Skeleton
+  Skeleton,
+  Collapse,
+  IconButton,
+  LinearProgress,
+  Divider
 } from '@mui/material';
-import { Assignment } from '@mui/icons-material';
+import { Assignment, ExpandMore, ExpandLess, Schedule } from '@mui/icons-material';
 import { api } from '../../services/api';
 import { TaskWithQuestionsData } from '../../types/createTask';
 
@@ -35,13 +39,31 @@ interface LabelClass {
   description?: string;
 }
 
+interface UserAssignmentStats {
+  assignment_id: string;
+  task_id: string;
+  task_title: string;
+  completed_labels: number;
+  target_labels: number;
+  is_active: boolean;
+}
+
+interface EnhancedUser {
+  id: string;
+  email: string;
+  full_name?: string;
+  userRole: 'labeler' | 'admin';
+  currentAssignments?: UserAssignmentStats[];
+}
+
 const UserAssignment: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [tasks, setTasks] = useState<TaskWithQuestionsData[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<EnhancedUser[]>([]);
   const [labelClasses, setLabelClasses] = useState<LabelClass[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     task_id: '',
     user_id: '',
@@ -57,28 +79,44 @@ const UserAssignment: React.FC = () => {
     try {
       setError(null);
       setLoading(true);
-      const [tasksData, labelersData, adminsData, labelClassesData] = await Promise.all([
-        api.getTasks(),
-        api.getUsersByRole('labeler'),
-        api.getUsersByRole('admin'),
-        api.getLabelClasses().catch(() => []) // Fallback to empty array if endpoint doesn't exist
-      ]);
       
-      // Combine labelers and admins, marking their roles
-      const combinedUsers = [
-        ...labelersData.map(user => ({ ...user, userRole: 'labeler' })),
-        ...adminsData.map(user => ({ ...user, userRole: 'admin' }))
-      ].sort((a, b) => a.email.localeCompare(b.email)); // Sort by email for consistency
+      const startTime = performance.now();
+      console.log('Fetching user assignment overview...');
       
-      setTasks(tasksData.filter(task => task.status === 'active'));
-      setUsers(combinedUsers);
-      setLabelClasses(labelClassesData);
+      // Use the new optimized endpoint for a single API call
+      const overviewData = await api.getUserAssignmentOverview();
+      
+      console.log('Received overview data:', {
+        tasks: overviewData.tasks?.length || 0,
+        users: overviewData.users?.length || 0,
+        labelClasses: overviewData.labelClasses?.length || 0
+      });
+      
+      // Data is already processed by the backend
+      setTasks(overviewData.tasks || []);
+      setUsers(overviewData.users || []);
+      setLabelClasses(overviewData.labelClasses || []);
+      
+      const endTime = performance.now();
+      console.log(`✅ Fetched user assignment overview in ${(endTime - startTime).toFixed(2)}ms`);
     } catch (error) {
-      console.error('Error fetching data:', error);
-      setError('Failed to fetch data');
+      console.error('Error fetching user assignment overview:', error);
+      setError('Failed to fetch user assignment overview. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleUserExpansion = (userId: string) => {
+    setExpandedUsers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) {
+        newSet.delete(userId);
+      } else {
+        newSet.add(userId);
+      }
+      return newSet;
+    });
   };
 
   const handleAssignedClassesChange = (event: SelectChangeEvent<string[]>) => {
@@ -241,19 +279,126 @@ const UserAssignment: React.FC = () => {
                 Available Users ({users.length})
               </Typography>
               <List dense>
-                {users.slice(0, 5).map((user) => (
-                  <ListItem key={user.id}>
-                    <ListItemText
-                      primary={user.full_name || 'Unknown'}
-                      secondary={`${user.email} • ${user.userRole}`}
-                    />
-                    <Chip 
-                      label={user.userRole} 
-                      size="small" 
-                      color={user.userRole === 'admin' ? 'primary' : 'secondary'}
-                    />
-                  </ListItem>
-                ))}
+                {users.slice(0, 8).map((user) => {
+                  const isExpanded = expandedUsers.has(user.id);
+                  const incompleteAssignments = user.currentAssignments?.filter(a => a.completed_labels < a.target_labels) || [];
+                  const totalAssignedQuestions = incompleteAssignments.reduce((sum, a) => sum + a.target_labels, 0);
+                  const completedAssignedQuestions = incompleteAssignments.reduce((sum, a) => sum + a.completed_labels, 0);
+                  
+                  return (
+                    <React.Fragment key={user.id}>
+                      <ListItem 
+                        sx={{ 
+                          cursor: 'pointer',
+                          '&:hover': { backgroundColor: 'action.hover' }
+                        }}
+                        onClick={() => toggleUserExpansion(user.id)}
+                      >
+                        <ListItemText
+                          primary={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="subtitle2">
+                                {user.full_name || 'Unknown'}
+                              </Typography>
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                <Chip 
+                                  label={user.userRole} 
+                                  size="small" 
+                                  color={user.userRole === 'admin' ? 'primary' : 'secondary'}
+                                />
+                                {incompleteAssignments.length > 0 && (
+                                  <Chip 
+                                    label={`${incompleteAssignments.length} incomplete`}
+                                    size="small"
+                                    variant="outlined"
+                                    color="warning"
+                                  />
+                                )}
+                              </Box>
+                            </Box>
+                          }
+                          secondary={
+                            <Box>
+                              <Typography variant="body2" color="text.secondary">
+                                {user.email}
+                              </Typography>
+                              {incompleteAssignments.length > 0 ? (
+                                <Typography variant="caption" color="primary">
+                                  {completedAssignedQuestions}/{totalAssignedQuestions} questions completed across {incompleteAssignments.length} task{incompleteAssignments.length !== 1 ? 's' : ''}
+                                </Typography>
+                              ) : (
+                                <Typography variant="caption" color="success.main">
+                                  No incomplete assignments
+                                </Typography>
+                              )}
+                            </Box>
+                          }
+                        />
+                        <IconButton size="small">
+                          {isExpanded ? <ExpandLess /> : <ExpandMore />}
+                        </IconButton>
+                      </ListItem>
+                      
+                      <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                        <Box sx={{ pl: 2, pr: 1, pb: 1 }}>
+                          {incompleteAssignments.length > 0 && (
+                            <Box>
+                              <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Schedule fontSize="small" />
+                                Incomplete Assignments
+                              </Typography>
+                              {incompleteAssignments.map((assignment) => {
+                                const progress = assignment.target_labels > 0 ? (assignment.completed_labels / assignment.target_labels) * 100 : 0;
+                                const isOverdue = !assignment.is_active; // Inactive assignments could be considered overdue
+                                
+                                return (
+                                  <Box key={assignment.assignment_id} sx={{ mb: 1 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                                          {assignment.task_title}
+                                        </Typography>
+                                        {!assignment.is_active && (
+                                          <Chip 
+                                            label="Inactive" 
+                                            size="small" 
+                                            color="warning" 
+                                            variant="outlined"
+                                            sx={{ fontSize: '0.6rem', height: '16px' }}
+                                          />
+                                        )}
+                                      </Box>
+                                      <Typography 
+                                        variant="caption" 
+                                        color={progress === 0 ? "error" : "text.secondary"}
+                                        sx={{ fontWeight: progress === 0 ? 600 : 400 }}
+                                      >
+                                        {assignment.completed_labels}/{assignment.target_labels}
+                                      </Typography>
+                                    </Box>
+                                    <LinearProgress 
+                                      variant="determinate" 
+                                      value={progress}
+                                      color={progress === 0 ? "error" : progress > 50 ? "success" : "warning"}
+                                      sx={{ height: 4, borderRadius: 2 }}
+                                    />
+                                  </Box>
+                                );
+                              })}
+                            </Box>
+                          )}
+                          
+                          {incompleteAssignments.length === 0 && (
+                            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              All assignments completed or no assignments found
+                            </Typography>
+                          )}
+                        </Box>
+                        <Divider />
+                      </Collapse>
+                    </React.Fragment>
+                  );
+                })}
               </List>
             </CardContent>
           </Card>

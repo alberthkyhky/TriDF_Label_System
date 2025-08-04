@@ -18,9 +18,10 @@ interface Props {
   onClose: () => void;
   onTaskCreated: () => void;
   labelClasses: LabelClass[];
+  onDuplicateError?: (taskName: string) => void;
 }
 
-const TaskCreateDialog: React.FC<Props> = ({ open, onClose, onTaskCreated, labelClasses }) => {
+const TaskCreateDialog: React.FC<Props> = ({ open, onClose, onTaskCreated, labelClasses, onDuplicateError }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
@@ -48,7 +49,19 @@ const TaskCreateDialog: React.FC<Props> = ({ open, onClose, onTaskCreated, label
         required_agreements: 1,
       });
     } catch (err: any) {
-      setError(err.message);
+      // Check if it's a duplicate name error
+      if (err.message && err.message.includes('already exists')) {
+        // Close dialog and show popup alert if handler is provided
+        if (onDuplicateError) {
+          onClose();
+          onDuplicateError(formData.title);
+        } else {
+          // Fallback to inline error if no handler provided
+          setError(`⚠️ Task Name Already Exists\n\nA task with the name "${formData.title}" already exists. Please choose a different name to continue.`);
+        }
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }

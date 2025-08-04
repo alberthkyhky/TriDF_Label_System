@@ -47,6 +47,9 @@ class TaskService(BaseService):
     async def create_task(self, task_data: TaskCreate, created_by: str) -> Task:
         """Create new task"""
         try:
+            # Check for duplicate task name
+            await self._check_duplicate_task_name(task_data.title)
+            
             task_dict = task_data.dict()
             task_dict["created_by"] = created_by
             task_dict["status"] = "draft"
@@ -64,6 +67,9 @@ class TaskService(BaseService):
     async def create_task_with_questions(self, task_data: TaskWithQuestionsCreate, created_by: str) -> TaskWithQuestions:
         """Create task with question template - NO media generation, NO question creation"""
         try:
+            # Check for duplicate task name
+            await self._check_duplicate_task_name(task_data.title)
+            
             # Create the base task with template and config stored as metadata
             task_dict = {
                 "title": task_data.title,
@@ -149,6 +155,10 @@ class TaskService(BaseService):
             if not update_dict:
                 return await self.get_task_by_id(task_id)
             
+            # Check for duplicate name if title is being changed
+            if "title" in update_dict:
+                await self._check_duplicate_task_name_for_update(task_id, update_dict["title"])
+            
             if update_dict.get("deadline"):
                 update_dict["deadline"] = update_dict["deadline"].isoformat()
             
@@ -169,6 +179,8 @@ class TaskService(BaseService):
             
             # Handle basic fields
             if update_data.title is not None:
+                # Check for duplicate name if title is being changed
+                await self._check_duplicate_task_name_for_update(task_id, update_data.title)
                 update_dict["title"] = update_data.title
             if update_data.description is not None:
                 update_dict["description"] = update_data.description
@@ -213,11 +225,41 @@ class TaskService(BaseService):
     async def delete_task(self, task_id: str) -> bool:
         """Delete task and related data"""
         try:
+            # First, get all assignment IDs for this task
+            assignments_result = self.supabase.table("task_assignments")\
+                .select("id")\
+                .eq("task_id", task_id)\
+                .execute()
+            
+            assignment_ids = [assignment["id"] for assignment in assignments_result.data]
+            
             # Delete in order: responses -> assignments -> questions -> task
-            self.supabase.table("question_responses").delete().eq("task_assignment_id.in.(select id from task_assignments where task_id = '{}')".format(task_id)).execute()
-            self.supabase.table("task_assignments").delete().eq("task_id", task_id).execute()
-            self.supabase.table("questions").delete().eq("task_id", task_id).execute()
-            self.supabase.table("tasks").delete().eq("id", task_id).execute()
+            if assignment_ids:
+                # Delete responses for all assignments of this task
+                for assignment_id in assignment_ids:
+                    self.supabase.table("question_responses")\
+                        .delete()\
+                        .eq("task_assignment_id", assignment_id)\
+                        .execute()
+            
+            # Delete task assignments
+            self.supabase.table("task_assignments")\
+                .delete()\
+                .eq("task_id", task_id)\
+                .execute()
+            
+            # Delete questions for this task
+            self.supabase.table("questions")\
+                .delete()\
+                .eq("task_id", task_id)\
+                .execute()
+            
+            # Finally, delete the task itself
+            result = self.supabase.table("tasks")\
+                .delete()\
+                .eq("id", task_id)\
+                .execute()
+            
             return True
         except Exception as e:
             raise self._handle_supabase_error("deleting task", e)
@@ -250,3 +292,29 @@ class TaskService(BaseService):
             )
         except Exception as e:
             raise self._handle_supabase_error("fetching enhanced task", e)
+    
+    async def _check_duplicate_task_name(self, title: str) -> None:
+        """Check if a task with the given title already exists"""
+        try:
+            result = self.supabase.table("tasks").select("id, title").eq("title", title).execute()
+            if result.data:
+                raise Exception(f"A task with the name '{title}' already exists. Please choose a different name.")
+        except Exception as e:
+            # If it's our custom duplicate error, re-raise it
+            if "already exists" in str(e):
+                raise e
+            # Otherwise, handle as a general database error
+            raise self._handle_supabase_error("checking for duplicate task name", e)
+    
+    async def _check_duplicate_task_name_for_update(self, task_id: str, title: str) -> None:
+        """Check if a task with the given title already exists (excluding current task)"""
+        try:
+            result = self.supabase.table("tasks").select("id, title").eq("title", title).neq("id", task_id).execute()
+            if result.data:
+                raise Exception(f"A task with the name '{title}' already exists. Please choose a different name.")
+        except Exception as e:
+            # If it's our custom duplicate error, re-raise it
+            if "already exists" in str(e):
+                raise e
+            # Otherwise, handle as a general database error
+            raise self._handle_supabase_error("checking for duplicate task name", e)

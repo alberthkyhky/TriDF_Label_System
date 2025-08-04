@@ -11,6 +11,91 @@ class AssignmentService:
     def __init__(self):
         self.supabase = get_supabase_client()
 
+    async def get_user_assignment_overview(self) -> Dict[str, Any]:
+        """Get complete user assignment overview data in single optimized call"""
+        try:
+            # Get all required data in parallel with high limits
+            tasks_result = self.supabase.table("tasks")\
+                .select("id, title, status, questions_number")\
+                .eq("status", "active")\
+                .execute()
+            
+            # Get all users (labelers and admins)
+            labelers_result = self.supabase.table("user_profiles")\
+                .select("id, email, full_name")\
+                .eq("role", "labeler")\
+                .execute()
+            
+            admins_result = self.supabase.table("user_profiles")\
+                .select("id, email, full_name")\
+                .eq("role", "admin")\
+                .execute()
+            
+            # Get all assignments with limit
+            assignments_result = self.supabase.table("task_assignments")\
+                .select("*")\
+                .limit(1000)\
+                .execute()
+            
+            # Get label classes
+            try:
+                label_classes_result = self.supabase.table("label_classes")\
+                    .select("id, name, description")\
+                    .execute()
+                label_classes = label_classes_result.data
+            except:
+                label_classes = []
+            
+            # Combine users and mark their roles
+            all_users = []
+            for user in labelers_result.data:
+                all_users.append({**user, "userRole": "labeler"})
+            for user in admins_result.data:
+                all_users.append({**user, "userRole": "admin"})
+            
+            # Sort users by email
+            all_users.sort(key=lambda x: x["email"])
+            
+            # Create task lookup map
+            task_map = {task["id"]: task for task in tasks_result.data}
+            
+            # Process users with assignments
+            enhanced_users = []
+            for user in all_users:
+                # Filter assignments for this user
+                user_assignments = [a for a in assignments_result.data if a["user_id"] == user["id"]]
+                
+                # Process assignments with task details
+                enhanced_assignments = []
+                for assignment in user_assignments:
+                    task = task_map.get(assignment["task_id"])
+                    if not task and not assignment.get("task_id"):
+                        continue  # Skip invalid assignments
+                    
+                    enhanced_assignments.append({
+                        "assignment_id": assignment["id"],
+                        "task_id": assignment["task_id"],
+                        "task_title": task["title"] if task else f"Task {assignment['task_id'][:8]}",
+                        "completed_labels": assignment.get("completed_labels", 0),
+                        "target_labels": assignment.get("target_labels", 0),
+                        "is_active": assignment.get("is_active", True)
+                    })
+                
+                enhanced_users.append({
+                    **user,
+                    "currentAssignments": enhanced_assignments
+                })
+            
+            return {
+                "tasks": tasks_result.data,
+                "users": enhanced_users,
+                "labelClasses": label_classes
+            }
+            
+        except Exception as e:
+            print(f"Error in get_user_assignment_overview: {str(e)}")
+            raise e
+
     async def get_all_assignments_with_details(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
         """Get all assignments with user and task details"""
         try:

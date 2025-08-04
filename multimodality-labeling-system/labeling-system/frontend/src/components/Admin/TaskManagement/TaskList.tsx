@@ -12,7 +12,7 @@ import {
   Chip,
   Skeleton
 } from '@mui/material';
-import { Edit, Download } from '@mui/icons-material';
+import { Edit, Download, Delete } from '@mui/icons-material';
 import { TaskWithQuestionsData } from '../../../types/createTask';
 
 interface TaskListProps {
@@ -22,9 +22,10 @@ interface TaskListProps {
   onStatusChange?: (taskId: string, status: string) => void;
   onEditTask?: (task: TaskWithQuestionsData) => void;
   onDownloadAnswers?: (taskId: string, taskTitle: string) => void;
+  onDeleteTask?: (task: TaskWithQuestionsData) => void;
 }
 
-const TaskList: React.FC<TaskListProps> = ({ tasks, loading, onRefresh, onStatusChange, onEditTask, onDownloadAnswers }) => {
+const TaskList: React.FC<TaskListProps> = ({ tasks, loading, onRefresh, onStatusChange, onEditTask, onDownloadAnswers, onDeleteTask }) => {
   
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -131,6 +132,14 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, loading, onRefresh, onStatus
           >
             <Edit />
           </IconButton>
+          <IconButton 
+            size="small" 
+            onClick={() => onDeleteTask?.(task)}
+            title="Delete Task"
+            sx={{ color: 'error.main' }}
+          >
+            <Delete />
+          </IconButton>
         </ListItem>
       ))}
     </List>
@@ -164,7 +173,8 @@ export default React.memo(TaskList, (prevProps, nextProps) => {
       prevProps.onRefresh !== nextProps.onRefresh ||
       prevProps.onStatusChange !== nextProps.onStatusChange ||
       prevProps.onEditTask !== nextProps.onEditTask ||
-      prevProps.onDownloadAnswers !== nextProps.onDownloadAnswers) {
+      prevProps.onDownloadAnswers !== nextProps.onDownloadAnswers ||
+      prevProps.onDeleteTask !== nextProps.onDeleteTask) {
     return false;
   }
   

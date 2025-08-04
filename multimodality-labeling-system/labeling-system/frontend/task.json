@@ -1,0 +1,51 @@
+{
+    "title": "aud_voice_cloning",
+    "description": "Evaluate the quality of generated audio samples compared to reference audio.",
+    "instructions": "Listen to both audio samples and identify any quality issues in the generated audio. Compare it against the reference audio to determine if there are any failures in the generation process.",
+    "questions_number": 1800,
+    "required_agreements": 2,
+    "example_media": [
+      "example_audio_1.wav",
+      "example_audio_2.wav"
+    ],
+    "question_template": {
+      "question_text": "Compare the generated audio with the reference audio. What quality issues do you observe?",
+      "choices": {
+          "Audio_Glitches": {
+              "text": "Unnatural sounds in the audio, including clicks, pops, metallic noises, or digital artifacts that disrupt the listening experience. 音頻中出現不自然的聲音，包括點擊聲、爆裂聲、金屬噪音或數位失真，這些都會破壞聆聽體驗。",
+              "options": [
+                  "None"
+              ],
+              "multiple_select": false
+          },
+          "UnnaturalProsody": {
+              "text": "Speech often sound robotic, monotonous, or flat, lacking natural intonation. 語音經常聽起來像機器人般、單調或平淡，缺乏自然的語調。", 
+              "options": [
+                  "None"
+              ],
+              "multiple_select": false
+          },
+          "Mispronunciations": {
+              "text": "Mumbled, unclear, or nonsensical sounds that will make it unrecognizable. 含糊不清或無意義的聲音，會使其難以辨識。",
+              "options": [
+                  "None"
+              ],
+              "multiple_select": false
+          },
+          "Difficulty": {
+              "text": "The level of realism in the DeepFake sample. The more realistic the sample appears, the higher the difficulty. \nDeepFake樣本的真實程度。樣本越真實，難度越高。",
+              "options": [
+                  "Low",
+                  "Medium",
+                  "High"
+              ],
+              "multiple_select": true
+        }
+      }
+    },
+    "media_config": {
+      "num_images": 0,
+      "num_videos": 0,
+      "num_audios": 2
+    }
+  }

@@ -42,6 +42,7 @@ interface TaskModificationDialogProps {
   task: TaskWithQuestionsData | null;
   onClose: () => void;
   onSave: () => void;
+  onDuplicateError?: (taskName: string) => void;
 }
 
 interface TabPanelProps {
@@ -74,7 +75,8 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
   open,
   task,
   onClose,
-  onSave
+  onSave,
+  onDuplicateError
 }) => {
   const [tabValue, setTabValue] = useState(0);
   const [editedTask, setEditedTask] = useState<TaskWithQuestionsData | null>(null);
@@ -265,7 +267,21 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
       }
     } catch (error) {
       console.error('Error updating task:', error);
-      setError(error instanceof Error ? error.message : 'Failed to update task');
+      
+      // Check if it's a duplicate name error
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update task';
+      if (errorMessage.includes('already exists')) {
+        // Close dialog and show popup alert if handler is provided
+        if (onDuplicateError) {
+          onClose();
+          onDuplicateError(editedTask.title);
+        } else {
+          // Fallback to inline error if no handler provided
+          setError(`⚠️ Task Name Already Exists\n\nA task with the name "${editedTask.title}" already exists. Please choose a different name to continue.`);
+        }
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
