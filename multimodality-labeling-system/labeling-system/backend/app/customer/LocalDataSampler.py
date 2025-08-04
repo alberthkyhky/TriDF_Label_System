@@ -37,8 +37,9 @@ class LocalDataSampler:
         if idx < len(self.data_by_task[task_name]):
             row = self.data_by_task[task_name][idx]
             # Prefix paths with root directory
-            row["output_wav"] = os.path.join(self.root, task_name, row["output_wav"])
-            row["other_wav"] = os.path.join(self.root, task_name, row["other_wav"])
+            for key, value in row.items():
+                if os.path.splitext(key)[1] in [".wav", ".mp3", ".mp4", ".jpg", ".png"]:
+                    row[key] = os.path.join(self.root, task_name, value)
             return row
         else:
             raise IndexError(f"Index {idx} exceeds the number of rows in task_name {task_name}")
