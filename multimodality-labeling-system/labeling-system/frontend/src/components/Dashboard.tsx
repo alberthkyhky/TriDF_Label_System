@@ -27,7 +27,7 @@ interface EnhancedTaskAssignment extends TaskAssignment {
 }
 
 const Dashboard: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, viewMode } = useAuth();
   const [assignments, setAssignments] = useState<EnhancedTaskAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +76,15 @@ const Dashboard: React.FC = () => {
     return Math.min((completed / total) * 100, 100);
   };
 
+  const handleHomeClick = () => {
+    // Navigate to home dashboard based on user role and view mode
+    if (user?.role === 'admin') {
+      navigate(viewMode === 'admin' ? '/admin' : '/dashboard');
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
   // Skeleton card component for loading state
   const AssignmentCardSkeleton = () => (
     <Grid size={{ xs: 12, sm: 6, md: 4 }}>
@@ -104,7 +113,18 @@ const Dashboard: React.FC = () => {
         {/* Top Navigation */}
         <AppBar position="static">
           <Toolbar>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            <Typography 
+              variant="h6" 
+              component="div" 
+              sx={{ 
+                flexGrow: 1, 
+                cursor: 'pointer',
+                '&:hover': {
+                  opacity: 0.8
+                }
+              }}
+              onClick={handleHomeClick}
+            >
               Labeler Dashboard - {user?.full_name || user?.email}
             </Typography>
             <Button color="inherit" onClick={signOut}>
@@ -134,7 +154,18 @@ const Dashboard: React.FC = () => {
       {/* Top Navigation */}
       <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography 
+            variant="h6" 
+            component="div" 
+            sx={{ 
+              flexGrow: 1, 
+              cursor: 'pointer',
+              '&:hover': {
+                opacity: 0.8
+              }
+            }}
+            onClick={handleHomeClick}
+          >
             Labeler Dashboard - {user?.full_name || user?.email}
           </Typography>
           <ViewModeSwitch />

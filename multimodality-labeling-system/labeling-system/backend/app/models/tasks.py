@@ -240,19 +240,6 @@ class QuestionResponseDetailedCreate(BaseModel):
             raise ValueError('confidence_level must be between 1 and 5')
         return v
 
-class LabelClass(BaseModel):
-    id: Optional[str] = None
-    name: str
-    description: Optional[str] = None
-    color_hex: str = "#667eea"
-    is_active: bool = True
-    created_at: Optional[datetime] = None
-
-class LabelClassCreate(BaseModel):
-    name: str
-    description: Optional[str] = None
-    color_hex: str = "#667eea"
-    is_active: bool = True
 
 class MediaType(str, Enum):
     IMAGE = "image"
@@ -267,7 +254,6 @@ class TaskStatus(str, Enum):
 
 class TaskAssignmentRequest(BaseModel):
     user_id_to_assign: str
-    assigned_classes: List[str]
     target_labels: int
 
     @validator('target_labels')
@@ -276,17 +262,11 @@ class TaskAssignmentRequest(BaseModel):
             raise ValueError('target_labels must be positive')
         return v
 
-    @validator('assigned_classes')
-    def validate_assigned_classes(cls, v):
-        if not v:
-            raise ValueError('assigned_classes cannot be empty')
-        return v
 
 class TaskAssignment(BaseModel):
     id: str
     task_id: str
     user_id: str
-    assigned_classes: List[str]
     target_labels: int
     completed_labels: int = 0
     assigned_at: datetime
@@ -390,7 +370,6 @@ class QuestionMedia(BaseModel):
 class AnswerChoice(BaseModel):
     id: str
     question_id: str
-    label_class_id: Optional[str] = None
     choice_text: str
     choice_value: str
     display_order: int = 1
@@ -399,7 +378,6 @@ class AnswerChoice(BaseModel):
 
 class AnswerChoiceCreate(BaseModel):
     question_id: str
-    label_class_id: Optional[str] = None
     choice_text: str
     choice_value: str
     display_order: int = 1

@@ -1,5 +1,5 @@
 // Merged services/api.ts - Use FastAPI backend instead of direct Supabase
-import { LabelClass, Task, TaskAssignment } from '../types/tasks';
+import { Task, TaskAssignment } from '../types/tasks';
 import { TaskWithQuestionsData, MediaConfiguration, TaskFormData, MediaFile } from '../types/createTask';
 import { QuestionResponseCreate, QuestionResponseDetailed, QuestionWithMedia } from '../types/labeling';
 
@@ -109,30 +109,6 @@ export const api = {
     return apiCall('/auth/stats');
   },
 
-  // Label Classes
-  async getLabelClasses(): Promise<LabelClass[]> {
-    return apiCall('/tasks/label-classes');
-  },
-
-  async createLabelClass(data: Omit<LabelClass, 'id'>): Promise<LabelClass> {
-    return apiCall('/tasks/label-classes', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
-
-  async updateLabelClass(id: string, data: Partial<LabelClass>): Promise<LabelClass> {
-    return apiCall(`/tasks/label-classes/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  },
-
-  async deleteLabelClass(id: string): Promise<void> {
-    return apiCall(`/tasks/label-classes/${id}`, {
-      method: 'DELETE',
-    });
-  },
 
   // Tasks
   async getTasks(): Promise<TaskWithQuestionsData[]> {
@@ -298,7 +274,6 @@ export const api = {
 
   async assignTask(taskId: string, data: {
     user_id_to_assign: string;
-    assigned_classes: string[];
     target_labels: number;
   }): Promise<TaskAssignment> {
     console.log('Assigning task:', taskId, data);

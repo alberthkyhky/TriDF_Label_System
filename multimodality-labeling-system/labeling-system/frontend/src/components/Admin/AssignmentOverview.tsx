@@ -51,7 +51,6 @@ interface AssignmentData {
   user_id: string;
   user_name: string;
   user_email: string;
-  assigned_classes: string[];
   target_labels: number;
   completed_labels: number;
   is_active: boolean;
@@ -91,8 +90,7 @@ const AssignmentOverview: React.FC = () => {
         const filtered = assignments.filter(assignment => 
           assignment.task_title.toLowerCase().includes(query.toLowerCase()) ||
           assignment.user_name.toLowerCase().includes(query.toLowerCase()) ||
-          assignment.user_email.toLowerCase().includes(query.toLowerCase()) ||
-          assignment.assigned_classes.some(cls => cls.toLowerCase().includes(query.toLowerCase()))
+          assignment.user_email.toLowerCase().includes(query.toLowerCase())
         );
         setFilteredAssignments(filtered);
       }
@@ -327,7 +325,6 @@ const AssignmentOverview: React.FC = () => {
                     <TableCell>Task</TableCell>
                     <TableCell>User</TableCell>
                     <TableCell>Status</TableCell>
-                    <TableCell>Classes</TableCell>
                     <TableCell>Progress</TableCell>
                     <TableCell>Active</TableCell>
                     <TableCell>Assigned</TableCell>
@@ -453,7 +450,6 @@ const AssignmentOverview: React.FC = () => {
                   <TableCell>Task</TableCell>
                   <TableCell>Progress</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell>Label Classes</TableCell>
                   <TableCell>Assigned</TableCell>
                   <TableCell>Actions</TableCell>
                 </TableRow>
@@ -509,20 +505,6 @@ const AssignmentOverview: React.FC = () => {
                       />
                     </TableCell>
 
-                    <TableCell>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {assignment.assigned_classes.slice(0, 2).map((className) => (
-                          <Chip key={className} label={className} size="small" variant="outlined" />
-                        ))}
-                        {assignment.assigned_classes.length > 2 && (
-                          <Chip 
-                            label={`+${assignment.assigned_classes.length - 2}`} 
-                            size="small" 
-                            variant="outlined" 
-                          />
-                        )}
-                      </Box>
-                    </TableCell>
 
                     <TableCell>
                       <Typography variant="body2">
@@ -608,14 +590,6 @@ const AssignmentOverview: React.FC = () => {
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Typography variant="h6" gutterBottom>Additional Details</Typography>
                   <Stack spacing={2}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Label Classes</Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
-                        {selectedAssignment.assigned_classes.map((className) => (
-                          <Chip key={className} label={className} size="small" variant="outlined" />
-                        ))}
-                      </Box>
-                    </Box>
                     <Box>
                       <Typography variant="body2" color="text.secondary">Assigned</Typography>
                       <Typography variant="body1">{formatDate(selectedAssignment.assigned_at)}</Typography>

@@ -14,45 +14,15 @@ const ApiTest: React.FC = () => {
     setResult('Testing...');
 
     try {
-      // Test 1: Check what the backend expects
-      const response1 = await fetch('http://localhost:8000/api/v1/tasks/label-classes', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      let labelClasses: string | any[] = [];
-      if (response1.ok) {
-        labelClasses = await response1.json();
-        setResult(prev => prev + `\n✅ Label Classes Found: ${JSON.stringify(labelClasses, null, 2)}`);
-      } else {
-        setResult(prev => prev + `\n⚠️ Label Classes API failed: ${response1.status}`);
-      }
+      // No label classes needed anymore
+      setResult(prev => prev + `\n✅ Label classes removed from system`);
 
       // Test 2: Try assignment with different formats
       const testCases = [
         {
-          name: 'Test with label class IDs (if available)',
+          name: 'Test assignment without label classes',
           data: {
             user_id_to_assign: userId,
-            assigned_classes: labelClasses.length > 0 ? [labelClasses[0].id] : ['general-uuid'],
-            target_labels: 5
-          }
-        },
-        {
-          name: 'Test with label class names',
-          data: {
-            user_id_to_assign: userId,
-            assigned_classes: ['general'],
-            target_labels: 5
-          }
-        },
-        {
-          name: 'Test with empty classes (to see exact error)',
-          data: {
-            user_id_to_assign: userId,
-            assigned_classes: [],
             target_labels: 5
           }
         }
@@ -185,7 +155,6 @@ const ApiTest: React.FC = () => {
           <strong>Debugging Steps:</strong><br/>
           1. First test "Get Tasks" and "Get Users" to ensure basic API works<br/>
           2. Then test "Assignment API" to see what format the backend expects<br/>
-          3. Check if assigned_classes needs UUIDs or names<br/>
           4. Look at the exact error messages to understand the schema
         </Typography>
       </Alert>

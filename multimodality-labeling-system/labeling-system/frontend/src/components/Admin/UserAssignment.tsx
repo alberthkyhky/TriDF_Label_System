@@ -21,8 +21,6 @@ import {
   Grid,
   Card,
   CardContent,
-  OutlinedInput,
-  SelectChangeEvent,
   Skeleton,
   Collapse,
   IconButton,
@@ -32,12 +30,8 @@ import {
 import { Assignment, ExpandMore, ExpandLess, Schedule } from '@mui/icons-material';
 import { api } from '../../services/api';
 import { TaskWithQuestionsData } from '../../types/createTask';
+import { spawn } from 'child_process';
 
-interface LabelClass {
-  id: string;
-  name: string;
-  description?: string;
-}
 
 interface UserAssignmentStats {
   assignment_id: string;
@@ -60,15 +54,13 @@ const UserAssignment: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [tasks, setTasks] = useState<TaskWithQuestionsData[]>([]);
   const [users, setUsers] = useState<EnhancedUser[]>([]);
-  const [labelClasses, setLabelClasses] = useState<LabelClass[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     task_id: '',
     user_id: '',
-    target_labels: 10,
-    assigned_classes: [] as string[]
+    target_labels: 10
   });
 
   useEffect(() => {
@@ -88,14 +80,12 @@ const UserAssignment: React.FC = () => {
       
       console.log('Received overview data:', {
         tasks: overviewData.tasks?.length || 0,
-        users: overviewData.users?.length || 0,
-        labelClasses: overviewData.labelClasses?.length || 0
+        users: overviewData.users?.length || 0
       });
       
       // Data is already processed by the backend
       setTasks(overviewData.tasks || []);
       setUsers(overviewData.users || []);
-      setLabelClasses(overviewData.labelClasses || []);
       
       const endTime = performance.now();
       console.log(`✅ Fetched user assignment overview in ${(endTime - startTime).toFixed(2)}ms`);
@@ -119,13 +109,6 @@ const UserAssignment: React.FC = () => {
     });
   };
 
-  const handleAssignedClassesChange = (event: SelectChangeEvent<string[]>) => {
-    const value = event.target.value;
-    setFormData({
-      ...formData,
-      assigned_classes: typeof value === 'string' ? value.split(',') : value,
-    });
-  };
 
   const handleAssign = async () => {
     if (!formData.task_id || !formData.user_id) {
@@ -133,19 +116,12 @@ const UserAssignment: React.FC = () => {
       return;
     }
 
-    // If no label classes are available, use a default one
-    const assignedClasses = formData.assigned_classes.length > 0 
-      ? formData.assigned_classes 
-      : ['general']; // Fallback to a default class
-
     setLoading(true);
     setError(null);
 
     try {
-      // Fix the field name: user_id -> user_id_to_assign
       await api.assignTask(formData.task_id, {
-        user_id_to_assign: formData.user_id, // ← Fixed field name
-        assigned_classes: assignedClasses,
+        user_id_to_assign: formData.user_id,
         target_labels: formData.target_labels
       });
       
@@ -153,8 +129,7 @@ const UserAssignment: React.FC = () => {
       setFormData({
         task_id: '',
         user_id: '',
-        target_labels: 10,
-        assigned_classes: []
+        target_labels: 10
       });
       
       // Show success message
@@ -297,7 +272,7 @@ const UserAssignment: React.FC = () => {
                         <ListItemText
                           primary={
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Typography variant="subtitle2">
+                              <Typography variant="subtitle2" component="span">
                                 {user.full_name || 'Unknown'}
                               </Typography>
                               <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -318,8 +293,8 @@ const UserAssignment: React.FC = () => {
                             </Box>
                           }
                           secondary={
-                            <Box>
-                              <Typography variant="body2" color="text.secondary">
+                            <Box component="span">
+                              <Typography variant="body2" color="text.secondary" component={"div"}>
                                 {user.email}
                               </Typography>
                               {incompleteAssignments.length > 0 ? (
@@ -453,42 +428,6 @@ const UserAssignment: React.FC = () => {
             </Select>
           </FormControl>
 
-          {/* Label Classes Selection */}
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Assigned Label Classes</InputLabel>
-            <Select
-              multiple
-              value={formData.assigned_classes}
-              onChange={handleAssignedClassesChange}
-              input={<OutlinedInput label="Assigned Label Classes" />}
-              renderValue={(selected) => (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {selected.map((value) => (
-                    <Chip key={value} label={value} size="small" />
-                  ))}
-                </Box>
-              )}
-            >
-              {labelClasses.length > 0 ? (
-                labelClasses.map((labelClass) => (
-                  <MenuItem key={labelClass.id} value={labelClass.name}>
-                    {labelClass.name}
-                  </MenuItem>
-                ))
-              ) : (
-                // Fallback options if no label classes are loaded
-                ['general', 'person', 'vehicle', 'animal', 'object'].map((className) => (
-                  <MenuItem key={className} value={className}>
-                    {className}
-                  </MenuItem>
-                ))
-              )}
-            </Select>
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-              {labelClasses.length === 0 && 'Using default label classes. Create custom ones in Task Management.'}
-              {formData.assigned_classes.length === 0 && 'At least one class must be selected.'}
-            </Typography>
-          </FormControl>
 
           <TextField
             fullWidth

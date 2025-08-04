@@ -7,7 +7,7 @@ from app.utils.error_handling import handle_router_errors
 from app.utils.access_control import require_task_access
 from app.models.tasks import (
     Task, TaskCreate, TaskUpdate, TaskWithQuestionsUpdate, TaskAssignment, TaskAssignmentRequest,
-    LabelClass, LabelClassCreate, Question, QuestionCreate,
+ Question, QuestionCreate,
     QuestionResponse, QuestionResponseCreate,
     # Add new enhanced models if you want to use the new features
     TaskWithQuestionsCreate, TaskWithQuestions, QuestionWithMedia,
@@ -16,7 +16,6 @@ from app.models.tasks import (
 )
 
 # Import the new partitioned services
-from app.services.label_service import LabelService
 from app.services.media_service import MediaService
 from app.services.task_service import TaskService
 from app.services.assignment_service import AssignmentService
@@ -26,7 +25,6 @@ from app.services.user_service import user_service
 from app.services.export_service import ExportService
 
 # Create service instances (or use dependency injection)
-label_service = LabelService()
 media_service = MediaService()
 task_service = TaskService()
 assignment_service = AssignmentService()
@@ -36,49 +34,6 @@ export_service = ExportService()
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
-# ===== LABEL CLASSES =====
-@router.get("/label-classes", response_model=List[LabelClass])
-@handle_router_errors
-async def get_label_classes(current_user: dict = Depends(get_current_user)):
-    """Get all active label classes"""
-    # Update last active
-    await user_service.update_user_last_active(current_user["id"])
-    
-    return await label_service.get_label_classes()  # Changed from task_service
-
-@router.post("/label-classes", response_model=LabelClass)
-@handle_router_errors
-async def create_label_class(
-    label_class_data: LabelClassCreate,
-    current_user: dict = Depends(require_admin)
-):
-    """Create new label class (admin only)"""
-    return await label_service.create_label_class(label_class_data)  # Changed from task_service
-
-@router.put("/label-classes/{class_id}", response_model=LabelClass)
-@handle_router_errors
-async def update_label_class(
-    class_id: str,
-    update_data: dict,
-    current_user: dict = Depends(require_admin)
-):
-    """Update label class (admin only)"""
-    return await label_service.update_label_class(class_id, update_data)  # Changed from task_service
-
-@router.delete("/label-classes/{class_id}")
-@handle_router_errors
-async def delete_label_class(
-    class_id: str,
-    current_user: dict = Depends(require_admin)
-):
-    """Delete label class (admin only)"""
-    success = await label_service.delete_label_class(class_id)  # Changed from task_service
-    if success:
-        return {"message": "Label class deleted successfully"}
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Failed to delete label class"
-    )
 
 
 # ===== TASKS =====

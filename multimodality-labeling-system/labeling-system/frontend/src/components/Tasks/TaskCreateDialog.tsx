@@ -11,17 +11,15 @@ import {
   CircularProgress
 } from '@mui/material';
 import { api } from '../../services/api';
-import { LabelClass } from '../../types/tasks';
 
 interface Props {
   open: boolean;
   onClose: () => void;
   onTaskCreated: () => void;
-  labelClasses: LabelClass[];
   onDuplicateError?: (taskName: string) => void;
 }
 
-const TaskCreateDialog: React.FC<Props> = ({ open, onClose, onTaskCreated, labelClasses, onDuplicateError }) => {
+const TaskCreateDialog: React.FC<Props> = ({ open, onClose, onTaskCreated, onDuplicateError }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({

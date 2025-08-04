@@ -37,14 +37,6 @@ class AssignmentService:
                 .limit(1000)\
                 .execute()
             
-            # Get label classes
-            try:
-                label_classes_result = self.supabase.table("label_classes")\
-                    .select("id, name, description")\
-                    .execute()
-                label_classes = label_classes_result.data
-            except:
-                label_classes = []
             
             # Combine users and mark their roles
             all_users = []
@@ -88,8 +80,7 @@ class AssignmentService:
             
             return {
                 "tasks": tasks_result.data,
-                "users": enhanced_users,
-                "labelClasses": label_classes
+                "users": enhanced_users
             }
             
         except Exception as e:
@@ -121,26 +112,14 @@ class AssignmentService:
                     .eq("id", assignment["user_id"])\
                     .execute()
                 
-                # Get label class names from IDs
+                # No label classes to process
                 class_names = []
-                if assignment.get("assigned_classes"):
-                    try:
-                        # Try to get label class names
-                        classes_result = self.supabase.table("label_classes")\
-                            .select("name")\
-                            .in_("id", assignment["assigned_classes"])\
-                            .execute()
-                        class_names = [c["name"] for c in classes_result.data]
-                    except:
-                        # Fallback: use the IDs as names
-                        class_names = assignment["assigned_classes"]
                 
                 assignment_data = {
                     **assignment,
                     "task_title": task_result.data[0]["title"] if task_result.data else "Unknown Task",
                     "user_name": user_result.data[0]["full_name"] if user_result.data else "Unknown User",
                     "user_email": user_result.data[0]["email"] if user_result.data else "Unknown Email",
-                    "assigned_classes": class_names,  # Convert to names for display
                     "accuracy": None,  # Can be calculated later
                     "time_spent": None,  # Can be calculated later
                 }
@@ -272,7 +251,7 @@ class AssignmentService:
             # Write header
             writer.writerow([
                 'Assignment ID', 'Task Title', 'User Name', 'User Email',
-                'Progress', 'Status', 'Label Classes', 'Assigned At'
+                'Progress', 'Status', 'Assigned At'
             ])
             
             # Write data
@@ -284,7 +263,6 @@ class AssignmentService:
                     assignment['user_email'],
                     f"{assignment['completed_labels']}/{assignment['target_labels']}",
                     'Active' if assignment['is_active'] else 'Inactive',
-                    ', '.join(assignment['assigned_classes']),
                     assignment['assigned_at']
                 ])
             
@@ -332,13 +310,12 @@ class AssignmentService:
             if not user_check.data:
                 raise Exception("User not found")
             
-            # Convert label class names to IDs if necessary
-            assigned_class_ids = await self._resolve_label_class_ids(assignment_data.assigned_classes)
+            # No label classes to process
+            assigned_class_ids = []
             
             assignment_dict = {
                 "task_id": task_id,
                 "user_id": assignment_data.user_id_to_assign,
-                "assigned_classes": assigned_class_ids,
                 "target_labels": assignment_data.target_labels,
                 "completed_labels": 0,
                 "is_active": True
@@ -386,37 +363,6 @@ class AssignmentService:
             print(f"Error updating assignment progress: {str(e)}")
     
     # Private methods
-    async def _resolve_label_class_ids(self, assigned_classes: List[str]) -> List[str]:
-        """Convert label class names to IDs if necessary"""
-        if not assigned_classes:
-            return []
-        
-        first_class = assigned_classes[0]
-        
-        # Check if we're receiving names or IDs
-        try:
-            uuid.UUID(first_class)
-            # They're already UUIDs/IDs, validate they exist
-            class_check = self.supabase.table("label_classes").select("id").in_("id", assigned_classes).execute()
-            assigned_class_ids = assigned_classes
-        except ValueError:
-            # They're names, convert to IDs
-            class_check = self.supabase.table("label_classes").select("id, name").in_("name", assigned_classes).execute()
-            if not class_check.data:
-                raise Exception(f"No label classes found for names: {assigned_classes}")
-            
-            assigned_class_ids = [item["id"] for item in class_check.data]
-            
-            # Verify all names were found
-            found_names = [item["name"] for item in class_check.data]
-            missing_names = set(assigned_classes) - set(found_names)
-            if missing_names:
-                raise Exception(f"Label classes not found: {list(missing_names)}")
-        
-        if len(class_check.data) != len(assigned_classes):
-            raise Exception("One or more label classes not found")
-        
-        return assigned_class_ids
 
 # Create service instance
 assignment_service = AssignmentService()

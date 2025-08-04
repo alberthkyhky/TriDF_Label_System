@@ -1,10 +1,3 @@
-export interface LabelClass {
-    id: string;
-    name: string;
-    description?: string;
-    color_hex: string;
-    is_active: boolean;
-  }
   
   export interface Task {
     id: string;
@@ -24,7 +17,6 @@ export interface LabelClass {
     id: string;
     task_id: string;
     user_id: string;
-    assigned_classes: string[];
     target_labels: number;
     completed_labels: number;
     assigned_at: string;

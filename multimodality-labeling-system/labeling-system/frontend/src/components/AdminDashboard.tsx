@@ -11,6 +11,7 @@ import {
   Toolbar,
   Button 
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import TaskManagement from './Admin/TaskManagement';
 import UserAssignment from './Admin/UserAssignment';
@@ -33,11 +34,21 @@ const TabPanel = ({ children, value, index }: TabPanelProps) => {
 };
 
 const AdminDashboard: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, viewMode } = useAuth();
   const [tabValue, setTabValue] = useState(0);
+  const navigate = useNavigate();
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+  };
+
+  const handleHomeClick = () => {
+    // Navigate to home dashboard based on user role and view mode
+    if (user?.role === 'admin') {
+      navigate(viewMode === 'admin' ? '/admin' : '/dashboard');
+    } else {
+      navigate('/dashboard');
+    }
   };
 
   return (
@@ -45,7 +56,18 @@ const AdminDashboard: React.FC = () => {
       {/* Top Navigation */}
       <AppBar position="static">
         <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography 
+            variant="h6" 
+            component="div" 
+            sx={{ 
+              flexGrow: 1, 
+              cursor: 'pointer',
+              '&:hover': {
+                opacity: 0.8
+              }
+            }}
+            onClick={handleHomeClick}
+          >
             Admin Dashboard - {user?.full_name || user?.email}
           </Typography>
           <ViewModeSwitch />

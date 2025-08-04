@@ -3,12 +3,10 @@
 Dependency injection for FastAPI routes
 """
 from app.services import (
-    label_service, media_service, task_service,
+    media_service, task_service,
     assignment_service, question_service, response_service
 )
 
-def get_label_service():
-    return label_service
 
 def get_media_service():
     return media_service
