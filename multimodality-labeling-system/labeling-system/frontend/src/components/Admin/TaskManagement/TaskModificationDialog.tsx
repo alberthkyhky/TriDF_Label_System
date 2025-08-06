@@ -64,11 +64,13 @@ interface LabelerProgress {
   user_name: string;
   user_email: string;
   assignment_id: string;
-  target_labels: number;
+  target_questions: number;  // Calculated from range
   completed_labels: number;
   assigned_at: string;
   is_active: boolean;
   progress_percentage: number;
+  question_range_start: number;
+  question_range_end: number;
 }
 
 const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
@@ -122,19 +124,30 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
         return;
       }
       
+      // Helper function to calculate target questions for an assignment
+      const calculateTargetQuestions = (assignment: TaskAssignment): number => {
+        // All assignments are now ranges
+        return assignment.question_range_end - assignment.question_range_start + 1;
+      };
+
       // Transform assignment data to include progress
-      const progressData: LabelerProgress[] = assignmentData.map((assignment: TaskAssignment & { user_name?: string; user_email?: string }) => ({
-        user_id: assignment.user_id || 'unknown',
-        user_name: assignment.user_name || 'Unknown User',
-        user_email: assignment.user_email || 'unknown@example.com',
-        assignment_id: assignment.id || 'unknown',
-        target_labels: assignment.target_labels || 0,
-        completed_labels: assignment.completed_labels || 0,
-        assigned_at: assignment.assigned_at || new Date().toISOString(),
-        is_active: assignment.is_active || false,
-        progress_percentage: (assignment.target_labels && assignment.target_labels > 0) ? 
-          (assignment.completed_labels / assignment.target_labels) * 100 : 0
-      }));
+      const progressData: LabelerProgress[] = assignmentData.map((assignment: TaskAssignment & { user_name?: string; user_email?: string }) => {
+        const targetQuestions = calculateTargetQuestions(assignment);
+        return {
+          user_id: assignment.user_id || 'unknown',
+          user_name: assignment.user_name || 'Unknown User',
+          user_email: assignment.user_email || 'unknown@example.com',
+          assignment_id: assignment.id || 'unknown',
+          target_questions: targetQuestions,
+          completed_labels: assignment.completed_labels || 0,
+          assigned_at: assignment.assigned_at || new Date().toISOString(),
+          is_active: assignment.is_active || false,
+          progress_percentage: targetQuestions > 0 ? 
+            (assignment.completed_labels / targetQuestions) * 100 : 0,
+          question_range_start: assignment.question_range_start || 1,
+          question_range_end: assignment.question_range_end || 1
+        };
+      });
       
       setAssignments(progressData);
     } catch (error) {
@@ -644,7 +657,10 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
                           </Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
                             <Typography variant="body2" component="span">
-                              Progress: {labeler.completed_labels} / {labeler.target_labels}
+                              Progress: {labeler.completed_labels} / {labeler.target_questions}
+                              {labeler.question_range_start && labeler.question_range_end && 
+                                ` (Questions ${labeler.question_range_start}-${labeler.question_range_end})`
+                              }
                             </Typography>
                             <Typography variant="body2" color="primary" component="span">
                               {labeler.progress_percentage.toFixed(1)}%
@@ -687,7 +703,7 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 120, textAlign: 'center' }}>
                   <Typography variant="h4" color="warning.main" component="span">
-                    {assignments.reduce((sum, a) => sum + (a.target_labels || 0), 0)}
+                    {assignments.reduce((sum, a) => sum + (a.target_questions || 0), 0)}
                   </Typography>
                   <Typography variant="body2" component="span"> Total Target</Typography>
                 </Box>
@@ -696,7 +712,7 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
                     {(() => {
                       if (assignments.length === 0) return '0';
                       const totalCompleted = assignments.reduce((sum, a) => sum + (a.completed_labels || 0), 0);
-                      const totalTarget = assignments.reduce((sum, a) => sum + (a.target_labels || 0), 0);
+                      const totalTarget = assignments.reduce((sum, a) => sum + (a.target_questions || 0), 0);
                       if (totalTarget === 0) return '0';
                       return ((totalCompleted / totalTarget) * 100).toFixed(1);
                     })()}%

@@ -17,7 +17,8 @@
     id: string;
     task_id: string;
     user_id: string;
-    target_labels: number;
+    question_range_start: number;
+    question_range_end: number;
     completed_labels: number;
     assigned_at: string;
     is_active: boolean;

@@ -25,12 +25,12 @@ import {
   Collapse,
   IconButton,
   LinearProgress,
-  Divider
+  Divider,
+  Stack
 } from '@mui/material';
 import { Assignment, ExpandMore, ExpandLess, Schedule } from '@mui/icons-material';
 import { api } from '../../services/api';
 import { TaskWithQuestionsData } from '../../types/createTask';
-import { spawn } from 'child_process';
 
 
 interface UserAssignmentStats {
@@ -38,7 +38,8 @@ interface UserAssignmentStats {
   task_id: string;
   task_title: string;
   completed_labels: number;
-  target_labels: number;
+  question_range_start: number;
+  question_range_end: number;
   is_active: boolean;
 }
 
@@ -60,7 +61,8 @@ const UserAssignment: React.FC = () => {
   const [formData, setFormData] = useState({
     task_id: '',
     user_id: '',
-    target_labels: 10
+    question_range_start: 1,
+    question_range_end: 10
   });
 
   useEffect(() => {
@@ -73,14 +75,24 @@ const UserAssignment: React.FC = () => {
       setLoading(true);
       
       const startTime = performance.now();
-      console.log('Fetching user assignment overview...');
+      console.log('🔄 Fetching user assignment overview...');
       
       // Use the new optimized endpoint for a single API call
       const overviewData = await api.getUserAssignmentOverview();
       
-      console.log('Received overview data:', {
+      console.log('📊 Received overview data:', {
         tasks: overviewData.tasks?.length || 0,
-        users: overviewData.users?.length || 0
+        users: overviewData.users?.length || 0,
+        usersWithAssignments: overviewData.users?.filter((u: any) => u.currentAssignments && u.currentAssignments.length > 0).length || 0
+      });
+      
+      // Log detailed assignment data for debugging
+      overviewData.users?.forEach((user: any) => {
+        if (user.currentAssignments && user.currentAssignments.length > 0) {
+          console.log(`👤 User ${user.full_name} has ${user.currentAssignments.length} assignments:`, 
+            user.currentAssignments.map((a: any) => `${a.task_title}: ${a.question_range_start}-${a.question_range_end}`)
+          );
+        }
       });
       
       // Data is already processed by the backend
@@ -90,7 +102,7 @@ const UserAssignment: React.FC = () => {
       const endTime = performance.now();
       console.log(`✅ Fetched user assignment overview in ${(endTime - startTime).toFixed(2)}ms`);
     } catch (error) {
-      console.error('Error fetching user assignment overview:', error);
+      console.error('❌ Error fetching user assignment overview:', error);
       setError('Failed to fetch user assignment overview. Please try again.');
     } finally {
       setLoading(false);
@@ -116,30 +128,94 @@ const UserAssignment: React.FC = () => {
       return;
     }
 
+    // Validate assignment data
+    if (!formData.question_range_start || !formData.question_range_end || 
+        formData.question_range_start <= 0 || formData.question_range_end <= 0 ||
+        formData.question_range_start > formData.question_range_end) {
+      setError('Please enter a valid question range (start ≤ end, both > 0)');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      await api.assignTask(formData.task_id, {
+      const assignmentData = {
         user_id_to_assign: formData.user_id,
-        target_labels: formData.target_labels
+        question_range_start: formData.question_range_start,
+        question_range_end: formData.question_range_end
+      };
+
+      console.log('🔥 Creating assignment:', {
+        taskId: formData.task_id,
+        userId: formData.user_id,
+        userName: users.find(u => u.id === formData.user_id)?.full_name,
+        taskTitle: tasks.find(t => t.id === formData.task_id)?.title,
+        range: `${formData.question_range_start}-${formData.question_range_end}`,
+        assignmentData
       });
+
+      const result = await api.assignTask(formData.task_id, assignmentData);
+      console.log('✅ Assignment created successfully:', result);
       
+      // Close dialog first
       setOpen(false);
+      
+      // Reset form data
       setFormData({
         task_id: '',
         user_id: '',
-        target_labels: 10
+        question_range_start: 1,
+        question_range_end: 10
       });
       
-      // Show success message
-      setError(null);
+      // Small delay to ensure backend has processed the assignment
+      setTimeout(async () => {
+        console.log('📊 Refreshing assignment data after successful assignment...');
+        // Force refresh to avoid any caching issues
+        const overviewData = await api.getUserAssignmentOverview(true);
+        
+        console.log('📊 Forced refresh data:', {
+          tasks: overviewData.tasks?.length || 0,
+          users: overviewData.users?.length || 0,
+          usersWithAssignments: overviewData.users?.filter((u: any) => u.currentAssignments && u.currentAssignments.length > 0).length || 0
+        });
+        
+        setTasks(overviewData.tasks || []);
+        setUsers(overviewData.users || []);
+        console.log('✅ Assignment data refreshed successfully');
+      }, 500);
       
     } catch (error) {
-      console.error('Error assigning task:', error);
+      console.error('❌ Error assigning task:', error);
       setError('Failed to assign task. Please check the console for details.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Helper functions for assignment calculations
+  const getAssignmentTarget = (assignment: UserAssignmentStats) => {
+    // All assignments are now ranges, calculate the range size
+    if (assignment.question_range_start && assignment.question_range_end) {
+      return assignment.question_range_end - assignment.question_range_start + 1;
+    }
+    return 0;
+  };
+
+  const isAssignmentIncomplete = (assignment: UserAssignmentStats) => {
+    const target = getAssignmentTarget(assignment);
+    return assignment.completed_labels < target;
+  };
+
+  const handleSetFullTask = () => {
+    const selectedTask = tasks.find(task => task.id === formData.task_id);
+    if (selectedTask) {
+      setFormData({
+        ...formData,
+        question_range_start: 1,
+        question_range_end: selectedTask.questions_number
+      });
     }
   };
 
@@ -256,8 +332,8 @@ const UserAssignment: React.FC = () => {
               <List dense>
                 {users.slice(0, 8).map((user) => {
                   const isExpanded = expandedUsers.has(user.id);
-                  const incompleteAssignments = user.currentAssignments?.filter(a => a.completed_labels < a.target_labels) || [];
-                  const totalAssignedQuestions = incompleteAssignments.reduce((sum, a) => sum + a.target_labels, 0);
+                  const incompleteAssignments = user.currentAssignments?.filter(isAssignmentIncomplete) || [];
+                  const totalAssignedQuestions = incompleteAssignments.reduce((sum, a) => sum + getAssignmentTarget(a), 0);
                   const completedAssignedQuestions = incompleteAssignments.reduce((sum, a) => sum + a.completed_labels, 0);
                   
                   return (
@@ -323,8 +399,8 @@ const UserAssignment: React.FC = () => {
                                 Incomplete Assignments
                               </Typography>
                               {incompleteAssignments.map((assignment) => {
-                                const progress = assignment.target_labels > 0 ? (assignment.completed_labels / assignment.target_labels) * 100 : 0;
-                                const isOverdue = !assignment.is_active; // Inactive assignments could be considered overdue
+                                const assignmentTarget = getAssignmentTarget(assignment);
+                                const progress = assignmentTarget > 0 ? (assignment.completed_labels / assignmentTarget) * 100 : 0;
                                 
                                 return (
                                   <Box key={assignment.assignment_id} sx={{ mb: 1 }}>
@@ -348,7 +424,7 @@ const UserAssignment: React.FC = () => {
                                         color={progress === 0 ? "error" : "text.secondary"}
                                         sx={{ fontWeight: progress === 0 ? 600 : 400 }}
                                       >
-                                        {assignment.completed_labels}/{assignment.target_labels}
+                                        {assignment.completed_labels}/{assignmentTarget}
                                       </Typography>
                                     </Box>
                                     <LinearProgress 
@@ -429,16 +505,44 @@ const UserAssignment: React.FC = () => {
           </FormControl>
 
 
-          <TextField
-            fullWidth
-            label="Target Labels"
-            type="number"
-            value={formData.target_labels}
-            onChange={(e) => setFormData({...formData, target_labels: parseInt(e.target.value) || 10})}
-            sx={{ mb: 2 }}
-            inputProps={{ min: 1 }}
-            helperText="Number of labels this user should complete"
-          />
+          <Box sx={{ mb: 2 }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+              <TextField
+                label="Start Question"
+                type="number"
+                value={formData.question_range_start}
+                onChange={(e) => setFormData({...formData, question_range_start: parseInt(e.target.value) || 1})}
+                inputProps={{ min: 1 }}
+                sx={{ flex: 1 }}
+              />
+              <Typography variant="body1" sx={{ px: 1 }}>~</Typography>
+              <TextField
+                label="End Question"
+                type="number"
+                value={formData.question_range_end}
+                onChange={(e) => setFormData({...formData, question_range_end: parseInt(e.target.value) || 10})}
+                inputProps={{ min: 1 }}
+                sx={{ flex: 1 }}
+              />
+              <Button
+                variant="outlined"
+                onClick={handleSetFullTask}
+                disabled={!formData.task_id}
+                size="small"
+              >
+                Full Task
+              </Button>
+            </Stack>
+            <Typography variant="caption" color="text.secondary">
+              Assign questions from {formData.question_range_start} to {formData.question_range_end}
+              {formData.question_range_end >= formData.question_range_start && 
+                ` (${formData.question_range_end - formData.question_range_start + 1} questions)`
+              }
+              {formData.task_id && (
+                <> • Task has {tasks.find(t => t.id === formData.task_id)?.questions_number || 0} questions total</>
+              )}
+            </Typography>
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>

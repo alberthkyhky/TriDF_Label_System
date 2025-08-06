@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 import json
 import csv
 from io import StringIO
+from datetime import datetime
 from app.database import get_supabase_client
 from app.models.tasks import TaskAssignment, TaskAssignmentRequest
 import uuid
@@ -14,6 +15,7 @@ class AssignmentService:
     async def get_user_assignment_overview(self) -> Dict[str, Any]:
         """Get complete user assignment overview data in single optimized call"""
         try:
+            print("🔄 Starting get_user_assignment_overview fetch...")
             # Get all required data in parallel with high limits
             tasks_result = self.supabase.table("tasks")\
                 .select("id, title, status, questions_number")\
@@ -31,11 +33,14 @@ class AssignmentService:
                 .eq("role", "admin")\
                 .execute()
             
-            # Get all assignments with limit
+            # Get all assignments with high limit and order by most recent
             assignments_result = self.supabase.table("task_assignments")\
                 .select("*")\
-                .limit(1000)\
+                .order("assigned_at", desc=True)\
+                .limit(2000)\
                 .execute()
+            
+            print(f"📊 Fetched data - Tasks: {len(tasks_result.data)}, Labelers: {len(labelers_result.data)}, Admins: {len(admins_result.data)}, Assignments: {len(assignments_result.data)}")
             
             
             # Combine users and mark their roles
@@ -53,9 +58,14 @@ class AssignmentService:
             
             # Process users with assignments
             enhanced_users = []
+            users_with_assignments = 0
             for user in all_users:
                 # Filter assignments for this user
                 user_assignments = [a for a in assignments_result.data if a["user_id"] == user["id"]]
+                
+                if user_assignments:
+                    users_with_assignments += 1
+                    print(f"👤 User {user['full_name']} has {len(user_assignments)} assignments")
                 
                 # Process assignments with task details
                 enhanced_assignments = []
@@ -69,7 +79,8 @@ class AssignmentService:
                         "task_id": assignment["task_id"],
                         "task_title": task["title"] if task else f"Task {assignment['task_id'][:8]}",
                         "completed_labels": assignment.get("completed_labels", 0),
-                        "target_labels": assignment.get("target_labels", 0),
+                        "question_range_start": assignment.get("question_range_start", 1),
+                        "question_range_end": assignment.get("question_range_end", 1),
                         "is_active": assignment.get("is_active", True)
                     })
                 
@@ -77,6 +88,8 @@ class AssignmentService:
                     **user,
                     "currentAssignments": enhanced_assignments
                 })
+            
+            print(f"✅ Processed {len(enhanced_users)} users, {users_with_assignments} have assignments")
             
             return {
                 "tasks": tasks_result.data,
@@ -170,10 +183,10 @@ class AssignmentService:
             
             total = len(assignments)
             active = len([a for a in assignments if a.get("is_active", True)])
-            completed = len([a for a in assignments if a.get("completed_labels", 0) >= a.get("target_labels", 1)])
+            completed = len([a for a in assignments if a.get("completed_labels", 0) >= (a.get("question_range_end", 1) - a.get("question_range_start", 1) + 1)])
             
             total_completed = sum(a.get("completed_labels", 0) for a in assignments)
-            total_target = sum(a.get("target_labels", 0) for a in assignments)
+            total_target = sum((a.get("question_range_end", 1) - a.get("question_range_start", 1) + 1) for a in assignments)
             avg_completion = (total_completed / total_target * 100) if total_target > 0 else 0
             
             return {
@@ -261,7 +274,7 @@ class AssignmentService:
                     assignment['task_title'],
                     assignment['user_name'],
                     assignment['user_email'],
-                    f"{assignment['completed_labels']}/{assignment['target_labels']}",
+                    f"{assignment['completed_labels']}/{assignment.get('question_range_end', 1) - assignment.get('question_range_start', 1) + 1}",
                     'Active' if assignment['is_active'] else 'Inactive',
                     assignment['assigned_at']
                 ])
@@ -310,13 +323,12 @@ class AssignmentService:
             if not user_check.data:
                 raise Exception("User not found")
             
-            # No label classes to process
-            assigned_class_ids = []
             
             assignment_dict = {
                 "task_id": task_id,
                 "user_id": assignment_data.user_id_to_assign,
-                "target_labels": assignment_data.target_labels,
+                "question_range_start": assignment_data.question_range_start,
+                "question_range_end": assignment_data.question_range_end,
                 "completed_labels": 0,
                 "is_active": True
             }
@@ -340,7 +352,8 @@ class AssignmentService:
                 assignment = TaskAssignment(**result.data[0])
                 
                 # Mark as completed if target reached
-                if assignment.completed_labels >= assignment.target_labels:
+                assignment_target = assignment.question_range_end - assignment.question_range_start + 1
+                if assignment.completed_labels >= assignment_target:
                     self.supabase.table("task_assignments").update({
                         "completed_at": datetime.utcnow().isoformat()
                     }).eq("id", assignment_id).execute()

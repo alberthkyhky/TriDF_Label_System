@@ -51,7 +51,8 @@ interface AssignmentData {
   user_id: string;
   user_name: string;
   user_email: string;
-  target_labels: number;
+  question_range_start: number;
+  question_range_end: number;
   completed_labels: number;
   is_active: boolean;
   assigned_at: string;
@@ -105,6 +106,17 @@ const AssignmentOverview: React.FC = () => {
     }
   }, [assignments, searchQuery]);
 
+  // Helper functions for assignment calculations
+  const getAssignmentTarget = (assignment: AssignmentData) => {
+    // All assignments are now ranges
+    return assignment.question_range_end - assignment.question_range_start + 1;
+  };
+
+  const isAssignmentCompleted = (assignment: AssignmentData) => {
+    const target = getAssignmentTarget(assignment);
+    return assignment.completed_labels >= target;
+  };
+
   // Memoize expensive statistical calculations
   const stats = useMemo((): AssignmentStats => {
     if (assignments.length === 0) {
@@ -120,9 +132,9 @@ const AssignmentOverview: React.FC = () => {
 
     const total = assignments.length;
     const active = assignments.filter(a => a.is_active).length;
-    const completed = assignments.filter(a => a.completed_labels >= a.target_labels).length;
+    const completed = assignments.filter(isAssignmentCompleted).length;
     const totalCompleted = assignments.reduce((sum, a) => sum + a.completed_labels, 0);
-    const totalTarget = assignments.reduce((sum, a) => sum + a.target_labels, 0);
+    const totalTarget = assignments.reduce((sum, a) => sum + getAssignmentTarget(a), 0);
     const avgCompletion = totalTarget > 0 ? (totalCompleted / totalTarget) * 100 : 0;
 
     return {
@@ -169,14 +181,14 @@ const AssignmentOverview: React.FC = () => {
 
   const getStatusColor = (assignment: AssignmentData): 'success' | 'warning' | 'error' | 'info' => {
     if (!assignment.is_active) return 'error';
-    if (assignment.completed_labels >= assignment.target_labels) return 'success';
+    if (isAssignmentCompleted(assignment)) return 'success';
     if (assignment.completed_labels > 0) return 'warning';
     return 'info';
   };
 
   const getStatusText = (assignment: AssignmentData): string => {
     if (!assignment.is_active) return 'Inactive';
-    if (assignment.completed_labels >= assignment.target_labels) return 'Completed';
+    if (isAssignmentCompleted(assignment)) return 'Completed';
     if (assignment.completed_labels > 0) return 'In Progress';
     return 'Not Started';
   };
@@ -483,15 +495,15 @@ const AssignmentOverview: React.FC = () => {
                       <Box sx={{ minWidth: 120 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                           <Typography variant="body2">
-                            {assignment.completed_labels} / {assignment.target_labels}
+                            {assignment.completed_labels} / {getAssignmentTarget(assignment)}
                           </Typography>
                           <Typography variant="body2">
-                            {getProgressPercentage(assignment.completed_labels, assignment.target_labels).toFixed(0)}%
+                            {getProgressPercentage(assignment.completed_labels, getAssignmentTarget(assignment)).toFixed(0)}%
                           </Typography>
                         </Box>
                         <LinearProgress
                           variant="determinate"
-                          value={getProgressPercentage(assignment.completed_labels, assignment.target_labels)}
+                          value={getProgressPercentage(assignment.completed_labels, getAssignmentTarget(assignment))}
                           sx={{ height: 8, borderRadius: 4 }}
                         />
                       </Box>
@@ -572,8 +584,8 @@ const AssignmentOverview: React.FC = () => {
                     <Box>
                       <Typography variant="body2" color="text.secondary">Progress</Typography>
                       <Typography variant="body1">
-                        {selectedAssignment.completed_labels} / {selectedAssignment.target_labels} labels
-                        ({getProgressPercentage(selectedAssignment.completed_labels, selectedAssignment.target_labels).toFixed(1)}%)
+                        {selectedAssignment.completed_labels} / {getAssignmentTarget(selectedAssignment)} labels
+                        ({getProgressPercentage(selectedAssignment.completed_labels, getAssignmentTarget(selectedAssignment)).toFixed(1)}%)
                       </Typography>
                     </Box>
                     <Box>

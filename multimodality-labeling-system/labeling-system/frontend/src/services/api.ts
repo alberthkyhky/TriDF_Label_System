@@ -274,7 +274,8 @@ export const api = {
 
   async assignTask(taskId: string, data: {
     user_id_to_assign: string;
-    target_labels: number;
+    question_range_start: number;
+    question_range_end: number;
   }): Promise<TaskAssignment> {
     console.log('Assigning task:', taskId, data);
     return apiCall(`/assignments/task/${taskId}/assign`, {
@@ -292,9 +293,12 @@ export const api = {
     return apiCall('/assignments/all?limit=1000');
   },
 
-  async getUserAssignmentOverview(): Promise<any> {
+  async getUserAssignmentOverview(forceRefresh?: boolean): Promise<any> {
     // Get optimized user assignment overview data in single call
-    return apiCall('/assignments/user-assignment-overview');
+    const url = forceRefresh 
+      ? `/assignments/user-assignment-overview?_t=${Date.now()}`
+      : '/assignments/user-assignment-overview';
+    return apiCall(url);
   },
 
   async getTaskAssignments(taskId: string): Promise<any[]> {

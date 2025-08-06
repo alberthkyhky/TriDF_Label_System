@@ -183,10 +183,7 @@ user_profiles (id, email, full_name, role, created_at, last_active)
 
 -- Tasks and assignments
 tasks (id, title, description, created_by, created_at, is_active)
-task_assignments (id, task_id, user_id, target_labels, completed_labels, assigned_at, is_active)
-
--- Label classification system
-label_classes (id, name, description, color, created_at, is_active)
+task_assignments (id, task_id, user_id, question_range_start, question_range_end, completed_labels, assigned_at, is_active)
 
 -- Assignment tracking and analytics
 assignment_progress (calculated from task_assignments)
@@ -272,7 +269,8 @@ class TaskAssignment(BaseModel):
     id: str
     task_id: str
     user_id: str
-    target_labels: int
+    question_range_start: int
+    question_range_end: int
     completed_labels: int
     assigned_at: datetime
     is_active: bool
@@ -354,8 +352,8 @@ Headers: Authorization: Bearer <admin_jwt_token>
 Body:
 {
     "user_id_to_assign": "user-456",
-    "target_labels": 100,
-    "assigned_classes": ["class-1", "class-2"]
+    "question_range_start": 1,
+    "question_range_end": 100
 }
 ```
 

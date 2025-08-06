@@ -254,12 +254,23 @@ class TaskStatus(str, Enum):
 
 class TaskAssignmentRequest(BaseModel):
     user_id_to_assign: str
-    target_labels: int
+    question_range_start: int = 1  # Always required, defaults to 1
+    question_range_end: int  # Always required
 
-    @validator('target_labels')
-    def validate_target_labels(cls, v):
+    @validator('question_range_start')
+    def validate_range_start(cls, v):
         if v <= 0:
-            raise ValueError('target_labels must be positive')
+            raise ValueError('question_range_start must be positive')
+        return v
+
+    @validator('question_range_end')
+    def validate_range_end(cls, v, values):
+        if v <= 0:
+            raise ValueError('question_range_end must be positive')
+        
+        start = values.get('question_range_start', 1)
+        if v < start:
+            raise ValueError('question_range_end must be greater than or equal to question_range_start')
         return v
 
 
@@ -267,7 +278,8 @@ class TaskAssignment(BaseModel):
     id: str
     task_id: str
     user_id: str
-    target_labels: int
+    question_range_start: int = 1
+    question_range_end: int
     completed_labels: int = 0
     assigned_at: datetime
     completed_at: Optional[datetime] = None

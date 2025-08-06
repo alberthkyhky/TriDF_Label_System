@@ -93,7 +93,9 @@ const LabelingInterface: React.FC = () => {
         setError(null);
         const assignmentData = await api.getTaskAssignment(taskId);
         setCurrentQuestionIndex(assignmentData.completed_labels);
-        setTotalQuestions(assignmentData.target_labels);
+        // Calculate total questions from assignment range
+        const totalQuestions = assignmentData.question_range_end - assignmentData.question_range_start + 1;
+        setTotalQuestions(totalQuestions);
       } catch (error: any) {
         console.error('Error fetching assignment:', error);
         setError(error.message || 'Failed to load assignment');

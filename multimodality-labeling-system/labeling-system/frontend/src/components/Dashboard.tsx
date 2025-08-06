@@ -37,6 +37,23 @@ const Dashboard: React.FC = () => {
     fetchAssignments();
   }, []);
 
+  // Helper function to determine if assignment is completed
+  const getIsAssignmentCompleted = (assignment: EnhancedTaskAssignment) => {
+    // All assignments are now ranges, calculate completion based on range size
+    const rangeSize = assignment.question_range_end && assignment.question_range_start 
+      ? assignment.question_range_end - assignment.question_range_start + 1 
+      : 0;
+    return assignment.completed_labels >= rangeSize;
+  };
+
+  // Helper function to get assignment target display
+  const getAssignmentTarget = (assignment: EnhancedTaskAssignment) => {
+    // All assignments use range logic now
+    return assignment.question_range_end && assignment.question_range_start 
+      ? assignment.question_range_end - assignment.question_range_start + 1 
+      : 0;
+  };
+
   const fetchAssignments = async () => {
     try {
       setError(null);
@@ -72,7 +89,7 @@ const Dashboard: React.FC = () => {
 
   const calculateProgress = (assignment: EnhancedTaskAssignment) => {
     const completed = assignment.completed_labels || 0;
-    const total = assignment.target_labels || 1;
+    const total = getAssignmentTarget(assignment) || 1;
     return Math.min((completed / total) * 100, 100);
   };
 
@@ -197,7 +214,10 @@ const Dashboard: React.FC = () => {
                   
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="body2" gutterBottom>
-                      Progress: {assignment.completed_labels || 0} / {assignment.target_labels}
+                      Progress: {assignment.completed_labels || 0} / {getAssignmentTarget(assignment)}
+                      {assignment.question_range_start && assignment.question_range_end && 
+                        ` (Questions ${assignment.question_range_start}-${assignment.question_range_end})`
+                      }
                     </Typography>
                     <LinearProgress 
                       variant="determinate" 
@@ -221,14 +241,14 @@ const Dashboard: React.FC = () => {
                   <Button 
                     variant="contained" 
                     fullWidth
-                    disabled={!assignment.is_active || assignment.completed_labels >= assignment.target_labels}
-                    startIcon={assignment.completed_labels >= assignment.target_labels ? <CheckCircle /> : <PlayArrow />}
+                    disabled={!assignment.is_active || getIsAssignmentCompleted(assignment)}
+                    startIcon={getIsAssignmentCompleted(assignment) ? <CheckCircle /> : <PlayArrow />}
                     onClick={() => {
                       // Navigate to labeling interface - you'll implement this later
                       navigate(`/task/${assignment.task_id}`);
                     }}
                   >
-                    {assignment.completed_labels >= assignment.target_labels 
+                    {getIsAssignmentCompleted(assignment)
                       ? 'Completed' 
                       : 'Start Labeling'
                     }

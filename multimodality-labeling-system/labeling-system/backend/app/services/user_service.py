@@ -214,7 +214,7 @@ class UserService:
             # Calculate additional metrics
             active_assignments = len([a for a in assignments.data if a["is_active"]])
             completed_assignments = len([a for a in assignments.data if a["completed_at"]])
-            total_target_labels = sum(a["target_labels"] for a in assignments.data)
+            total_target_labels = sum((a["question_range_end"] - a["question_range_start"] + 1) for a in assignments.data)
             total_completed_labels = sum(a["completed_labels"] for a in assignments.data)
             
             completion_rate = (total_completed_labels / total_target_labels * 100) if total_target_labels > 0 else 0
