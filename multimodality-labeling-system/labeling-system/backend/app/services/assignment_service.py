@@ -5,7 +5,7 @@ import csv
 from io import StringIO
 from datetime import datetime
 from app.database import get_supabase_client
-from app.models.tasks import TaskAssignment, TaskAssignmentRequest
+from app.models.tasks import TaskAssignment, TaskAssignmentRequest, TaskAssignmentWithTitle
 import uuid
 
 class AssignmentService:
@@ -144,11 +144,12 @@ class AssignmentService:
             print(f"Error in get_all_assignments_with_details: {str(e)}")
             raise e
 
-    async def get_task_assignment_for_user(self, task_id: str, user_id: str) -> TaskAssignment:
-        """Get assignment for a specific task and user (should be unique)"""
+    async def get_task_assignment_for_user(self, task_id: str, user_id: str) -> TaskAssignmentWithTitle:
+        """Get assignment for a specific task and user with task title (should be unique)"""
         try:
+            # Get assignment with task title
             result = self.supabase.table("task_assignments")\
-                .select("*")\
+                .select("*, tasks!inner(title)")\
                 .eq("task_id", task_id)\
                 .eq("user_id", user_id)\
                 .execute()
@@ -160,7 +161,19 @@ class AssignmentService:
                 # Log warning if multiple assignments found (shouldn't happen)
                 print(f"Warning: Multiple assignments found for user {user_id} and task {task_id}")
             
-            return TaskAssignment(**result.data[0])
+            assignment_data = result.data[0]
+            # Extract task title from the joined data
+            task_title = assignment_data.get("tasks", {}).get("title", "Unknown Task")
+            
+            # Create enhanced assignment object
+            enhanced_assignment = {
+                **assignment_data,
+                "task_title": task_title
+            }
+            # Remove the nested tasks object
+            enhanced_assignment.pop("tasks", None)
+            
+            return TaskAssignmentWithTitle(**enhanced_assignment)
         except Exception as e:
             raise Exception(f"Error fetching task assignment for user: {str(e)}")
 

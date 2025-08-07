@@ -4,15 +4,14 @@ import { Box, Typography, LinearProgress, Chip } from '@mui/material';
 interface ProgressIndicatorProps {
   currentQuestionIndex: number;
   totalQuestions: number;
-  taskId: string;
+  taskTitle: string;
   questionOrder: number;
 }
 
 export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   currentQuestionIndex,
   totalQuestions,
-  taskId,
-  questionOrder
+  taskTitle,
 }) => {
   const getProgressPercentage = () => {
     return totalQuestions > 0 ? ((currentQuestionIndex + 1) / totalQuestions) * 100 : 0;
@@ -26,13 +25,9 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Chip 
-            label={`Task: ${taskId?.slice(0, 8)}...`}
+            label={"Task: " + taskTitle}
             variant="outlined"
-          />
-          <Chip 
-            label={`Order: ${questionOrder}`}
-            variant="outlined"
-            color="primary"
+            sx={{ maxWidth: 300 }}
           />
         </Box>
       </Box>

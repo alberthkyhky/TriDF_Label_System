@@ -81,6 +81,7 @@ const LabelingInterface: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [questionStartTime, setQuestionStartTime] = useState<Date>(new Date());
   const [totalQuestions, setTotalQuestions] = useState(-1);
+  const [taskTitle, setTaskTitle] = useState<string>('');
 
   useEffect(() => {
     const fetchAssignment = async () => {
@@ -96,6 +97,8 @@ const LabelingInterface: React.FC = () => {
         // Calculate total questions from assignment range
         const totalQuestions = assignmentData.question_range_end - assignmentData.question_range_start + 1;
         setTotalQuestions(totalQuestions);
+        // Set task title from assignment data
+        setTaskTitle(assignmentData.task_title || 'Unknown Task');
       } catch (error: any) {
         console.error('Error fetching assignment:', error);
         setError(error.message || 'Failed to load assignment');
@@ -321,7 +324,7 @@ const LabelingInterface: React.FC = () => {
         <ProgressIndicator
           currentQuestionIndex={currentQuestionIndex}
           totalQuestions={totalQuestions}
-          taskId={taskId!}
+          taskTitle={taskTitle}
           questionOrder={currentQuestion.question_order}
         />
 

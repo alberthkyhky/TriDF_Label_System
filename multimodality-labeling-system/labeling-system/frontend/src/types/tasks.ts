@@ -16,6 +16,7 @@
   export interface TaskAssignment {
     id: string;
     task_id: string;
+    task_title?: string; // Optional for backward compatibility
     user_id: string;
     question_range_start: number;
     question_range_end: number;

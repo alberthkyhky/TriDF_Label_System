@@ -285,6 +285,18 @@ class TaskAssignment(BaseModel):
     completed_at: Optional[datetime] = None
     is_active: bool = True
 
+class TaskAssignmentWithTitle(BaseModel):
+    id: str
+    task_id: str
+    task_title: str
+    user_id: str
+    question_range_start: int = 1
+    question_range_end: int
+    completed_labels: int = 0
+    assigned_at: datetime
+    completed_at: Optional[datetime] = None
+    is_active: bool = True
+
 
 class TaskCreate(BaseModel):
     title: str

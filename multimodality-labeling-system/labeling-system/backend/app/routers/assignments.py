@@ -7,7 +7,7 @@ from app.utils.access_control import require_task_access
 from app.services.assignment_service import AssignmentService
 from app.services.task_service import TaskService
 from app.services.user_service import user_service
-from app.models.tasks import TaskAssignment, TaskAssignmentRequest
+from app.models.tasks import TaskAssignment, TaskAssignmentRequest, TaskAssignmentWithTitle
 from pydantic import BaseModel
 
 # Create service instances
@@ -139,7 +139,7 @@ async def update_assignment_progress(
     assignment = await assignment_service.update_assignment_progress(assignment_id, completed_labels)
     return {"message": "Assignment progress updated", "assignment": assignment}
 
-@router.get("/task/{task_id}", response_model=TaskAssignment)
+@router.get("/task/{task_id}", response_model=TaskAssignmentWithTitle)
 @handle_router_errors
 @require_task_access()
 async def get_task_assignments(
