@@ -335,30 +335,7 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
         </Accordion>
       ))}
 
-      {/* Overall Response Summary */}
-      <Card sx={{ mt: 3, bgcolor: 'grey.50' }}>
-        <CardContent>
-          <Typography variant="subtitle1" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            📊 Response Summary
-          </Typography>
-          
-          {Object.entries(responses).map(([failureType, selections]) => (
-            selections && selections.length > 0 && (
-              <Box key={failureType} sx={{ mb: 1 }}>
-                <Typography variant="body2">
-                  <strong>{failureType}:</strong> {selections.join(', ')}
-                </Typography>
-              </Box>
-            )
-          ))}
-          
-          {Object.values(responses).every(selections => !selections || selections.length === 0) && (
-            <Typography variant="body2" color="warning.main">
-              ⚠️ Please make a selection for each failure type.
-            </Typography>
-          )}
-        </CardContent>
-      </Card>
+      
     </Box>
   );
 };

@@ -28,11 +28,6 @@ export const defaultTaskFormData: TaskFormData = {
           multiple_select: true
         }
       }
-    },
-    media_config: {
-      num_images: 2,
-      num_videos: 1,
-      num_audios: 0,
     }
   };
 
@@ -64,11 +59,6 @@ export const useTaskFormData = () => {
             multiple_select: true
           }
         }
-      },
-      media_config: {
-        num_images: 2,
-        num_videos: 1,
-        num_audios: 0,
       }
     });
   

@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   Grid,
-  Divider,
   Chip,
   List,
   ListItem,
@@ -20,17 +19,6 @@ interface ReviewStepProps {
 
 const ReviewStep: React.FC<ReviewStepProps> = ({ formData }) => {
   
-  const getTotalMediaFiles = () => {
-    return formData.media_config.num_images + 
-           formData.media_config.num_videos + 
-           formData.media_config.num_audios;
-  };
-
-  const getEstimatedTaskLoad = () => {
-    const totalMedia = getTotalMediaFiles();
-    const totalQuestions = formData.questions_number;
-    return totalMedia * totalQuestions;
-  };
 
   return (
     <Box sx={{ pt: 2 }}>
@@ -144,63 +132,9 @@ const ReviewStep: React.FC<ReviewStepProps> = ({ formData }) => {
           </Card>
         </Grid>
 
-        {/* Media Configuration */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="primary" gutterBottom>
-                Media Configuration
-              </Typography>
-              
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 4 }}>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h3" color="primary">
-                      {formData.media_config.num_images}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Images
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid size={{ xs: 4 }}>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h3" color="secondary">
-                      {formData.media_config.num_videos}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Videos
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid size={{ xs: 4 }}>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h3" color="success.main">
-                      {formData.media_config.num_audios}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Audio
-                    </Typography>
-                  </Box>
-                </Grid>
-              </Grid>
-              
-              <Divider sx={{ my: 2 }} />
-              
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="subtitle1" color="text.secondary">
-                  Total per Question
-                </Typography>
-                <Typography variant="h4" color="primary">
-                  {getTotalMediaFiles()} files
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
 
         {/* Task Summary */}
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid size={{ xs: 12, md: 12 }}>
           <Card sx={{ bgcolor: 'primary.light' }}>
             <CardContent>
               <Typography variant="h6" color="primary.contrastText" gutterBottom>
@@ -221,10 +155,10 @@ const ReviewStep: React.FC<ReviewStepProps> = ({ formData }) => {
                 <Grid size={{ xs: 6 }}>
                   <Box sx={{ textAlign: 'center' }}>
                     <Typography variant="h3" color="primary.contrastText">
-                      {getEstimatedTaskLoad()}
+                      {formData.priority}
                     </Typography>
                     <Typography variant="body2" color="primary.contrastText">
-                      Total Media Files
+                      Priority Level
                     </Typography>
                   </Box>
                 </Grid>
@@ -256,14 +190,9 @@ const ReviewStep: React.FC<ReviewStepProps> = ({ formData }) => {
             At least one failure category is required
           </Alert>
         )}
-        {getTotalMediaFiles() === 0 && (
-          <Alert severity="error" sx={{ mb: 1 }}>
-            At least one media type must be configured
-          </Alert>
-        )}
         
         {formData.title && formData.description && formData.question_template.question_text && 
-         Object.keys(formData.question_template.choices).length > 0 && getTotalMediaFiles() > 0 && (
+         Object.keys(formData.question_template.choices).length > 0 && (
           <Alert severity="success">
             Task configuration is valid and ready to create!
           </Alert>

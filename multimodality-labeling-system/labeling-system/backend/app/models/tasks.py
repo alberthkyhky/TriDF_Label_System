@@ -38,43 +38,15 @@ class QuestionTemplate(BaseModel):
             raise ValueError('at least one failure category is required')
         return v
 
-class MediaConfiguration(BaseModel):
-    """Configuration for media sampling per question"""
-    num_images: int = 0
-    num_videos: int = 0
-    num_audios: int = 0
-    total_questions: int = 1
-    
-    @validator('num_images', 'num_videos', 'num_audios')
-    def validate_media_counts(cls, v):
-        if v < 0:
-            raise ValueError('media counts cannot be negative')
-        return v
-    
-    @validator('total_questions')
-    def validate_total_questions(cls, v):
-        if v <= 0:
-            raise ValueError('total_questions must be positive')
-        return v
-    
-    @validator('num_images')
-    def validate_at_least_one_media_type(cls, v, values):
-        # This will be called for each field, so we check the total when we have all values
-        return v
-    
-    def __init__(self, **data):
-        super().__init__(**data)
-        total_media = self.num_images + self.num_videos + self.num_audios
-        if total_media == 0:
-            raise ValueError('at least one media type must be specified')
 
 class TaskWithQuestionsCreate(BaseModel):
-    """Enhanced task creation with question template and media config"""
+    """Enhanced task creation with question template"""
     # Basic task info
     title: str
     description: Optional[str] = None
     instructions: Optional[str] = None
     example_media: List[str] = []
+    priority: Optional[str] = "medium"
     
     # Task settings
     questions_number: int = 10
@@ -83,9 +55,6 @@ class TaskWithQuestionsCreate(BaseModel):
     
     # Question template (shared across all questions)
     question_template: QuestionTemplate
-    
-    # Media configuration (backend will randomly sample)
-    media_config: MediaConfiguration
     
     @validator('title')
     def validate_title(cls, v):
@@ -113,15 +82,15 @@ class TaskWithQuestions(BaseModel):
     description: Optional[str] = None
     instructions: Optional[str] = None
     example_media: List[str] = []
+    priority: Optional[str] = "medium"
     status: str
     
     # Task settings
     questions_number: int
     required_agreements: int
     
-    # Template and config
+    # Template
     question_template: QuestionTemplate
-    media_config: MediaConfiguration
     
     # Metadata
     created_by: str
@@ -348,12 +317,12 @@ class TaskWithQuestionsUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     instructions: Optional[str] = None
+    priority: Optional[str] = None
     status: Optional[TaskStatus] = None
     questions_number: Optional[int] = None
     required_agreements: Optional[int] = None
     deadline: Optional[datetime] = None
     question_template: Optional[QuestionTemplate] = None
-    media_config: Optional[MediaConfiguration] = None
 
 class QuestionStatus(str, Enum):
     PENDING = "pending"

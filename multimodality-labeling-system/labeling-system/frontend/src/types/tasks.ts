@@ -44,12 +44,6 @@
         };
       };
     };
-    media_config: {
-      num_images: number;
-      num_videos: number;
-      num_audios: number;
-      total_questions: number;
-    };
     created_by: string;
     created_at: string;
     updated_at?: string;

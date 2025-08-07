@@ -1,6 +1,6 @@
 // Merged services/api.ts - Use FastAPI backend instead of direct Supabase
 import { Task, TaskAssignment } from '../types/tasks';
-import { TaskWithQuestionsData, MediaConfiguration, TaskFormData, MediaFile } from '../types/createTask';
+import { TaskWithQuestionsData, TaskFormData, MediaFile } from '../types/createTask';
 import { QuestionResponseCreate, QuestionResponseDetailed, QuestionWithMedia } from '../types/labeling';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -27,7 +27,6 @@ interface TaskWithQuestionsResponse {
       };
     };
   };
-  media_config: MediaConfiguration;
   created_by: string;
   created_at: string;
   updated_at?: string;
@@ -171,7 +170,13 @@ export const api = {
       } else if (response.status === 403) {
         throw new Error('Permission denied. Admin access required.');
       } else if (response.status === 422) {
-        throw new Error(`Validation error: ${errorMessage}`);
+        // For validation errors, try to get more detailed error information
+        let detailedError = errorMessage;
+        if (typeof errorMessage === 'object') {
+          detailedError = JSON.stringify(errorMessage, null, 2);
+        }
+        console.error('422 Validation Error Details:', errorMessage);
+        throw new Error(`Validation error: ${detailedError}`);
       }
       
       throw new Error(errorMessage);

@@ -10,11 +10,6 @@ export interface QuestionChoices {
   [key: string]: FailureChoice;
 }
 
-export interface MediaConfiguration {
-  num_images: number;
-  num_videos: number;
-  num_audios: number;
-}
 
 export interface TaskFormData {
   title: string;
@@ -28,7 +23,6 @@ export interface TaskFormData {
     question_text: string;
     choices: QuestionChoices;
   };
-  media_config: MediaConfiguration;
 }
 
 export interface TaskWithQuestionsData {
@@ -52,7 +46,6 @@ export interface TaskWithQuestionsData {
       };
     };
   };
-  media_config: MediaConfiguration;
 }
 
 export interface TaskWithQuestionsResponse {
@@ -75,7 +68,6 @@ export interface TaskWithQuestionsResponse {
       };
     };
   };
-  media_config: MediaConfiguration;
   created_by: string;
   created_at: string;
   updated_at?: string;

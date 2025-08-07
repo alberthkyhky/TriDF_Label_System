@@ -12,7 +12,6 @@ import { api } from '../../../services/api';
 import { TaskFormData } from '../../../types/createTask';
 import BasicInfoStep from './BasicInfoStep';
 import QuestionTemplateStep from './QuestionTemplateStep';
-import MediaConfigStep from './MediaConfigStep';
 import ReviewStep from './ReviewStep';
 
 interface TaskCreationStepperProps {
@@ -34,7 +33,7 @@ const TaskCreationStepper: React.FC<TaskCreationStepperProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const steps = ['Basic Info', 'Question Template', 'Media Configuration', 'Review & Create'];
+  const steps = ['Basic Info', 'Question Template', 'Review & Create'];
 
   const handleNext = () => {
     if (activeStep < steps.length - 1) {
@@ -58,14 +57,6 @@ const TaskCreationStepper: React.FC<TaskCreationStepperProps> = ({
         throw new Error('Please fill in all required fields');
       }
 
-      // Calculate total media files needed
-      const totalMediaTypes = formData.media_config.num_images + 
-                              formData.media_config.num_videos + 
-                              formData.media_config.num_audios;
-      
-      if (totalMediaTypes === 0) {
-        throw new Error('At least one media type must be configured');
-      }
 
       if (Object.keys(formData.question_template.choices).length === 0) {
         throw new Error('At least one failure type must be configured');
@@ -80,10 +71,10 @@ const TaskCreationStepper: React.FC<TaskCreationStepperProps> = ({
         priority: formData.priority,
         required_agreements: formData.required_agreements,
         question_template: formData.question_template,
-        media_config: formData.media_config,
         questions_number: formData.questions_number
       };
 
+      console.log('Task data being sent to API:', JSON.stringify(taskData, null, 2));
       const result = await api.createTaskWithQuestions(taskData);
       console.log('Task created successfully:', result);
       onSuccess();
@@ -122,13 +113,6 @@ const TaskCreationStepper: React.FC<TaskCreationStepperProps> = ({
         );
       case 2:
         return (
-          <MediaConfigStep
-            formData={formData}
-            setFormData={setFormData}
-          />
-        );
-      case 3:
-        return (
           <ReviewStep
             formData={formData}
           />
@@ -146,11 +130,6 @@ const TaskCreationStepper: React.FC<TaskCreationStepperProps> = ({
         return formData.question_template.question_text && 
                Object.keys(formData.question_template.choices).length > 0;
       case 2:
-        const totalMedia = formData.media_config.num_images + 
-                          formData.media_config.num_videos + 
-                          formData.media_config.num_audios;
-        return totalMedia > 0;
-      case 3:
         return true;
       default:
         return false;

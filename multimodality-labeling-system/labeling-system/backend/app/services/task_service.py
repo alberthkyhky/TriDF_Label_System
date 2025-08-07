@@ -79,15 +79,14 @@ class TaskService(BaseService):
                 "status": "draft",
                 "questions_number": task_data.questions_number,
                 "required_agreements": task_data.required_agreements,
-                # Store the template and config in the database
+                # Store the template in the database
                 "question_template": self._serialize_question_template(task_data.question_template),
-                "media_config": self._serialize_media_config(task_data.media_config),
+                "priority": task_data.priority,
                 "created_by": created_by,
                 "metadata": {
                     "created_with": "enhanced_interface",
                     "version": "2.0",
-                    "questions_generated": False,  # Flag to indicate no questions generated yet
-                    "media_attached": False        # Flag to indicate no media attached yet
+                    "questions_generated": False  # Flag to indicate no questions generated yet
                 }
             }
             
@@ -108,11 +107,11 @@ class TaskService(BaseService):
                 description=created_task.get("description"),
                 instructions=created_task.get("instructions"),
                 example_media=created_task.get("example_media", []),
+                priority=created_task.get("priority", "medium"),
                 status=created_task["status"],
                 questions_number=created_task["questions_number"],
                 required_agreements=created_task["required_agreements"],
                 question_template=task_data.question_template,
-                media_config=task_data.media_config,
                 created_by=created_task["created_by"],
                 created_at=created_task["created_at"],
                 updated_at=created_task.get("updated_at"),
@@ -140,13 +139,6 @@ class TaskService(BaseService):
             "choices": choices_dict
         }
 
-    def _serialize_media_config(self, media_config) -> dict:
-        """Properly serialize MediaConfiguration to dict"""
-        return {
-            "num_images": media_config.num_images,
-            "num_videos": media_config.num_videos,
-            "num_audios": media_config.num_audios,
-        }
     
     async def update_task(self, task_id: str, update_data: TaskUpdate) -> Task:
         """Update task"""
@@ -186,6 +178,8 @@ class TaskService(BaseService):
                 update_dict["description"] = update_data.description
             if update_data.instructions is not None:
                 update_dict["instructions"] = update_data.instructions
+            if update_data.priority is not None:
+                update_dict["priority"] = update_data.priority
             if update_data.status is not None:
                 update_dict["status"] = update_data.status
             if update_data.questions_number is not None:
@@ -198,14 +192,6 @@ class TaskService(BaseService):
             # Handle question template (serialize to JSON)
             if update_data.question_template is not None:
                 update_dict["question_template"] = update_data.question_template.dict()
-            
-            # Handle media config (serialize to JSON)
-            if update_data.media_config is not None:
-                update_dict["media_config"] = {
-                    "num_images": update_data.media_config.num_images,
-                    "num_videos": update_data.media_config.num_videos,
-                    "num_audios": update_data.media_config.num_audios,
-                }
             
             if not update_dict:
                 # Return existing task with questions format
@@ -280,11 +266,11 @@ class TaskService(BaseService):
                 description=task_data.get("description"),
                 instructions=task_data.get("instructions"),
                 example_media=task_data.get("example_media", []),
+                priority=task_data.get("priority", "medium"),
                 status=task_data["status"],
                 questions_number=task_data["questions_number"],
                 required_agreements=task_data["required_agreements"],
                 question_template=task_data.get("question_template", {}),
-                media_config=task_data.get("media_config", {}),
                 created_by=task_data["created_by"],
                 created_at=task_data["created_at"],
                 updated_at=task_data.get("updated_at"),

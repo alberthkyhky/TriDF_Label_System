@@ -75,6 +75,7 @@ const TaskManagement: React.FC = () => {
       // Validate JSON structure
       validateTaskJson(jsonData);
 
+
       // Create task using the API
       const createdTask = await api.createTaskWithQuestions(jsonData);
       
@@ -106,7 +107,7 @@ const TaskManagement: React.FC = () => {
     // Required fields validation
     const requiredFields = [
       'title', 'description', 'instructions', 'questions_number', 
-      'required_agreements', 'question_template', 'media_config'
+      'required_agreements', 'question_template'
     ];
 
     for (const field of requiredFields) {
@@ -120,13 +121,6 @@ const TaskManagement: React.FC = () => {
       throw new Error('Invalid question_template structure. Must have question_text and choices.');
     }
 
-    // Validate media_config structure
-    const mediaConfig = jsonData.media_config;
-    if (typeof mediaConfig.num_images !== 'number' || 
-        typeof mediaConfig.num_videos !== 'number' || 
-        typeof mediaConfig.num_audios !== 'number') {
-      throw new Error('Invalid media_config structure. Must have num_images, num_videos, and num_audios as numbers.');
-    }
 
     // Validate choices structure
     const choices = jsonData.question_template.choices;

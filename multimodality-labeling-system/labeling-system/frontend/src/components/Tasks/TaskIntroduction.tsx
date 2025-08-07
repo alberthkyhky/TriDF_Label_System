@@ -72,19 +72,6 @@ const TaskIntroduction: React.FC = () => {
     [task?.question_template.choices]
   );
 
-  const totalMediaFiles = useMemo(() => 
-    task ? task.media_config.num_images + task.media_config.num_videos + task.media_config.num_audios : 0,
-    [task?.media_config]
-  );
-
-  const placeholderExamples = useMemo(() => {
-    if (!task) return [];
-    return [
-      ...Array.from({ length: task.media_config.num_images }, (_, i) => ({ type: 'image', index: i })),
-      ...Array.from({ length: task.media_config.num_videos }, (_, i) => ({ type: 'video', index: i })),
-      ...Array.from({ length: task.media_config.num_audios }, (_, i) => ({ type: 'audio', index: i }))
-    ];
-  }, [task?.media_config]);
 
   // Loading state
   if (loading) {
@@ -189,9 +176,6 @@ const TaskIntroduction: React.FC = () => {
                     <strong>Question:</strong> {task.question_template.question_text}
                   </Typography>
                   <Typography variant="body2" paragraph>
-                    <strong>Media per question:</strong> {task.media_config.num_images} images, {task.media_config.num_videos} videos, {task.media_config.num_audios} audio files
-                  </Typography>
-                  <Typography variant="body2" paragraph>
                     <strong>Total questions in task:</strong> {task.questions_number}
                   </Typography>
                   <Typography variant="body2" paragraph>
@@ -203,9 +187,6 @@ const TaskIntroduction: React.FC = () => {
                   What you'll be doing:
                 </Typography>
                 <Box component="ul" sx={{ pl: 2 }}>
-                  <Typography component="li" variant="body2" paragraph>
-                    Review {totalMediaFiles} media items per question
-                  </Typography>
                   <Typography component="li" variant="body2" paragraph>
                     Answer: "{task.question_template.question_text}"
                   </Typography>
@@ -284,34 +265,24 @@ const TaskIntroduction: React.FC = () => {
                       </Box>
                     ))
                   ) : (
-                    // Generate placeholder examples based on media config
-                    <>
-                      {placeholderExamples.map((example) => {
-                        const icons = { image: '📷', video: '🎥', audio: '🎵' };
-                        const labels = { image: 'Image', video: 'Video', audio: 'Audio' };
-                        
-                        return (
-                          <Box
-                            key={`${example.type}-${example.index}`}
-                            sx={{
-                              width: '100%',
-                              height: 120,
-                              bgcolor: 'grey.300',
-                              borderRadius: 1,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              border: '2px dashed',
-                              borderColor: 'grey.400'
-                            }}
-                          >
-                            <Typography variant="body2" color="text.secondary">
-                              {icons[example.type as keyof typeof icons]} Example {labels[example.type as keyof typeof labels]} {example.index + 1}
-                            </Typography>
-                          </Box>
-                        );
-                      })}
-                    </>
+                    // Show generic placeholder
+                    <Box
+                      sx={{
+                        width: '100%',
+                        height: 120,
+                        bgcolor: 'grey.300',
+                        borderRadius: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '2px dashed',
+                        borderColor: 'grey.400'
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary">
+                        📷 Example Media (Images, Videos, Audio)
+                      </Typography>
+                    </Box>
                   )}
                 </Box>
 
@@ -319,13 +290,13 @@ const TaskIntroduction: React.FC = () => {
                   You'll analyze similar media items to identify various failure types
                 </Typography>
 
-                {/* Media Configuration Info */}
+                {/* Task Info */}
                 <Box sx={{ mt: 2, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
                   <Typography variant="subtitle2" gutterBottom>
-                    Media Configuration:
+                    Task Overview:
                   </Typography>
                   <Typography variant="body2">
-                    Each question will contain {totalMediaFiles} media files for comparison and analysis.
+                    You'll analyze media files and identify failure types according to the provided categories.
                   </Typography>
                 </Box>
               </CardContent>
