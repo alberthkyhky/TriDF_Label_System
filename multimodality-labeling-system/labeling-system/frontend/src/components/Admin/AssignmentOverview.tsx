@@ -225,13 +225,13 @@ const AssignmentOverview: React.FC = () => {
     icon: React.ReactNode;
     color?: 'primary' | 'secondary' | 'success' | 'warning' | 'error';
   }) => (
-    <Card>
-      <CardContent>
+    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Avatar sx={{ bgcolor: `${color}.main`, mr: 2 }}>
             {icon}
           </Avatar>
-          <Box>
+          <Box sx={{ flex: 1 }}>
             <Typography variant="h4" component="div">
               {value}
             </Typography>
@@ -251,8 +251,8 @@ const AssignmentOverview: React.FC = () => {
 
   // Skeleton components for loading state
   const StatCardSkeleton = () => (
-    <Card>
-      <CardContent>
+    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Skeleton variant="circular" width={56} height={56} sx={{ mr: 2 }} />
           <Box sx={{ flexGrow: 1 }}>
