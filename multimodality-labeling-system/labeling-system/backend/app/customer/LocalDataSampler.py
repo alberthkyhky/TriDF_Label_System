@@ -36,19 +36,29 @@ class LocalDataSampler:
 
         if idx < len(self.data_by_task[task_name]):
             row = self.data_by_task[task_name][idx]
+            print(row)
             # Prefix paths with root directory
             for key, value in row.items():
-                if os.path.splitext(key)[1] in [".wav", ".mp3", ".mp4", ".jpg", ".png"]:
+                if os.path.splitext(value)[1] in [".wav", ".mp3", ".mp4", ".jpg", ".png"]:
                     row[key] = os.path.join(self.root, task_name, value)
             return row
         else:
             raise IndexError(f"Index {idx} exceeds the number of rows in task_name {task_name}")
 
-root="/Users/yangping/Studio/side-project/ICLR2026_MMID/multimodality-labeling-system/labeling-system/backend/taskData"
+root="/home/jianyu/Desktop/ICLR2026_MMID-main_old/Label_raw_data"
 sampler = LocalDataSampler(root)
+taskset = [
+    'aud_voice_cloning', 
+    'aud_voice_conversion', 
+    'img_editing', 
+    'img_face_swapping', 
+    'vid_lip-syncing', 
+    'vid_talking_head_synthesis'
+    ]
 
-csv_file = "/Users/yangping/Studio/side-project/ICLR2026_MMID/multimodality-labeling-system/labeling-system/backend/taskData/aud_voice_cloning/collect.csv"
-sampler.load_csv("aud_voice_cloning", csv_file)
+for task in taskset:
+    csv_file = f"/home/jianyu/Desktop/ICLR2026_MMID-main_old/Label_raw_data/{task}/collect.csv"
+    sampler.load_csv(task, csv_file)
 
 # # init data root
 # root="dataset_root"
