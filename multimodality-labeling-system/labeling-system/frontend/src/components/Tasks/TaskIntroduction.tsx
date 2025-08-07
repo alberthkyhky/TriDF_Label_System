@@ -162,7 +162,7 @@ const TaskIntroduction: React.FC = () => {
             <Card>
               <CardContent>
                 <Typography variant="h5" gutterBottom>
-                  📋 Instructions
+                  1. Instructions
                 </Typography>
                 <Typography variant="body1" paragraph>
                   {task.instructions || 'Please review the media items and identify any failures according to the categories provided.'}
@@ -227,7 +227,7 @@ const TaskIntroduction: React.FC = () => {
             <Card>
               <CardContent>
                 <Typography variant="h5" gutterBottom>
-                  📸 Example Media
+                  2. Example Media
                 </Typography>
                 <Typography variant="body2" color="text.secondary" paragraph>
                   Here's an example of the type of media you'll be analyzing:
@@ -280,7 +280,7 @@ const TaskIntroduction: React.FC = () => {
                       }}
                     >
                       <Typography variant="body2" color="text.secondary">
-                        📷 Example Media (Images, Videos, Audio)
+                        Example Media (Images, Videos, Audio)
                       </Typography>
                     </Box>
                   )}

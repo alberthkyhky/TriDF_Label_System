@@ -640,7 +640,7 @@ export const api = {
     // Process the response to handle new data format
     const processedQuestions = data.map((question: any) => {
       console.log('🔍 Processing question:', question.id);
-      console.log('📋 Question structure:', {
+      console.log('Question structure:', {
         has_media_files: !!question.media_files,
         media_files_length: question.media_files?.length || 0,
         has_raw_data: !!question.raw_data,
@@ -653,7 +653,7 @@ export const api = {
         
         // Check if media_files already contain key information from backend
         const enhancedMediaFiles = question.media_files.map((mediaFile: any, index: number) => {
-          console.log(`🎵 Processing media file ${index}:`, {
+          console.log(`Processing media file ${index}:`, {
             filename: mediaFile.filename,
             has_key: !!mediaFile.key,
             has_caption: !!mediaFile.caption,
@@ -697,7 +697,7 @@ export const api = {
         const { sortMediaFilesByPriority } = require('../utils/mediaUtils');
         const sortedMediaFiles = sortMediaFilesByPriority(enhancedMediaFiles);
         
-        console.log('🎯 Final processed media files:', sortedMediaFiles.map((mf: any) => ({
+        console.log('Final processed media files:', sortedMediaFiles.map((mf: any) => ({
           filename: mf.filename,
           key: mf.key,
           display_name: mf.display_name
@@ -716,7 +716,7 @@ export const api = {
         const mediaFiles = parseMediaFilesFromData(question.raw_data);
         const sortedMediaFiles = sortMediaFilesByPriority(mediaFiles);
         
-        console.log('🎯 Processed from raw_data:', sortedMediaFiles.map((mf: any) => ({
+        console.log('Processed from raw_data:', sortedMediaFiles.map((mf: any) => ({
           filename: mf.filename,
           key: mf.key,
           display_name: mf.display_name

@@ -63,10 +63,10 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
   };
 
   const getFailureTypeIcon = (failureType: string) => {
-    if (failureType.includes('A-type')) return '🏗️';
-    if (failureType.includes('B-type')) return '⚙️';
-    if (failureType.includes('C-type')) return '🎯';
-    return '📋';
+    if (failureType.includes('A-type')) return '1.';
+    if (failureType.includes('B-type')) return '2.';
+    if (failureType.includes('C-type')) return '3.';
+    return '1.';
   };
 
   // Check if user selected "No" (None)
@@ -123,7 +123,7 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
   return (
     <Box>
       <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        ❓ Failure Type Analysis
+        2. Failure Type Analysis
         <Chip 
           label={`${Object.keys(choices).length} categories`}
           size="small"

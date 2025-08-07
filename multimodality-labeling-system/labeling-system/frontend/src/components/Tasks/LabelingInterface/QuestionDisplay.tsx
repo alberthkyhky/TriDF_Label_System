@@ -35,7 +35,7 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
     <Card>
       <CardContent>
         <Typography variant="h6" gutterBottom>
-          ❓ {questionText}
+          1. {questionText}
         </Typography>
         <Typography variant="body2" color="text.secondary" paragraph>
           For each failure type, first indicate if failures are present, then specify the types.
