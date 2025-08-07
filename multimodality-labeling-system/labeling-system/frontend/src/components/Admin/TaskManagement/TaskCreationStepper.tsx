@@ -77,6 +77,7 @@ const TaskCreationStepper: React.FC<TaskCreationStepperProps> = ({
         description: formData.description.trim(),
         instructions: formData.instructions.trim(),
         example_media: formData.example_media.filter(media => media.trim()),
+        priority: formData.priority,
         required_agreements: formData.required_agreements,
         question_template: formData.question_template,
         media_config: formData.media_config,

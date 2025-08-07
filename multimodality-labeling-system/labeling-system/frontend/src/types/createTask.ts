@@ -21,6 +21,7 @@ export interface TaskFormData {
   description: string;
   instructions: string;
   questions_number: number;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   example_media: string[];
   required_agreements: number;
   question_template: {
@@ -38,6 +39,7 @@ export interface TaskWithQuestionsData {
   instructions: string;
   example_media: string[];
   questions_number: number;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
   required_agreements: number;
   created_at: string;
   question_template: {
@@ -61,6 +63,7 @@ export interface TaskWithQuestionsResponse {
   example_media: string[];
   status: string;
   questions_number: number;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
   required_agreements: number;
   question_template: {
     question_text: string;

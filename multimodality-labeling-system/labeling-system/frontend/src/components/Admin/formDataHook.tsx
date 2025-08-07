@@ -7,6 +7,7 @@ export const defaultTaskFormData: TaskFormData = {
     instructions: '',
     example_media: [],
     questions_number: 100,
+    priority: 'medium',
     required_agreements: 1,
     question_template: {
       question_text: 'What failures do you see in this data?',
@@ -42,6 +43,7 @@ export const useTaskFormData = () => {
       instructions: '',
       example_media: [],
       questions_number: 100,
+      priority: 'medium',
       required_agreements: 1,
       question_template: {
         question_text: 'What failures do you see in this data?',

@@ -260,7 +260,9 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
           const basicUpdateData = {
             title: editedTask.title,
             description: editedTask.description,
-            status: editedTask.status
+            status: editedTask.status,
+            questions_number: editedTask.questions_number,
+            priority: editedTask.priority
           };
           
           console.log('Basic update data being sent:', basicUpdateData);
@@ -392,19 +394,50 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
                   onChange={(e) => handleTaskChange({ description: e.target.value })}
                   sx={{ mb: 2 }}
                 />
+                
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <Box sx={{ flex: 1, minWidth: '200px' }}>
+                    <TextField
+                      fullWidth
+                      label="Total Questions"
+                      type="number"
+                      value={editedTask.questions_number}
+                      onChange={(e) => handleTaskChange({ questions_number: parseInt(e.target.value) || 1 })}
+                      inputProps={{ min: 1, max: 1000 }}
+                      helperText="Number of questions for this task"
+                      sx={{ mb: 2 }}
+                    />
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: '200px' }}>
+                    <TextField
+                      fullWidth
+                      label="Priority"
+                      select
+                      value={editedTask.priority || 'medium'}
+                      onChange={(e) => handleTaskChange({ priority: e.target.value as 'low' | 'medium' | 'high' | 'urgent' })}
+                      helperText="Task priority level"
+                      SelectProps={{
+                        native: true,
+                      }}
+                      sx={{ mb: 2 }}
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </TextField>
+                  </Box>
+                </Box>
               </Box>
               <Box sx={{ flex: 1, minWidth: 300 }}>
                 <Paper sx={{ p: 2, bgcolor: 'grey.50' }}>
                   <Typography variant="subtitle2" gutterBottom>Task Statistics</Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     <Typography variant="body2">
-                      Total Questions: <strong>{task.questions_number}</strong>
-                    </Typography>
-                    <Typography variant="body2">
-                      Required Agreements: <strong>{task.required_agreements}</strong>
-                    </Typography>
-                    <Typography variant="body2">
                       Created: <strong>{new Date(task.created_at).toLocaleDateString()}</strong>
+                    </Typography>
+                    <Typography variant="body2">
+                      Status: <strong>{task.status}</strong>
                     </Typography>
                   </Box>
                 </Paper>

@@ -79,8 +79,8 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ formData, setFormData }) 
             fullWidth
             label="Priority"
             select
-            value={'medium'}
-            onChange={(e) => {/* Priority not supported in current type */}}
+            value={formData.priority}
+            onChange={(e) => handleChange('priority', e.target.value as 'low' | 'medium' | 'high' | 'urgent')}
             helperText="Task priority level"
             SelectProps={{
               native: true,
@@ -111,5 +111,6 @@ export default React.memo(BasicInfoStep, (prevProps, nextProps) => {
          prevProps.formData.description === nextProps.formData.description &&
          prevProps.formData.instructions === nextProps.formData.instructions &&
          prevProps.formData.questions_number === nextProps.formData.questions_number &&
+         prevProps.formData.priority === nextProps.formData.priority &&
          prevProps.setFormData === nextProps.setFormData;
 });
