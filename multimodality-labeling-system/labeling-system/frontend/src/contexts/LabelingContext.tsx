@@ -153,9 +153,11 @@ function labelingReducer(state: LabelingState, action: LabelingAction): Labeling
         currentQuestionIndex: newIndex,
         totalQuestions: state.questions.length,
         completedQuestions: Object.keys(state.responses).length,
-        targetLabels: state.assignment?.target_labels || 0,
-        progressPercentage: state.assignment?.target_labels 
-          ? Math.round((Object.keys(state.responses).length / state.assignment.target_labels) * 100)
+        targetLabels: state.assignment?.question_range_end && state.assignment?.question_range_start 
+          ? (state.assignment.question_range_end - state.assignment.question_range_start + 1)
+          : 0,
+        progressPercentage: (state.assignment?.question_range_end && state.assignment?.question_range_start)
+          ? Math.round((Object.keys(state.responses).length / (state.assignment.question_range_end - state.assignment.question_range_start + 1)) * 100)
           : 0
       };
       return { 
@@ -176,8 +178,8 @@ function labelingReducer(state: LabelingState, action: LabelingAction): Labeling
       const updatedProgress = {
         ...state.progress,
         completedQuestions: Object.keys(updatedResponses).length,
-        progressPercentage: state.assignment?.target_labels 
-          ? Math.round((Object.keys(updatedResponses).length / state.assignment.target_labels) * 100)
+        progressPercentage: (state.assignment?.question_range_end && state.assignment?.question_range_start)
+          ? Math.round((Object.keys(updatedResponses).length / (state.assignment.question_range_end - state.assignment.question_range_start + 1)) * 100)
           : 0
       };
       return { 

@@ -60,7 +60,9 @@ class ResponseService(BaseService):
                 response_dict["started_at"] = response_data.started_at.isoformat()
             
             # Insert response
+            print(f"🔍 Inserting response data: {response_dict}")
             result = self.supabase.table("question_responses").insert(response_dict).execute()
+            print(f"✅ Response inserted successfully: {result.data}")
             if not result.data:
                 raise Exception("Failed to create response")
             

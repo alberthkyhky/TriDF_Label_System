@@ -20,10 +20,11 @@ const ApiTest: React.FC = () => {
       // Test 2: Try assignment with different formats
       const testCases = [
         {
-          name: 'Test assignment without label classes',
+          name: 'Test assignment with question range',
           data: {
             user_id_to_assign: userId,
-            target_labels: 5
+            question_range_start: 1,
+            question_range_end: 5
           }
         }
       ];
