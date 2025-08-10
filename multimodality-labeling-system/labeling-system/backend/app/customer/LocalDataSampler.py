@@ -36,18 +36,28 @@ class LocalDataSampler:
             raise ValueError(f"No data loaded for task_name: {task_name}")
 
         if idx < len(self.data_by_task[task_name]):
-            row = self.data_by_task[task_name][idx]
-            # Prefix paths with root directory
+            row = self.data_by_task[task_name][idx].copy()  # Create a copy to avoid modifying original
+            
+            # Handle prompt column - create text source with "prompt: {value}" format
+            if "prompt" in row:
+                prompt_value = row["prompt"]
+                if prompt_value and prompt_value.strip():
+                    # Create a text source entry
+                    row["prompt"] = f"prompt: {prompt_value}"
+            
+            # Prefix file paths with root directory for media files
             for key, value in row.items():
-                if os.path.splitext(value)[1] in [".wav", ".mp3", ".mp4", ".jpg", ".png"]:
+                if key != "prompt" and os.path.splitext(value)[1] in [".wav", ".mp3", ".mp4", ".jpg", ".png"]:
                     row[key] = os.path.join(self.root, task_name, value)
+            
             return row
         else:
             raise IndexError(f"Index {idx} exceeds the number of rows in task_name {task_name}")
 
 sampler = LocalDataSampler(ROOT_DIR)
-tasks = ["aud_voice_cloning"]
+tasks = ["aud_voice_cloning", "aud_voice_conversion"]
 for task in tasks:
+    # Try test CSV with prompt column first, fallback to collect.csv
     csv_file = f"{ROOT_DIR}/{task}/collect.csv"
     sampler.load_csv(task, csv_file)
 

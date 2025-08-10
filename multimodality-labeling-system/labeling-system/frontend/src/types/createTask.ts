@@ -79,12 +79,13 @@ export interface TaskWithQuestionsResponse {
 export interface MediaFile {
   filename: string;
   file_path: string;
-  media_type: 'image' | 'video' | 'audio';
+  media_type: 'image' | 'video' | 'audio' | 'text';
   file_size?: number;
   mime_type?: string;
   duration_seconds?: number;
   width?: number;
   height?: number;
+  key?: string; // The original key from the data (e.g., 'output_wav', 'other_wav', 'prompt')
   // tags: string[];
   // metadata: Record<string, any>;
 }

@@ -4,28 +4,13 @@ import {
   Typography,
   CircularProgress,
   Alert,
-  IconButton,
   Skeleton
 } from '@mui/material';
 import {
-  ZoomIn,
   VolumeUp,
   Error as ErrorIcon
 } from '@mui/icons-material';
-
-interface MediaFile {
-  filename: string;
-  file_path: string;
-  media_type: 'image' | 'video' | 'audio';
-  file_size?: number;
-  mime_type?: string;
-  duration_seconds?: number;
-  width?: number;
-  height?: number;
-  key?: string; // The original key from the data (e.g., 'output_wav', 'other_wav')
-  caption?: string; // Alternative to key field (from backend)
-  display_name?: string; // Human-readable display name
-}
+import { MediaFile } from '../../types/createTask';
 
 interface LazyMediaItemProps {
   mediaFile: MediaFile;
@@ -114,8 +99,14 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
     return () => observer.disconnect();
   }, [loadingThreshold, rootMargin]);
 
-  // Load media when it becomes visible
+  // Load media when it becomes visible (skip loading for text files)
   useEffect(() => {
+    if (mediaFile.media_type === 'text') {
+      // Text files don't need blob URLs, mark as ready
+      setState(prev => ({ ...prev, blobUrl: 'ready' }));
+      return;
+    }
+    
     if (state.shouldLoad && !state.blobUrl && !state.isLoading && !state.hasError) {
       // Add slight delay for images, immediate for other media types
       const delay = mediaFile.media_type === 'image' ? 100 : 0;
@@ -134,7 +125,7 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
   }, [state.blobUrl]);
 
   const handleMediaClick = () => {
-    if (state.blobUrl && onMediaClick) {
+    if ((state.blobUrl || mediaFile.media_type === 'text') && onMediaClick) {
       onMediaClick(mediaFile);
     }
   };
@@ -161,7 +152,7 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
       );
     }
 
-    if (state.isLoading || !state.blobUrl) {
+    if (state.isLoading || (!state.blobUrl && mediaFile.media_type !== 'text')) {
       return (
         <Box sx={{
           display: 'flex',
@@ -182,83 +173,95 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
     switch (mediaFile.media_type) {
       case 'image':
         return (
-          <Box sx={{ position: 'relative', height: '100%' }}>
-            <img
-              src={state.blobUrl}
-              alt={mediaFile.filename}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                cursor: 'pointer'
-              }}
-              onClick={handleMediaClick}
-              loading="lazy"
-            />
-            <IconButton
-              sx={{
-                position: 'absolute',
-                top: 8,
-                right: 8,
-                bgcolor: 'rgba(0,0,0,0.6)',
-                color: 'white',
-                '&:hover': { bgcolor: 'rgba(0,0,0,0.8)' }
-              }}
-              size="small"
-              onClick={handleMediaClick}
-            >
-              <ZoomIn />
-            </IconButton>
-          </Box>
+          <img
+            src={state.blobUrl || ''}
+            alt={mediaFile.filename}
+            style={{
+              width: '100%',
+              height: 'auto',
+              minHeight: '200px',
+              maxHeight: '400px',
+              objectFit: 'contain'
+            }}
+            loading="lazy"
+          />
         );
 
       case 'video':
         return (
-          <Box sx={{ position: 'relative', height: '100%' }}>
-            <video
-              src={state.blobUrl}
-              controls
-              preload="metadata"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain'
-              }}
-              onError={() => setState(prev => ({ ...prev, hasError: true }))}
-            >
-              Your browser does not support video playback.
-            </video>
-          </Box>
+          <video
+            src={state.blobUrl || ''}
+            controls
+            preload="metadata"
+            style={{
+              width: '100%',
+              height: 'auto',
+              minHeight: '200px',
+              maxHeight: '400px',
+              objectFit: 'contain'
+            }}
+            onError={() => setState(prev => ({ ...prev, hasError: true }))}
+          >
+            Your browser does not support video playback.
+          </video>
         );
 
       case 'audio':
         return (
           <Box sx={{
-            position: 'relative',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            height: '100%',
-            p: 3
+            height: 150,
+            width: '100%',
+            bgcolor: 'grey.200',
+            p: 2
           }}>
-            <VolumeUp sx={{ fontSize: 64, color: 'primary.main', mb: 2 }} />
-            <Typography variant="h6" gutterBottom textAlign="center">
-              {mediaFile.filename}
-            </Typography>
+            <VolumeUp sx={{ fontSize: 32, color: 'primary.main', mb: 1 }} />
             <audio
-              src={state.blobUrl}
+              src={state.blobUrl || ''}
               controls
-              style={{ width: '100%', minWidth: '300px' }}
+              style={{ width: '100%', maxWidth: '300px' }}
               onError={() => setState(prev => ({ ...prev, hasError: true }))}
             >
               Your browser does not support audio playback.
             </audio>
-            {mediaFile.duration_seconds && (
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-                Duration: {Math.round(mediaFile.duration_seconds)}s
-              </Typography>
-            )}
+            <Typography variant="caption" sx={{ mt: 1, textAlign: 'center' }}>
+              {mediaFile.filename}
+            </Typography>
+          </Box>
+        );
+
+      case 'text':
+        return (
+          <Box sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            justifyContent: 'flex-start',
+            minHeight: 150,
+            maxHeight: 200,
+            width: '100%',
+            p: 2,
+            bgcolor: 'grey.50',
+            overflow: 'auto'
+          }}>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                textAlign: 'left',
+                width: '100%',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                lineHeight: 1.5,
+                fontFamily: 'monospace',
+                fontSize: '0.9rem',
+                color: 'text.primary'
+              }}
+            >
+              {mediaFile.file_path}
+            </Typography>
           </Box>
         );
 
@@ -306,7 +309,15 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
         ref={elementRef}
         sx={{
           position: 'relative',
-          height: 480,
+          // Dynamic height based on media type
+          ...(mediaFile.media_type === 'text' || mediaFile.media_type === 'audio' ? {
+            height: 'auto',
+            minHeight: 150
+          } : {
+            minHeight: 200,
+            height: 'auto',
+            cursor: ['image', 'video'].includes(mediaFile.media_type) ? 'pointer' : 'default'
+          }),
           bgcolor: 'grey.100',
           borderRadius: 2,
           overflow: 'hidden',
@@ -316,24 +327,8 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
           alignItems: 'center',
           justifyContent: 'center'
         }}
+        onClick={() => ['image', 'video'].includes(mediaFile.media_type) ? handleMediaClick() : undefined}
       >
-      {/* File info chip */}
-      <Box sx={{
-        position: 'absolute',
-        top: 8,
-        left: 8,
-        zIndex: 1,
-        bgcolor: 'rgba(0,0,0,0.7)',
-        color: 'white',
-        px: 1,
-        py: 0.5,
-        borderRadius: 1,
-        fontSize: '0.75rem'
-      }}>
-        {mediaFile.media_type.toUpperCase()}
-        {mediaFile.file_size && ` • ${Math.round(mediaFile.file_size / 1024)}KB`}
-      </Box>
-
       {!state.isVisible ? renderPlaceholder() : renderMediaContent()}
       </Box>
     </Box>
