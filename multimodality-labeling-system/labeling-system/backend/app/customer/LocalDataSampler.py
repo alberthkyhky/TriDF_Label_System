@@ -46,7 +46,7 @@ class LocalDataSampler:
             raise IndexError(f"Index {idx} exceeds the number of rows in task_name {task_name}")
 
 sampler = LocalDataSampler(ROOT_DIR)
-csv_file = "/Users/yangping/Studio/side-project/ICLR2026_MMID/multimodality-labeling-system/labeling-system/backend/taskData/aud_voice_cloning/collect.csv"
+csv_file = f"{ROOT_DIR}/aud_voice_cloning/collect.csv"
 sampler.load_csv("aud_voice_cloning", csv_file)
 
 # # init data root
