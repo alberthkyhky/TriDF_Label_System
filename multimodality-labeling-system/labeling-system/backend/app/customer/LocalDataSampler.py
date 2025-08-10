@@ -46,8 +46,10 @@ class LocalDataSampler:
             raise IndexError(f"Index {idx} exceeds the number of rows in task_name {task_name}")
 
 sampler = LocalDataSampler(ROOT_DIR)
-csv_file = f"{ROOT_DIR}/aud_voice_cloning/collect.csv"
-sampler.load_csv("aud_voice_cloning", csv_file)
+tasks = ["aud_voice_cloning"]
+for task in tasks:
+    csv_file = f"{ROOT_DIR}/{task}/collect.csv"
+    sampler.load_csv(task, csv_file)
 
 # # init data root
 # root="dataset_root"
