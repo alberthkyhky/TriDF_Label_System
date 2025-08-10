@@ -558,6 +558,11 @@ export const api = {
   },
 
   async getMediaFile(taskId: string, mediaFile: MediaFile): Promise<string> {
+    // For text files, return the content directly (no blob URL needed)
+    if (mediaFile.media_type === 'text') {
+      return mediaFile.file_path; // The text content is stored in file_path for text media
+    }
+
     const token = getToken();
     if (!token) {
       throw new Error('Authentication required');

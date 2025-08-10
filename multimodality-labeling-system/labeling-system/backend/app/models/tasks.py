@@ -214,6 +214,7 @@ class MediaType(str, Enum):
     IMAGE = "image"
     VIDEO = "video"
     AUDIO = "audio"
+    TEXT = "text"
 class TaskStatus(str, Enum):
     DRAFT = "draft"
     ACTIVE = "active" 
