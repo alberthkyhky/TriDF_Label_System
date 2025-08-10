@@ -61,3 +61,4 @@ class Settings:
 
 settings = Settings()
 settings.__post_init__()
+ROOT_DIR = os.getenv("ROOT_DIR", "")

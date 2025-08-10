@@ -11,6 +11,7 @@ from app.models.tasks import (
 )
 from app.services.media_service import MediaService
 from app.services.task_service import TaskService
+from app.config import ROOT_DIR
 
 # Create service instances
 media_service = MediaService()
@@ -73,7 +74,7 @@ async def serve_media_file_by_path(
     allowed_base_paths = [
         Path("taskData").resolve(),
         Path("/taskData").resolve() if Path("/taskData").exists() else None,
-        Path("/home/jianyu/Desktop/ICLR2026_MMID-main_old/Label_raw_data").resolve(),
+        Path(ROOT_DIR).resolve(),
         # Add other allowed base paths as needed
     ]
     allowed_base_paths = [p for p in allowed_base_paths if p is not None]

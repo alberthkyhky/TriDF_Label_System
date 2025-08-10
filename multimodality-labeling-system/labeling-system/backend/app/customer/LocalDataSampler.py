@@ -1,6 +1,7 @@
 import os
 import csv
 from typing import List, Union, Dict
+from app.config import ROOT_DIR
 
 class LocalDataSampler:
     def __init__(self, root: str):
@@ -44,8 +45,7 @@ class LocalDataSampler:
         else:
             raise IndexError(f"Index {idx} exceeds the number of rows in task_name {task_name}")
 
-root="/Users/yangping/Studio/side-project/ICLR2026_MMID/multimodality-labeling-system/labeling-system/backend/taskData"
-sampler = LocalDataSampler(root)
+sampler = LocalDataSampler(ROOT_DIR)
 csv_file = "/Users/yangping/Studio/side-project/ICLR2026_MMID/multimodality-labeling-system/labeling-system/backend/taskData/aud_voice_cloning/collect.csv"
 sampler.load_csv("aud_voice_cloning", csv_file)
 
