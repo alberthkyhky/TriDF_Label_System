@@ -699,10 +699,8 @@ export const api = {
           return mediaFile;
         });
         
-        const { sortMediaFilesByPriority } = require('../utils/mediaUtils');
-        const sortedMediaFiles = sortMediaFilesByPriority(enhancedMediaFiles);
-        
-        console.log('Final processed media files:', sortedMediaFiles.map((mf: any) => ({
+        // Keep original CSV column order instead of sorting by priority
+        console.log('Final processed media files (CSV order preserved):', enhancedMediaFiles.map((mf: any) => ({
           filename: mf.filename,
           key: mf.key,
           display_name: mf.display_name
@@ -710,18 +708,18 @@ export const api = {
         
         return {
           ...question,
-          media_files: sortedMediaFiles
+          media_files: enhancedMediaFiles
         };
       }
       
       // If the question has raw data with multiple file keys, process it (legacy support)
       if (question.raw_data && typeof question.raw_data === 'object') {
         console.log('📦 Processing raw_data format...');
-        const { parseMediaFilesFromData, sortMediaFilesByPriority } = require('../utils/mediaUtils');
+        const { parseMediaFilesFromData } = require('../utils/mediaUtils');
         const mediaFiles = parseMediaFilesFromData(question.raw_data);
-        const sortedMediaFiles = sortMediaFilesByPriority(mediaFiles);
+        // Keep original order instead of sorting by priority
         
-        console.log('Processed from raw_data:', sortedMediaFiles.map((mf: any) => ({
+        console.log('Processed from raw_data (original order):', mediaFiles.map((mf: any) => ({
           filename: mf.filename,
           key: mf.key,
           display_name: mf.display_name
@@ -729,7 +727,7 @@ export const api = {
         
         return {
           ...question,
-          media_files: sortedMediaFiles
+          media_files: mediaFiles
         };
       }
       

@@ -52,18 +52,15 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     }
 
     const loadMediaFiles = async () => {
-      // Prioritize text and images over videos/audio for faster perceived loading
-      const prioritizedFiles = [...mediaFiles].sort((a, b) => {
-        const priority = { text: 0, image: 1, video: 2, audio: 3 };
-        return priority[a.media_type] - priority[b.media_type];
-      });
+      // Keep original CSV column order instead of prioritizing by type
+      const orderedFiles = [...mediaFiles]; // Preserve original order from CSV
 
-      // Separate media files by type for loading prioritization
-      const imageFiles = prioritizedFiles.filter(f => f.media_type === 'image');
-      const otherFiles = prioritizedFiles.filter(f => f.media_type !== 'image' && f.media_type !== 'text');
+      // Separate media files by type for loading optimization, but preserve display order
+      const imageFiles = orderedFiles.filter(f => f.media_type === 'image');
+      const otherFiles = orderedFiles.filter(f => f.media_type !== 'image' && f.media_type !== 'text');
 
       // Set loading state for files that need blob URLs (exclude text files)
-      const filesToLoad = prioritizedFiles.filter(
+      const filesToLoad = orderedFiles.filter(
         file => file.media_type !== 'text' && !mediaBlobUrls[file.filename] && !loadingStates[file.filename]
       );
 
