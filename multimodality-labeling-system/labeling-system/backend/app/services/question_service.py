@@ -73,10 +73,13 @@ class QuestionService:
             raise Exception(f"Error fetching questions from DB: {str(e)}")
     
     async def _sample_local_media_for_task(self, task_name: str, idx: int = 0) -> List[MediaFile]:
-        """Sample media files from local task folder"""
+        """Sample media files from local task folder, preserving CSV column order"""
         try:
             sampled_media = []
             raw_data = sampler.sample_by_idx(task_name, idx)
+            
+            # Process columns in the same order as they appear in CSV
+            # Python dict preserves insertion order (CSV column order)
             for key, value in raw_data.items():
                 # Handle text prompts (formatted as "prompt: {content}")
                 if key == "prompt" and value and value.strip():
