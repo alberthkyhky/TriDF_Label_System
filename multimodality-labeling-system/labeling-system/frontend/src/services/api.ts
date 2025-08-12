@@ -350,6 +350,12 @@ export const api = {
       body: JSON.stringify({ is_active: isActive }),
     });
   },
+
+  async deleteAssignment(id: string): Promise<any> {
+    return apiCall(`/assignments/${id}`, {
+      method: 'DELETE',
+    });
+  },
   
   async exportAssignmentReport(format: 'csv' | 'json' = 'csv'): Promise<Blob> {
     const headers = await getAuthHeaders();
