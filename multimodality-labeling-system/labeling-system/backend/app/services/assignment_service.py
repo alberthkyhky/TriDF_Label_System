@@ -266,6 +266,36 @@ class AssignmentService:
             print(f"Error in update_assignment_status: {str(e)}")
             raise e
 
+    async def delete_assignment(self, assignment_id: str) -> bool:
+        """Delete an assignment and its related data"""
+        try:
+            # First check if assignment exists
+            existing = self.supabase.table("task_assignments")\
+                .select("id")\
+                .eq("id", assignment_id)\
+                .execute()
+            
+            if not existing.data:
+                return False
+            
+            # Delete related responses first (to handle foreign key constraints)
+            self.supabase.table("question_responses")\
+                .delete()\
+                .eq("task_assignment_id", assignment_id)\
+                .execute()
+            
+            # Delete the assignment
+            result = self.supabase.table("task_assignments")\
+                .delete()\
+                .eq("id", assignment_id)\
+                .execute()
+            
+            return len(result.data) > 0
+            
+        except Exception as e:
+            print(f"Error in delete_assignment: {str(e)}")
+            raise e
+
     async def export_assignments_csv(self) -> str:
         """Export assignments as CSV"""
         try:

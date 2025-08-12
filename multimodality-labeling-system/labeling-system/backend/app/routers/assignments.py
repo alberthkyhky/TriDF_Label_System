@@ -110,6 +110,21 @@ async def update_assignment_status(
         )
     return {"message": "Assignment status updated successfully"}
 
+@router.delete("/{assignment_id}")
+@handle_router_errors
+async def delete_assignment(
+    assignment_id: str,
+    current_user: dict = Depends(require_admin)
+):
+    """Delete assignment (admin only)"""
+    success = await assignment_service.delete_assignment(assignment_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found"
+        )
+    return {"message": "Assignment deleted successfully"}
+
 
 
 
