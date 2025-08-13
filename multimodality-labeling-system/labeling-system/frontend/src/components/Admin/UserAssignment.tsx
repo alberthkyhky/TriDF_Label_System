@@ -25,7 +25,6 @@ import {
   Collapse,
   IconButton,
   LinearProgress,
-  Divider,
   Stack
 } from '@mui/material';
 import { Assignment, ExpandMore, ExpandLess, Schedule } from '@mui/icons-material';
@@ -58,6 +57,7 @@ const UserAssignment: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     task_id: '',
     user_id: '',
@@ -116,6 +116,18 @@ const UserAssignment: React.FC = () => {
         newSet.delete(userId);
       } else {
         newSet.add(userId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleTaskExpansion = (taskId: string) => {
+    setExpandedTasks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
       }
       return newSet;
     });
@@ -193,6 +205,37 @@ const UserAssignment: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Data processing function to group assignments by task
+  const getTasksWithAssignedUsers = () => {
+    const tasksWithUsers: { [taskId: string]: { task: TaskWithQuestionsData, assignedUsers: (EnhancedUser & { assignment: UserAssignmentStats })[] } } = {};
+    
+    // Initialize all tasks
+    tasks.forEach(task => {
+      tasksWithUsers[task.id] = {
+        task,
+        assignedUsers: []
+      };
+    });
+    
+    // Add users to their assigned tasks
+    users.forEach(user => {
+      if (user.currentAssignments) {
+        user.currentAssignments.forEach(assignment => {
+          if (tasksWithUsers[assignment.task_id]) {
+            tasksWithUsers[assignment.task_id].assignedUsers.push({
+              ...user,
+              assignment
+            });
+          }
+        });
+      }
+    });
+    
+    return tasksWithUsers;
+  };
+
+  const tasksWithAssignedUsers = getTasksWithAssignedUsers();
 
   // Helper functions for assignment calculations
   const getAssignmentTarget = (assignment: UserAssignmentStats) => {
@@ -310,14 +353,157 @@ const UserAssignment: React.FC = () => {
                 Active Tasks ({tasks.length})
               </Typography>
               <List dense>
-                {tasks.slice(0, 5).map((task) => (
-                  <ListItem key={task.id}>
-                    <ListItemText
-                      primary={task.title}
-                      secondary={`${task.questions_number} questions per user`}
-                    />
-                  </ListItem>
-                ))}
+                {Object.entries(tasksWithAssignedUsers).slice(0, 8).map(([taskId, { task, assignedUsers }]) => {
+                  const isExpanded = expandedTasks.has(taskId);
+                  const totalAssignedUsers = assignedUsers.length;
+                  const activeAssignments = assignedUsers.filter(user => user.assignment.is_active);
+                  
+                  // Calculate overall task progress
+                  const totalQuestions = assignedUsers.reduce((sum, user) => sum + getAssignmentTarget(user.assignment), 0);
+                  const completedQuestions = assignedUsers.reduce((sum, user) => sum + user.assignment.completed_labels, 0);
+                  
+                  return (
+                    <React.Fragment key={taskId}>
+                      <ListItem 
+                        sx={{ 
+                          cursor: 'pointer',
+                          '&:hover': { backgroundColor: 'action.hover' },
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          backgroundColor: 'background.paper'
+                        }}
+                        onClick={() => toggleTaskExpansion(taskId)}
+                      >
+                        <ListItemText
+                          primary={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="subtitle2" component="span">
+                                {task.title}
+                              </Typography>
+                              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                {totalAssignedUsers > 0 && (
+                                  <Chip 
+                                    label={`${totalAssignedUsers} user${totalAssignedUsers !== 1 ? 's' : ''}`}
+                                    size="small"
+                                    variant="outlined"
+                                    color="primary"
+                                  />
+                                )}
+                                {activeAssignments.length !== totalAssignedUsers && totalAssignedUsers > 0 && (
+                                  <Chip 
+                                    label={`${activeAssignments.length} active`}
+                                    size="small"
+                                    variant="outlined"
+                                    color="success"
+                                  />
+                                )}
+                              </Box>
+                            </Box>
+                          }
+                          secondary={
+                            <Box component="span">
+                              <Typography variant="body2" color="text.secondary" component={"div"}>
+                                {task.questions_number} questions per user
+                              </Typography>
+                              {totalAssignedUsers > 0 ? (
+                                <Typography variant="caption" color="primary">
+                                  {completedQuestions}/{totalQuestions} questions completed across all users
+                                </Typography>
+                              ) : (
+                                <Typography variant="caption" color="text.secondary">
+                                  No users assigned
+                                </Typography>
+                              )}
+                            </Box>
+                          }
+                        />
+                        <IconButton size="small">
+                          {isExpanded ? <ExpandLess /> : <ExpandMore />}
+                        </IconButton>
+                      </ListItem>
+                      
+                      <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                        <Box sx={{ 
+                          pl: 2, 
+                          pr: 1, 
+                          pb: 1,
+                          pt: 2,
+                          borderLeft: '1px solid',
+                          borderRight: '1px solid',
+                          borderBottom: '1px solid',
+                          borderColor: 'divider',
+                          backgroundColor: 'grey.50',
+                          mt: -2
+                        }}>
+                          {assignedUsers.length > 0 ? (
+                            <Box>
+                              <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1.5, mb: 1 }}>
+                                <Assignment fontSize="small" />
+                                Assigned Users
+                              </Typography>
+                              {assignedUsers.map((userWithAssignment) => {
+                                const assignmentTarget = getAssignmentTarget(userWithAssignment.assignment);
+                                const progress = assignmentTarget > 0 ? (userWithAssignment.assignment.completed_labels / assignmentTarget) * 100 : 0;
+                                
+                                return (
+                                  <Box key={userWithAssignment.assignment.assignment_id} sx={{ mb: 1 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                                          {userWithAssignment.full_name || 'Unknown'}
+                                        </Typography>
+                                        <Chip 
+                                          label={userWithAssignment.userRole} 
+                                          size="small" 
+                                          color={userWithAssignment.userRole === 'admin' ? 'primary' : 'secondary'}
+                                          sx={{ fontSize: '0.6rem', height: '16px' }}
+                                        />
+                                        {!userWithAssignment.assignment.is_active && (
+                                          <Chip 
+                                            label="Inactive" 
+                                            size="small" 
+                                            color="warning" 
+                                            variant="outlined"
+                                            sx={{ fontSize: '0.6rem', height: '16px' }}
+                                          />
+                                        )}
+                                      </Box>
+                                      <Typography 
+                                        variant="caption" 
+                                        color={progress === 0 ? "error" : "text.secondary"}
+                                        sx={{ fontWeight: progress === 0 ? 600 : 400 }}
+                                      >
+                                        {userWithAssignment.assignment.completed_labels}/{assignmentTarget}
+                                      </Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                      <Typography variant="caption" color="text.secondary">
+                                        {userWithAssignment.email}
+                                      </Typography>
+                                      <Typography variant="caption" color="text.secondary">
+                                        Questions {userWithAssignment.assignment.question_range_start}-{userWithAssignment.assignment.question_range_end}
+                                      </Typography>
+                                    </Box>
+                                    <LinearProgress 
+                                      variant="determinate" 
+                                      value={progress}
+                                      color={progress === 0 ? "error" : progress > 50 ? "success" : "warning"}
+                                      sx={{ height: 4, borderRadius: 2 }}
+                                    />
+                                  </Box>
+                                );
+                              })}
+                            </Box>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                              No users assigned to this task
+                            </Typography>
+                          )}
+                        </Box>
+                      </Collapse>
+                    </React.Fragment>
+                  );
+                })}
               </List>
             </CardContent>
           </Card>
@@ -341,7 +527,10 @@ const UserAssignment: React.FC = () => {
                       <ListItem 
                         sx={{ 
                           cursor: 'pointer',
-                          '&:hover': { backgroundColor: 'action.hover' }
+                          '&:hover': { backgroundColor: 'action.hover' },
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          backgroundColor: 'background.paper'
                         }}
                         onClick={() => toggleUserExpansion(user.id)}
                       >
@@ -391,10 +580,21 @@ const UserAssignment: React.FC = () => {
                       </ListItem>
                       
                       <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                        <Box sx={{ pl: 2, pr: 1, pb: 1 }}>
+                        <Box sx={{ 
+                          pl: 2, 
+                          pr: 1, 
+                          pb: 1,
+                          pt: 2,
+                          borderLeft: '1px solid',
+                          borderRight: '1px solid',
+                          borderBottom: '1px solid',
+                          borderColor: 'divider',
+                          backgroundColor: 'grey.50',
+                          mt: -2
+                        }}>
                           {incompleteAssignments.length > 0 && (
                             <Box>
-                              <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1.5, mb: 1 }}>
                                 <Schedule fontSize="small" />
                                 Incomplete Assignments
                               </Typography>
@@ -445,7 +645,6 @@ const UserAssignment: React.FC = () => {
                             </Typography>
                           )}
                         </Box>
-                        <Divider />
                       </Collapse>
                     </React.Fragment>
                   );
