@@ -1,3 +1,5 @@
+import { ExampleImage } from './createTask';
+
 export interface Question {
     id: string;
     task_id: string;
@@ -26,7 +28,7 @@ id: string;
 title: string;
 description: string;
 instructions: string;
-example_media?: string[];
+example_images?: ExampleImage[];
 }
 
 export interface MediaFile {

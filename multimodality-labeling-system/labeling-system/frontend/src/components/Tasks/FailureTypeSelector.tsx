@@ -6,8 +6,6 @@ import {
   FormControlLabel,
   Checkbox,
   Chip,
-  Card,
-  CardContent,
   Accordion,
   AccordionSummary,
   AccordionDetails

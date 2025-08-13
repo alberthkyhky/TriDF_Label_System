@@ -6,6 +6,24 @@ from enum import Enum
 
 # New models for enhanced task creation
 
+class ExampleImage(BaseModel):
+    """Example image with caption for task introduction"""
+    filename: str
+    file_path: str
+    caption: Optional[str] = None
+    
+    @validator('filename')
+    def validate_filename(cls, v):
+        if not v or not v.strip():
+            raise ValueError('filename cannot be empty')
+        return v.strip()
+    
+    @validator('file_path')
+    def validate_file_path(cls, v):
+        if not v or not v.strip():
+            raise ValueError('file_path cannot be empty')
+        return v.strip()
+
 class FailureChoice(BaseModel):
     """Individual failure category configuration"""
     text: str
@@ -45,7 +63,7 @@ class TaskWithQuestionsCreate(BaseModel):
     title: str
     description: Optional[str] = None
     instructions: Optional[str] = None
-    example_media: List[str] = []
+    example_images: List[ExampleImage] = []  # REPLACE example_media
     priority: Optional[str] = "medium"
     
     # Task settings
@@ -81,7 +99,7 @@ class TaskWithQuestions(BaseModel):
     title: str
     description: Optional[str] = None
     instructions: Optional[str] = None
-    example_media: List[str] = []
+    example_images: List[ExampleImage] = []  # REPLACE example_media
     priority: Optional[str] = "medium"
     status: str
     
@@ -318,6 +336,7 @@ class TaskWithQuestionsUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     instructions: Optional[str] = None
+    example_images: Optional[List[ExampleImage]] = None  # ADD for example images updates
     priority: Optional[str] = None
     status: Optional[TaskStatus] = None
     questions_number: Optional[int] = None
