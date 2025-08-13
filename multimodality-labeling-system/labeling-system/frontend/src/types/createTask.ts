@@ -1,5 +1,11 @@
 // Update your src/types/createTask.ts file
 
+export interface ExampleImage {
+  filename: string;
+  file_path: string;
+  caption?: string;
+}
+
 export interface FailureChoice {
   text: string;
   options: string[];
@@ -17,7 +23,7 @@ export interface TaskFormData {
   instructions: string;
   questions_number: number;
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  example_media: string[];
+  example_images: ExampleImage[];  // REPLACE example_media: string[]
   required_agreements: number;
   question_template: {
     question_text: string;
@@ -31,7 +37,7 @@ export interface TaskWithQuestionsData {
   description: string;
   status: string;
   instructions: string;
-  example_media: string[];
+  example_images: ExampleImage[];  // REPLACE example_media: string[]
   questions_number: number;
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   required_agreements: number;
@@ -53,7 +59,7 @@ export interface TaskWithQuestionsResponse {
   title: string;
   description: string;
   instructions: string;
-  example_media: string[];
+  example_images: ExampleImage[];  // REPLACE example_media: string[]
   status: string;
   questions_number: number;
   priority?: 'low' | 'medium' | 'high' | 'urgent';
