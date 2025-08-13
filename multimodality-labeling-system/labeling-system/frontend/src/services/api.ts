@@ -1,6 +1,6 @@
 // Merged services/api.ts - Use FastAPI backend instead of direct Supabase
 import { Task, TaskAssignment } from '../types/tasks';
-import { TaskWithQuestionsData, TaskFormData, MediaFile } from '../types/createTask';
+import { TaskWithQuestionsData, TaskFormData, MediaFile, ExampleImage } from '../types/createTask';
 import { QuestionResponseCreate, QuestionResponseDetailed, QuestionWithMedia } from '../types/labeling';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -13,7 +13,7 @@ interface TaskWithQuestionsResponse {
   title: string;
   description: string;
   instructions: string;
-  example_media: string[];
+  example_images: ExampleImage[];
   status: string;
   questions_per_user: number;
   required_agreements: number;
@@ -506,6 +506,88 @@ export const api = {
     }
 
     return response.json();
+  },
+
+  // Example Images Management
+  async uploadTaskExampleImage(taskId: string, file: File, caption?: string): Promise<ExampleImage> {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    if (caption) {
+      formData.append('caption', caption);
+    }
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/${taskId}/example-images/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to upload example image');
+    }
+
+    return response.json();
+  },
+
+  async updateTaskExampleImages(taskId: string, images: ExampleImage[]): Promise<ExampleImage[]> {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/${taskId}/example-images`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      },
+      body: JSON.stringify(images)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to update example images');
+    }
+
+    return response.json();
+  },
+
+  async deleteTaskExampleImage(taskId: string, filename: string): Promise<boolean> {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/${taskId}/example-images/${filename}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to delete example image');
+    }
+
+    return true;
+  },
+
+  getTaskExampleImageUrl(taskId: string, filename: string): string {
+    // For Supabase storage, the image URL is stored directly in the database
+    // This method is now used mainly as a fallback - actual URLs come from the database
+    return `${API_URL}/api/v1/tasks/${taskId}/example-images/${filename}`;
   },
 
   // Users (Admin only)

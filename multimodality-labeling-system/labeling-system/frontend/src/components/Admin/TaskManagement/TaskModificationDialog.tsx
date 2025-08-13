@@ -31,11 +31,13 @@ import {
   Analytics,
   Info,
   Add,
-  Delete
+  Delete,
+  Photo
 } from '@mui/icons-material';
 import { TaskWithQuestionsData } from '../../../types/createTask';
 import { TaskAssignment } from '../../../types/tasks';
 import { api } from '../../../services/api';
+import ExampleImagesTab from './ExampleImagesTab';
 
 interface TaskModificationDialogProps {
   open: boolean;
@@ -365,6 +367,7 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
 
         <Tabs value={tabValue} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tab label="Basic Info" icon={<Info />} />
+          <Tab label="Example Images" icon={<Photo />} />
           <Tab label="Questions" icon={<Assignment />} />
           <Tab label="Progress Tracking" icon={<Analytics />} />
         </Tabs>
@@ -446,8 +449,16 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
           </Box>
         </TabPanel>
 
-        {/* Questions Tab */}
+        {/* Example Images Tab */}
         <TabPanel value={tabValue} index={1}>
+          <ExampleImagesTab
+            task={editedTask}
+            onTaskChange={handleTaskChange}
+          />
+        </TabPanel>
+
+        {/* Questions Tab */}
+        <TabPanel value={tabValue} index={2}>
           <Box sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">Question Template</Typography>
@@ -641,7 +652,7 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
         </TabPanel>
 
         {/* Progress Tracking Tab */}
-        <TabPanel value={tabValue} index={2}>
+        <TabPanel value={tabValue} index={3}>
           <Box sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">Labeler Progress</Typography>
