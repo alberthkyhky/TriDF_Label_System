@@ -1,5 +1,10 @@
-  
-  export interface Task {
+export interface ExampleImage {
+  filename: string;
+  file_path: string;
+  caption?: string;
+}
+
+export interface Task {
     id: string;
     title: string;
     description?: string;
@@ -30,7 +35,7 @@
     title: string;
     description: string;
     instructions: string;
-    example_media: string[];
+    example_images: ExampleImage[];
     status: string;
     questions_per_user: number;
     required_agreements: number;

@@ -11,6 +11,7 @@ import { ArrowBack, ArrowForward } from '@mui/icons-material';
 import { api } from '../../../services/api';
 import { TaskFormData } from '../../../types/createTask';
 import BasicInfoStep from './BasicInfoStep';
+import ExampleImagesStep from './ExampleImagesStep';
 import QuestionTemplateStep from './QuestionTemplateStep';
 import ReviewStep from './ReviewStep';
 
@@ -33,7 +34,7 @@ const TaskCreationStepper: React.FC<TaskCreationStepperProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const steps = ['Basic Info', 'Question Template', 'Review & Create'];
+  const steps = ['Basic Info', 'Example Images', 'Question Template', 'Review & Create'];
 
   const handleNext = () => {
     if (activeStep < steps.length - 1) {
@@ -67,7 +68,7 @@ const TaskCreationStepper: React.FC<TaskCreationStepperProps> = ({
         title: formData.title.trim(),
         description: formData.description.trim(),
         instructions: formData.instructions.trim(),
-        example_media: formData.example_media.filter(media => media.trim()),
+        example_images: formData.example_images,  // UPDATED to use example_images
         priority: formData.priority,
         required_agreements: formData.required_agreements,
         question_template: formData.question_template,
@@ -106,12 +107,19 @@ const TaskCreationStepper: React.FC<TaskCreationStepperProps> = ({
         );
       case 1:
         return (
-          <QuestionTemplateStep
+          <ExampleImagesStep
             formData={formData}
             setFormData={setFormData}
           />
         );
       case 2:
+        return (
+          <QuestionTemplateStep
+            formData={formData}
+            setFormData={setFormData}
+          />
+        );
+      case 3:
         return (
           <ReviewStep
             formData={formData}
@@ -127,9 +135,11 @@ const TaskCreationStepper: React.FC<TaskCreationStepperProps> = ({
       case 0:
         return formData.title && formData.description && formData.instructions;
       case 1:
+        return true; // Example images step is optional
+      case 2:
         return formData.question_template.question_text && 
                Object.keys(formData.question_template.choices).length > 0;
-      case 2:
+      case 3:
         return true;
       default:
         return false;

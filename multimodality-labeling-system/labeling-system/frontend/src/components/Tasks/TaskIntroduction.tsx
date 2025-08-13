@@ -243,25 +243,49 @@ const TaskIntroduction: React.FC = () => {
                   p: 3,
                   borderRadius: 2
                 }}>
-                  {task.example_media && task.example_media.length > 0 ? (
-                    task.example_media.map((media: string, index: number) => (
+                  {task.example_images && task.example_images.length > 0 ? (
+                    task.example_images.map((image, index: number) => (
                       <Box
                         key={index}
                         sx={{
                           width: '100%',
                           height: 120,
-                          bgcolor: 'grey.300',
+                          bgcolor: 'grey.100',
                           borderRadius: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: '2px dashed',
-                          borderColor: 'grey.400'
+                          position: 'relative',
+                          overflow: 'hidden',
+                          border: '1px solid',
+                          borderColor: 'grey.300'
                         }}
                       >
-                        <Typography variant="body2" color="text.secondary">
-                          {media} (Example)
-                        </Typography>
+                        <img
+                          src={image.file_path}
+                          alt={image.caption || `Example ${index + 1}`}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            borderRadius: 4
+                          }}
+                        />
+                        {image.caption && (
+                          <Typography 
+                            variant="caption" 
+                            sx={{
+                              position: 'absolute',
+                              bottom: 4,
+                              left: 4,
+                              right: 4,
+                              backgroundColor: 'rgba(0,0,0,0.7)',
+                              color: 'white',
+                              p: 0.5,
+                              borderRadius: 0.5,
+                              fontSize: '0.7rem'
+                            }}
+                          >
+                            {image.caption}
+                          </Typography>
+                        )}
                       </Box>
                     ))
                   ) : (
