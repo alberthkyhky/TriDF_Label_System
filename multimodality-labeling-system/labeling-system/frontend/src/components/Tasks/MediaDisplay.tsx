@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -37,6 +37,8 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
   const [errorStates, setErrorStates] = useState<Record<string, boolean>>({});
   const [mediaBlobUrls, setMediaBlobUrls] = useState<Record<string, string>>({});
+  const [isImageZoomed, setIsImageZoomed] = useState(false);
+  const [imageNaturalSize, setImageNaturalSize] = useState<{ width: number; height: number } | null>(null);
 
   // Fetch media with authentication using POST with file path
   const fetchMediaWithAuth = useCallback(async (mediaFile: MediaFile): Promise<string> => {
@@ -137,12 +139,61 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
   const closeMediaDialog = useCallback(() => {
     setSelectedMedia(null);
     setDialogOpen(false);
+    setIsImageZoomed(false);
+    setImageNaturalSize(null);
+  }, []);
+
+  const handleImageDoubleClick = useCallback(() => {
+    setIsImageZoomed(prev => !prev);
+  }, []);
+
+  const handleImageLoad = useCallback((event: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = event.currentTarget;
+    setImageNaturalSize({
+      width: img.naturalWidth,
+      height: img.naturalHeight
+    });
   }, []);
 
   // Handle blob URLs from lazy-loaded media items
   const handleBlobUrlReady = useCallback((filename: string, blobUrl: string) => {
     setMediaBlobUrls(prev => ({ ...prev, [filename]: blobUrl }));
   }, []);
+
+  // Calculate optimal image size for dialog preview
+  const imageDisplaySize = useMemo(() => {
+    if (!imageNaturalSize) return null;
+    
+    const maxViewportWidth = window.innerWidth - 80; // Account for dialog padding
+    const maxViewportHeight = window.innerHeight * 0.9 - 200; // Account for dialog header/footer
+    
+    const { width: naturalWidth, height: naturalHeight } = imageNaturalSize;
+    
+    // Calculate fit-to-screen dimensions (proportionally scaled to fit viewport)
+    const widthRatio = maxViewportWidth / naturalWidth;
+    const heightRatio = maxViewportHeight / naturalHeight;
+    const fitToScreenScale = Math.min(widthRatio, heightRatio, 1); // Never scale up to fit
+    
+    const fitToScreenWidth = naturalWidth * fitToScreenScale;
+    const fitToScreenHeight = naturalHeight * fitToScreenScale;
+    
+    if (isImageZoomed) {
+      // When zoomed, ensure we have a meaningful zoom:
+      // - If image is large (requires scaling down): show at actual size (scale = 1)
+      // - If image is small (no scaling needed): zoom to 200% of fit-to-screen size
+      const zoomedScale = fitToScreenScale < 1 ? 1 : fitToScreenScale * 2;
+      return {
+        width: naturalWidth * zoomedScale,
+        height: naturalHeight * zoomedScale
+      };
+    }
+    
+    // Initially, show at fit-to-screen size
+    return {
+      width: fitToScreenWidth,
+      height: fitToScreenHeight
+    };
+  }, [imageNaturalSize, isImageZoomed]);
 
   const renderMediaItem = (mediaFile: MediaFile, index: number) => {
     const blobUrl = mediaBlobUrls[mediaFile.filename];
@@ -416,13 +467,25 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
         fullWidth
       >
         <DialogTitle>
-          {selectedMedia?.filename}
+          <Typography variant="h6" component="h2" sx={{ fontWeight: 'bold' }}>
+            {selectedMedia?.key || selectedMedia?.filename}
+          </Typography>
           <Typography variant="body2" color="text.secondary">
             {selectedMedia?.media_type} • {selectedMedia?.file_size ? `${Math.round(selectedMedia.file_size / 1024)} KB` : 'Unknown size'}
             {selectedMedia?.width && selectedMedia?.height && ` • ${selectedMedia.width}×${selectedMedia.height}`}
           </Typography>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent 
+          sx={{ 
+            textAlign: 'center', 
+            p: 3, 
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'auto' // Always allow scrolling for zoomed images
+          }}
+        >
           {selectedMedia && (
             <Box sx={{ textAlign: 'center', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {/* Loading state when blob URL is not ready */}
@@ -440,15 +503,30 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
               
               {/* Image content */}
               {selectedMedia.media_type === 'image' && mediaBlobUrls[selectedMedia.filename] && (
-                <img
-                  src={mediaBlobUrls[selectedMedia.filename]}
-                  alt={selectedMedia.filename}
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '80vh',
-                    objectFit: 'contain'
+                <Box
+                  sx={{
+                    cursor: 'pointer',
+                    minHeight: 'calc(80vh - 200px)'
                   }}
-                />
+                  onDoubleClick={handleImageDoubleClick}
+                >
+                  <img
+                    src={mediaBlobUrls[selectedMedia.filename]}
+                    alt={selectedMedia.filename}
+                    onLoad={handleImageLoad}
+                    style={{
+                      // Use calculated dimensions to show proper size
+                      width: imageDisplaySize?.width || 'auto',
+                      height: imageDisplaySize?.height || 'auto',
+                      borderRadius: 8,
+                      transition: 'all 0.3s ease',
+                      // Ensure image doesn't exceed viewport when not zoomed
+                      maxWidth: isImageZoomed ? 'none' : 'calc(100vw - 80px)',
+                      maxHeight: isImageZoomed ? 'none' : 'calc(80vh - 200px)',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </Box>
               )}
               
               {/* Video content */}
