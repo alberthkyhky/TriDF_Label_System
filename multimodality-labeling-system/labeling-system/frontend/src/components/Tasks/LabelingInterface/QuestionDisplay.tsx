@@ -34,10 +34,10 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
   return (
     <Card>
       <CardContent>
-        <Typography variant="h6" gutterBottom>
-          1. {questionText}
+        <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+          {questionText}
         </Typography>
-        <Typography variant="body2" color="text.secondary" paragraph>
+        <Typography variant="body2" color="text.secondary">
           For each failure type, first indicate if failures are present, then specify the types.
         </Typography>
 
