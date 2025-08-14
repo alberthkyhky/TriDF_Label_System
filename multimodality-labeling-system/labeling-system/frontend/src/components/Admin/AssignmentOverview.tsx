@@ -40,9 +40,11 @@ import {
   Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
   Search as SearchIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { api } from '../../services/api';
 import { useDebouncedSearch } from '../../hooks/useDebounce';
+import AssignmentDeleteDialog from './AssignmentDeleteDialog';
 
 interface AssignmentData {
   id: string;
@@ -80,6 +82,11 @@ const AssignmentOverview: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filteredAssignments, setFilteredAssignments] = useState<AssignmentData[]>([]);
+  
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [assignmentToDelete, setAssignmentToDelete] = useState<AssignmentData | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Debounced search functionality
   const { isSearching } = useDebouncedSearch(
@@ -206,6 +213,31 @@ const AssignmentOverview: React.FC = () => {
   const handleViewDetails = useCallback((assignment: AssignmentData) => {
     setSelectedAssignment(assignment);
     setDetailsOpen(true);
+  }, []);
+
+  const handleDeleteClick = useCallback((assignment: AssignmentData) => {
+    setAssignmentToDelete(assignment);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async (assignmentId: string) => {
+    try {
+      setDeleting(true);
+      await api.deleteAssignment(assignmentId);
+      await fetchAssignments(); // Refresh data
+      setDeleteDialogOpen(false);
+      setAssignmentToDelete(null);
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+      setError('Failed to delete assignment');
+    } finally {
+      setDeleting(false);
+    }
+  }, []);
+
+  const handleCancelDelete = useCallback(() => {
+    setDeleteDialogOpen(false);
+    setAssignmentToDelete(null);
   }, []);
 
   const formatDate = (dateString: string): string => {
@@ -544,6 +576,16 @@ const AssignmentOverview: React.FC = () => {
                             {assignment.is_active ? <PauseIcon /> : <PlayArrowIcon />}
                           </IconButton>
                         </Tooltip>
+                        
+                        <Tooltip title="Delete Assignment">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteClick(assignment)}
+                            color="error"
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
                       </Box>
                     </TableCell>
                   </TableRow>
@@ -632,6 +674,15 @@ const AssignmentOverview: React.FC = () => {
           </>
         )}
       </Dialog>
+
+      {/* Delete Assignment Dialog */}
+      <AssignmentDeleteDialog
+        open={deleteDialogOpen}
+        assignment={assignmentToDelete}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        loading={deleting}
+      />
     </Box>
   );
 };

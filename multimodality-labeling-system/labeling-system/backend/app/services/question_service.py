@@ -73,13 +73,25 @@ class QuestionService:
             raise Exception(f"Error fetching questions from DB: {str(e)}")
     
     async def _sample_local_media_for_task(self, task_name: str, idx: int = 0) -> List[MediaFile]:
-        """Sample media files from local task folder"""
+        """Sample media files from local task folder, preserving CSV column order"""
         try:
             sampled_media = []
             raw_data = sampler.sample_by_idx(task_name, idx)
-            for key, data_path in raw_data.items():
-                if os.path.isfile(data_path):
-                    sampled_media.append(await self._create_media_file_from_path(Path(data_path), key))
+            
+            # Process columns in the same order as they appear in CSV
+            # Python dict preserves insertion order (CSV column order)
+            for key, value in raw_data.items():
+                # Handle text prompts (formatted as "prompt: {content}")
+                if key == "prompt" and value and value.strip():
+                    # Create text media file for prompt
+                    text_media = await self._create_text_media_file(value, key)
+                    if text_media:
+                        sampled_media.append(text_media)
+                # Handle regular file paths
+                elif os.path.isfile(value):
+                    file_media = await self._create_media_file_from_path(Path(value), key)
+                    if file_media:
+                        sampled_media.append(file_media)
             return sampled_media
             
         except Exception as e:
@@ -108,6 +120,27 @@ class QuestionService:
             print(f"Error scanning media files in {task_path}: {str(e)}")
             return []
     
+    async def _create_text_media_file(self, text_content: str, key: str = None) -> MediaFile:
+        """Create MediaFile object for text content (prompts)"""
+        try:
+            return MediaFile(
+                filename=f"{key}_prompt.txt" if key else "prompt.txt",
+                file_path=text_content,  # Store the actual text content in file_path for text media
+                key=key,
+                media_type=MediaType.TEXT,
+                file_size=len(text_content.encode('utf-8')),
+                mime_type="text/plain",
+                tags=["prompt", "text"],
+                metadata={
+                    "content_type": "prompt",
+                    "character_count": len(text_content),
+                    "word_count": len(text_content.split()),
+                }
+            )
+        except Exception as e:
+            print(f"Error creating text media file: {str(e)}")
+            return None
+
     async def _create_media_file_from_path(self, file_path: Path, key: str = None) -> MediaFile:
         """Create MediaFile object from file path"""
         try:

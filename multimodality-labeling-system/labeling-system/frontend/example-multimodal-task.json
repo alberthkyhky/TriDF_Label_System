@@ -3,6 +3,7 @@
   "description": "Analyze images, videos, and audio content to identify quality issues and classify different types of failures.",
   "instructions": "Review each media item carefully. For images, check for visual artifacts and clarity. For videos, evaluate both visual and audio quality. For audio files, focus on sound quality and clarity. Select all applicable failure categories for each question.",
   "questions_number": 100,
+  "priority": "high",
   "required_agreements": 3,
   "example_media": [
     "example_image.jpg",
@@ -60,10 +61,5 @@
         "multiple_select": false
       }
     }
-  },
-  "media_config": {
-    "num_images": 2,
-    "num_videos": 1,
-    "num_audios": 1
   }
 }

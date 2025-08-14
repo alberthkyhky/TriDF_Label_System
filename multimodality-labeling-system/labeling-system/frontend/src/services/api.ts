@@ -1,6 +1,6 @@
 // Merged services/api.ts - Use FastAPI backend instead of direct Supabase
 import { Task, TaskAssignment } from '../types/tasks';
-import { TaskWithQuestionsData, TaskFormData, MediaFile } from '../types/createTask';
+import { TaskWithQuestionsData, TaskFormData, MediaFile, ExampleImage } from '../types/createTask';
 import { QuestionResponseCreate, QuestionResponseDetailed, QuestionWithMedia } from '../types/labeling';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -13,7 +13,7 @@ interface TaskWithQuestionsResponse {
   title: string;
   description: string;
   instructions: string;
-  example_media: string[];
+  example_images: ExampleImage[];
   status: string;
   questions_per_user: number;
   required_agreements: number;
@@ -350,6 +350,12 @@ export const api = {
       body: JSON.stringify({ is_active: isActive }),
     });
   },
+
+  async deleteAssignment(id: string): Promise<any> {
+    return apiCall(`/assignments/${id}`, {
+      method: 'DELETE',
+    });
+  },
   
   async exportAssignmentReport(format: 'csv' | 'json' = 'csv'): Promise<Blob> {
     const headers = await getAuthHeaders();
@@ -502,6 +508,88 @@ export const api = {
     return response.json();
   },
 
+  // Example Images Management
+  async uploadTaskExampleImage(taskId: string, file: File, caption?: string): Promise<ExampleImage> {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    if (caption) {
+      formData.append('caption', caption);
+    }
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/${taskId}/example-images/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to upload example image');
+    }
+
+    return response.json();
+  },
+
+  async updateTaskExampleImages(taskId: string, images: ExampleImage[]): Promise<ExampleImage[]> {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/${taskId}/example-images`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      },
+      body: JSON.stringify(images)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to update example images');
+    }
+
+    return response.json();
+  },
+
+  async deleteTaskExampleImage(taskId: string, filename: string): Promise<boolean> {
+    const token = getToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in.');
+    }
+
+    const response = await fetch(`${API_URL}/api/v1/tasks/${taskId}/example-images/${filename}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || 'Failed to delete example image');
+    }
+
+    return true;
+  },
+
+  getTaskExampleImageUrl(taskId: string, filename: string): string {
+    // For Supabase storage, the image URL is stored directly in the database
+    // This method is now used mainly as a fallback - actual URLs come from the database
+    return `${API_URL}/api/v1/tasks/${taskId}/example-images/${filename}`;
+  },
+
   // Users (Admin only)
   async getUsers(): Promise<any[]> {
     return apiCall('/users/');
@@ -558,6 +646,11 @@ export const api = {
   },
 
   async getMediaFile(taskId: string, mediaFile: MediaFile): Promise<string> {
+    // For text files, return the content directly (no blob URL needed)
+    if (mediaFile.media_type === 'text') {
+      return mediaFile.file_path; // The text content is stored in file_path for text media
+    }
+
     const token = getToken();
     if (!token) {
       throw new Error('Authentication required');
@@ -694,10 +787,8 @@ export const api = {
           return mediaFile;
         });
         
-        const { sortMediaFilesByPriority } = require('../utils/mediaUtils');
-        const sortedMediaFiles = sortMediaFilesByPriority(enhancedMediaFiles);
-        
-        console.log('Final processed media files:', sortedMediaFiles.map((mf: any) => ({
+        // Keep original CSV column order instead of sorting by priority
+        console.log('Final processed media files (CSV order preserved):', enhancedMediaFiles.map((mf: any) => ({
           filename: mf.filename,
           key: mf.key,
           display_name: mf.display_name
@@ -705,18 +796,18 @@ export const api = {
         
         return {
           ...question,
-          media_files: sortedMediaFiles
+          media_files: enhancedMediaFiles
         };
       }
       
       // If the question has raw data with multiple file keys, process it (legacy support)
       if (question.raw_data && typeof question.raw_data === 'object') {
         console.log('📦 Processing raw_data format...');
-        const { parseMediaFilesFromData, sortMediaFilesByPriority } = require('../utils/mediaUtils');
+        const { parseMediaFilesFromData } = require('../utils/mediaUtils');
         const mediaFiles = parseMediaFilesFromData(question.raw_data);
-        const sortedMediaFiles = sortMediaFilesByPriority(mediaFiles);
+        // Keep original order instead of sorting by priority
         
-        console.log('Processed from raw_data:', sortedMediaFiles.map((mf: any) => ({
+        console.log('Processed from raw_data (original order):', mediaFiles.map((mf: any) => ({
           filename: mf.filename,
           key: mf.key,
           display_name: mf.display_name
@@ -724,7 +815,7 @@ export const api = {
         
         return {
           ...question,
-          media_files: sortedMediaFiles
+          media_files: mediaFiles
         };
       }
       

@@ -5,7 +5,7 @@ export const defaultTaskFormData: TaskFormData = {
     title: '',
     description: '',
     instructions: '',
-    example_media: [],
+    example_images: [],  // REPLACE example_media
     questions_number: 100,
     priority: 'medium',
     required_agreements: 1,
@@ -36,7 +36,7 @@ export const useTaskFormData = () => {
       title: '',
       description: '',
       instructions: '',
-      example_media: [],
+      example_images: [],  // REPLACE example_media
       questions_number: 100,
       priority: 'medium',
       required_agreements: 1,

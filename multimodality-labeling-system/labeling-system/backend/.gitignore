@@ -212,3 +212,5 @@ __marimo__/
 # Task Data
 taskData
 taskData/
+
+/app/customer/LocalDataSampler.py

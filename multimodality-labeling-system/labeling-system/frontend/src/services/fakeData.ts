@@ -5,7 +5,10 @@ export const fakeTask: Task = {
   title: "Manufacturing Defect Detection",
   description: "Identify various types of failures in manufacturing data",
   instructions: "Compare the provided media items and identify any A-type, B-type, or C-type failures present.",
-  example_media: ["example1.jpg", "example2.jpg"]
+  example_images: [
+    { filename: "example1.jpg", file_path: "/api/example-images/example1.jpg", caption: "Example manufacturing process" },
+    { filename: "example2.jpg", file_path: "/api/example-images/example2.jpg", caption: "Common failure patterns" }
+  ]
 };
 
 export const fakeQuestions: Question[] = [

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from typing import List, Optional
 import io
@@ -12,7 +12,9 @@ from app.models.tasks import (
     # Add new enhanced models if you want to use the new features
     TaskWithQuestionsCreate, TaskWithQuestions, QuestionWithMedia,
     MediaSampleRequest, MediaSampleResponse, MediaAvailableResponse,
-    QuestionResponseDetailedCreate, QuestionResponseDetailed
+    QuestionResponseDetailedCreate, QuestionResponseDetailed,
+    # Example images support
+    ExampleImage
 )
 
 # Import the new partitioned services
@@ -197,5 +199,53 @@ async def export_task_responses(
             detail=f"Export failed: {str(e)}"
         )
 
+
+# ===== EXAMPLE IMAGES =====
+@router.post("/{task_id}/example-images/upload", response_model=ExampleImage)
+@handle_router_errors
+async def upload_task_example_image(
+    task_id: str,
+    file: UploadFile = File(...),
+    caption: str = Form(""),
+    current_user: dict = Depends(require_admin)
+):
+    """Upload a new example image for a task"""
+    return await task_service.upload_example_image(task_id, file, caption)
+
+@router.put("/{task_id}/example-images", response_model=List[ExampleImage])
+@handle_router_errors
+async def update_task_example_images(
+    task_id: str,
+    images: List[ExampleImage],
+    current_user: dict = Depends(require_admin)
+):
+    """Update the order and captions of example images"""
+    return await task_service.update_example_images(task_id, images)
+
+@router.delete("/{task_id}/example-images/{filename}")
+@handle_router_errors
+async def delete_task_example_image(
+    task_id: str,
+    filename: str,
+    current_user: dict = Depends(require_admin)
+):
+    """Delete a specific example image"""
+    success = await task_service.delete_example_image(task_id, filename)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Example image not found"
+        )
+    return {"message": "Example image deleted successfully"}
+
+@router.get("/{task_id}/example-images/{filename}")
+@handle_router_errors
+async def get_task_example_image(
+    task_id: str,
+    filename: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Serve example image file"""
+    return await task_service.get_example_image_file(task_id, filename)
 
 

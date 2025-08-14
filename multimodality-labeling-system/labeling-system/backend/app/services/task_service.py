@@ -1,11 +1,18 @@
 # app/services/task_service.py
 from typing import List, Optional
 from datetime import datetime
+import os
+import uuid
+import shutil
+from pathlib import Path
+from fastapi import UploadFile, HTTPException, status
+from fastapi.responses import FileResponse
 from app.services.base_service import BaseService
 from app.services.media_service import MediaService
 from app.models.tasks import (
-    Task, TaskCreate, TaskUpdate, TaskWithQuestionsCreate, TaskWithQuestions
+    Task, TaskCreate, TaskUpdate, TaskWithQuestionsCreate, TaskWithQuestions, ExampleImage
 )
+from app.config import settings
 
 class TaskService(BaseService):
     """Service for managing tasks"""
@@ -75,7 +82,7 @@ class TaskService(BaseService):
                 "title": task_data.title,
                 "description": task_data.description,
                 "instructions": task_data.instructions,
-                "example_media": task_data.example_media,
+                "example_images": [img.dict() for img in task_data.example_images],  # UPDATED to use example_images
                 "status": "draft",
                 "questions_number": task_data.questions_number,
                 "required_agreements": task_data.required_agreements,
@@ -100,13 +107,17 @@ class TaskService(BaseService):
             
             created_task = result.data[0]
             
+            # Parse example_images from database
+            example_images_data = created_task.get("example_images", [])
+            example_images = [ExampleImage(**img_data) for img_data in example_images_data]
+
             # Return the task without generating any questions
             return TaskWithQuestions(
                 id=created_task["id"],
                 title=created_task["title"],
                 description=created_task.get("description"),
                 instructions=created_task.get("instructions"),
-                example_media=created_task.get("example_media", []),
+                example_images=example_images,  # UPDATED to use example_images
                 priority=created_task.get("priority", "medium"),
                 status=created_task["status"],
                 questions_number=created_task["questions_number"],
@@ -193,6 +204,10 @@ class TaskService(BaseService):
             if update_data.question_template is not None:
                 update_dict["question_template"] = update_data.question_template.dict()
             
+            # Handle example_images (serialize to JSON)
+            if update_data.example_images is not None:
+                update_dict["example_images"] = [img.dict() for img in update_data.example_images]
+            
             if not update_dict:
                 # Return existing task with questions format
                 return await self.get_task_with_questions_by_id(task_id)
@@ -260,12 +275,19 @@ class TaskService(BaseService):
             
             task_data = result.data[0]
 
+            # Parse example_images JSONB field
+            example_images_data = task_data.get("example_images", [])
+            example_images = []
+            if example_images_data:
+                for img_data in example_images_data:
+                    example_images.append(ExampleImage(**img_data))
+
             return TaskWithQuestions(
                 id=task_data["id"],
                 title=task_data["title"],
                 description=task_data.get("description"),
                 instructions=task_data.get("instructions"),
-                example_media=task_data.get("example_media", []),
+                example_images=example_images,  # UPDATED to use example_images
                 priority=task_data.get("priority", "medium"),
                 status=task_data["status"],
                 questions_number=task_data["questions_number"],
@@ -304,3 +326,203 @@ class TaskService(BaseService):
                 raise e
             # Otherwise, handle as a general database error
             raise self._handle_supabase_error("checking for duplicate task name", e)
+    
+    # ===== EXAMPLE IMAGES METHODS =====
+    
+    async def upload_example_image(self, task_id: str, file: UploadFile, caption: str = "") -> ExampleImage:
+        """Upload and store example image for a task"""
+        try:
+            # 1. Validate task exists
+            task = await self.get_task_by_id(task_id)
+            if not task:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+            
+            # 2. Validate file
+            if not file.content_type or not file.content_type.startswith('image/'):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only image files are allowed")
+            
+            if file.size and file.size > 10 * 1024 * 1024:  # 10MB limit
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File size must be less than 10MB")
+            
+            allowed_types = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
+            if file.content_type not in allowed_types:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only JPG, PNG, GIF, and WebP formats are supported")
+            
+            # 3. Generate unique filename for Supabase storage
+            file_extension = Path(file.filename).suffix.lower() if file.filename else '.jpg'
+            unique_filename = f"img_{uuid.uuid4().hex[:8]}_{file.filename}"
+            storage_path = f"{task_id}/{unique_filename}"
+            
+            # 4. Upload to Supabase storage
+            file_bytes = await file.read()
+            
+            print(f"🔍 Attempting to upload to storage path: {storage_path}")
+            print(f"🔍 File size: {len(file_bytes)} bytes")
+            print(f"🔍 Content type: {file.content_type}")
+            
+            try:
+                storage_response = self.supabase.storage.from_("task-example-images").upload(
+                    path=storage_path,
+                    file=file_bytes,
+                    file_options={
+                        "content-type": file.content_type,
+                        "cache-control": "3600",
+                        "upsert": "false"
+                    }
+                )
+                
+                print(f"🔍 Storage response: {storage_response}")
+                
+                if hasattr(storage_response, 'status_code') and storage_response.status_code != 200:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                        detail=f"Failed to upload image to storage: {storage_response}"
+                    )
+                
+                # Check if the response has an error
+                if hasattr(storage_response, 'error') and storage_response.error:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                        detail=f"Storage upload error: {storage_response.error}"
+                    )
+                    
+            except Exception as storage_error:
+                print(f"❌ Storage upload failed: {storage_error}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                    detail=f"Storage upload failed: {str(storage_error)}"
+                )
+            
+            # 5. Get public URL for the uploaded file
+            public_url_response = self.supabase.storage.from_("task-example-images").get_public_url(storage_path)
+            public_url = public_url_response
+            
+            # 6. Create ExampleImage object
+            example_image = ExampleImage(
+                filename=unique_filename,
+                file_path=public_url,  # Store public URL instead of local path
+                caption=caption or ""
+            )
+            
+            # 7. Update task's example_images array in database
+            current_images = await self._get_task_example_images(task_id)
+            current_images.append(example_image)
+            
+            await self._update_task_example_images_db(task_id, current_images)
+            
+            return example_image
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise self._handle_supabase_error("uploading example image", e)
+    
+    async def update_example_images(self, task_id: str, images: List[ExampleImage]) -> List[ExampleImage]:
+        """Update example images order and captions"""
+        try:
+            # 1. Validate task exists
+            task = await self.get_task_by_id(task_id)
+            if not task:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+            
+            # 2. Validate all files exist in storage (skip validation for Supabase URLs)
+            # Note: For Supabase storage, we trust the URLs are valid since they're from our storage
+            
+            # 3. Update database
+            await self._update_task_example_images_db(task_id, images)
+            
+            return images
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise self._handle_supabase_error("updating example images", e)
+    
+    async def delete_example_image(self, task_id: str, filename: str) -> bool:
+        """Delete example image from task"""
+        try:
+            # 1. Get current images
+            current_images = await self._get_task_example_images(task_id)
+            
+            # 2. Find and remove the image
+            image_to_remove = None
+            updated_images = []
+            
+            for image in current_images:
+                if image.filename == filename:
+                    image_to_remove = image
+                else:
+                    updated_images.append(image)
+            
+            if not image_to_remove:
+                return False
+            
+            # 3. Delete file from Supabase storage
+            try:
+                storage_path = f"{task_id}/{image_to_remove.filename}"
+                delete_response = self.supabase.storage.from_("task-example-images").remove([storage_path])
+                # Note: Supabase storage delete doesn't always throw errors for missing files
+            except Exception as storage_error:
+                print(f"Warning: Could not delete file from storage: {storage_error}")
+            
+            # 4. Update database
+            await self._update_task_example_images_db(task_id, updated_images)
+            
+            return True
+            
+        except Exception as e:
+            raise self._handle_supabase_error("deleting example image", e)
+    
+    async def get_example_image_file(self, task_id: str, filename: str):
+        """Get example image public URL (for Supabase storage)"""
+        try:
+            # 1. Get current images to validate filename exists
+            current_images = await self._get_task_example_images(task_id)
+            
+            # 2. Find the image
+            image_file = None
+            for image in current_images:
+                if image.filename == filename:
+                    image_file = image
+                    break
+            
+            if not image_file:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Example image not found")
+            
+            # 3. Return the public URL (already stored in file_path for Supabase storage)
+            return {"url": image_file.file_path}
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise self._handle_supabase_error("serving example image", e)
+    
+    async def _get_task_example_images(self, task_id: str) -> List[ExampleImage]:
+        """Get current example images for a task"""
+        try:
+            result = self.supabase.table("tasks").select("example_images").eq("id", task_id).execute()
+            
+            if not result.data:
+                return []
+            
+            images_data = result.data[0].get("example_images", [])
+            
+            return [ExampleImage(**img_data) for img_data in images_data]
+            
+        except Exception as e:
+            raise self._handle_supabase_error("fetching task example images", e)
+    
+    async def _update_task_example_images_db(self, task_id: str, images: List[ExampleImage]) -> None:
+        """Update task's example_images in database"""
+        try:
+            images_data = [img.dict() for img in images]
+            
+            result = self.supabase.table("tasks").update({
+                "example_images": images_data
+            }).eq("id", task_id).execute()
+            
+            if not result.data:
+                raise Exception("Failed to update example images")
+                
+        except Exception as e:
+            raise self._handle_supabase_error("updating task example images in database", e)

@@ -6,8 +6,6 @@ import {
   FormControlLabel,
   Checkbox,
   Chip,
-  Card,
-  CardContent,
   Accordion,
   AccordionSummary,
   AccordionDetails
@@ -122,17 +120,13 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        2. Failure Type Analysis
+      <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1}}>
+        Failure Type Analysis
         <Chip 
           label={`${Object.keys(choices).length} categories`}
           size="small"
           variant="outlined"
         />
-      </Typography>
-      
-      <Typography variant="body2" color="text.secondary" paragraph>
-        For each failure type, first indicate if failures are present, then specify the types.
       </Typography>
 
       {Object.entries(choices).map(([failureType, choiceData]) => (
@@ -208,7 +202,7 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
           <AccordionDetails>
             {/* Primary Yes/No Question */}
             <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" gutterBottom>
+              <Typography variant="subtitle2" gutterBottom >
                 Are there any {failureType} failures in this data?
               </Typography>
               <FormGroup row>
@@ -255,7 +249,7 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
                 border: '1px solid',
                 borderColor: `${getFailureTypeColor(failureType)}.200`
               }}>
-                <Typography variant="subtitle2" gutterBottom>
+                <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>
                   What type of {failureType} failures do you see?
                 </Typography>
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>

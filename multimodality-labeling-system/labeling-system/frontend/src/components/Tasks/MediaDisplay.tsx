@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
   Chip,
   Alert,
-  IconButton,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -20,20 +19,7 @@ import {
 import { api } from '../../services/api';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import LazyMediaItem from './LazyMediaItem';
-
-interface MediaFile {
-  filename: string;
-  file_path: string;
-  media_type: 'image' | 'video' | 'audio';
-  file_size?: number;
-  mime_type?: string;
-  duration_seconds?: number;
-  width?: number;
-  height?: number;
-  key?: string; // The original key from the data (e.g., 'output_wav', 'other_wav')
-  caption?: string; // Alternative to key field (from backend)
-  display_name?: string; // Human-readable display name
-}
+import { MediaFile } from '../../types/createTask';
 
 interface MediaDisplayProps {
   mediaFiles: MediaFile[];
@@ -51,6 +37,8 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
   const [errorStates, setErrorStates] = useState<Record<string, boolean>>({});
   const [mediaBlobUrls, setMediaBlobUrls] = useState<Record<string, string>>({});
+  const [isImageZoomed, setIsImageZoomed] = useState(false);
+  const [imageNaturalSize, setImageNaturalSize] = useState<{ width: number; height: number } | null>(null);
 
   // Fetch media with authentication using POST with file path
   const fetchMediaWithAuth = useCallback(async (mediaFile: MediaFile): Promise<string> => {
@@ -66,19 +54,16 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     }
 
     const loadMediaFiles = async () => {
-      // Prioritize images over videos/audio for faster perceived loading
-      const prioritizedFiles = [...mediaFiles].sort((a, b) => {
-        const priority = { image: 0, video: 1, audio: 2 };
-        return priority[a.media_type] - priority[b.media_type];
-      });
+      // Keep original CSV column order instead of prioritizing by type
+      const orderedFiles = [...mediaFiles]; // Preserve original order from CSV
 
-      // Load images immediately in parallel
-      const imageFiles = prioritizedFiles.filter(f => f.media_type === 'image');
-      const otherFiles = prioritizedFiles.filter(f => f.media_type !== 'image');
+      // Separate media files by type for loading optimization, but preserve display order
+      const imageFiles = orderedFiles.filter(f => f.media_type === 'image');
+      const otherFiles = orderedFiles.filter(f => f.media_type !== 'image' && f.media_type !== 'text');
 
-      // Set loading state for all files
-      const filesToLoad = prioritizedFiles.filter(
-        file => !mediaBlobUrls[file.filename] && !loadingStates[file.filename]
+      // Set loading state for files that need blob URLs (exclude text files)
+      const filesToLoad = orderedFiles.filter(
+        file => file.media_type !== 'text' && !mediaBlobUrls[file.filename] && !loadingStates[file.filename]
       );
 
       if (filesToLoad.length === 0) return;
@@ -154,7 +139,61 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
   const closeMediaDialog = useCallback(() => {
     setSelectedMedia(null);
     setDialogOpen(false);
+    setIsImageZoomed(false);
+    setImageNaturalSize(null);
   }, []);
+
+  const handleImageDoubleClick = useCallback(() => {
+    setIsImageZoomed(prev => !prev);
+  }, []);
+
+  const handleImageLoad = useCallback((event: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = event.currentTarget;
+    setImageNaturalSize({
+      width: img.naturalWidth,
+      height: img.naturalHeight
+    });
+  }, []);
+
+  // Handle blob URLs from lazy-loaded media items
+  const handleBlobUrlReady = useCallback((filename: string, blobUrl: string) => {
+    setMediaBlobUrls(prev => ({ ...prev, [filename]: blobUrl }));
+  }, []);
+
+  // Calculate optimal image size for dialog preview
+  const imageDisplaySize = useMemo(() => {
+    if (!imageNaturalSize) return null;
+    
+    const maxViewportWidth = window.innerWidth - 80; // Account for dialog padding
+    const maxViewportHeight = window.innerHeight * 0.9 - 200; // Account for dialog header/footer
+    
+    const { width: naturalWidth, height: naturalHeight } = imageNaturalSize;
+    
+    // Calculate fit-to-screen dimensions (proportionally scaled to fit viewport)
+    const widthRatio = maxViewportWidth / naturalWidth;
+    const heightRatio = maxViewportHeight / naturalHeight;
+    const fitToScreenScale = Math.min(widthRatio, heightRatio, 1); // Never scale up to fit
+    
+    const fitToScreenWidth = naturalWidth * fitToScreenScale;
+    const fitToScreenHeight = naturalHeight * fitToScreenScale;
+    
+    if (isImageZoomed) {
+      // When zoomed, ensure we have a meaningful zoom:
+      // - If image is large (requires scaling down): show at actual size (scale = 1)
+      // - If image is small (no scaling needed): zoom to 200% of fit-to-screen size
+      const zoomedScale = fitToScreenScale < 1 ? 1 : fitToScreenScale * 2;
+      return {
+        width: naturalWidth * zoomedScale,
+        height: naturalHeight * zoomedScale
+      };
+    }
+    
+    // Initially, show at fit-to-screen size
+    return {
+      width: fitToScreenWidth,
+      height: fitToScreenHeight
+    };
+  }, [imageNaturalSize, isImageZoomed]);
 
   const renderMediaItem = (mediaFile: MediaFile, index: number) => {
     const blobUrl = mediaBlobUrls[mediaFile.filename];
@@ -165,11 +204,8 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     console.log(`🎨 Rendering media item ${index}:`, {
       filename: mediaFile.filename,
       has_key: !!mediaFile.key,
-      has_caption: !!mediaFile.caption,
-      has_display_name: !!mediaFile.display_name,
       key_value: mediaFile.key,
-      caption_value: mediaFile.caption,
-      display_name: mediaFile.display_name
+      media_type: mediaFile.media_type
     });
 
     return (
@@ -184,7 +220,15 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
         <Box
           sx={{
             position: 'relative',
-            height: 480,
+            // Dynamic height based on media type
+            ...(mediaFile.media_type === 'text' || mediaFile.media_type === 'audio' ? {
+              height: 'auto',
+              minHeight: 150
+            } : {
+              minHeight: 200,
+              height: 'auto',
+              cursor: ['image', 'video'].includes(mediaFile.media_type) ? 'pointer' : 'default'
+            }),
             bgcolor: 'grey.100',
             borderRadius: 2,
             overflow: 'hidden',
@@ -194,6 +238,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
             alignItems: 'center',
             justifyContent: 'center'
           }}
+          onClick={() => ['image', 'video'].includes(mediaFile.media_type) ? openMediaDialog(mediaFile) : undefined}
         >
         {/* Loading State */}
         {isLoading && (
@@ -228,7 +273,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
         )}
 
         {/* Media Content */}
-        {!hasError && blobUrl && (
+        {!hasError && (blobUrl || mediaFile.media_type === 'text') && (
           <>
             {mediaFile.media_type === 'image' && (
               <img
@@ -236,12 +281,12 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
                 alt={mediaFile.filename}
                 style={{
                   width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  cursor: 'pointer'
+                  height: 'auto',
+                  minHeight: '200px',
+                  maxHeight: '400px',
+                  objectFit: 'contain'
                 }}
                 onError={() => handleMediaError(mediaFile.filename)}
-                onClick={() => openMediaDialog(mediaFile)}
               />
             )}
 
@@ -250,8 +295,10 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
                 src={blobUrl}
                 style={{
                   width: '100%',
-                  height: '100%',
-                  objectFit: 'cover'
+                  height: 'auto',
+                  minHeight: '200px',
+                  maxHeight: '400px',
+                  objectFit: 'contain'
                 }}
                 controls
                 preload="metadata"
@@ -264,7 +311,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
             {mediaFile.media_type === 'audio' && (
               <Box sx={{ 
                 width: '100%', 
-                height: '100%', 
+                height: 150,
                 display: 'flex', 
                 flexDirection: 'column',
                 alignItems: 'center', 
@@ -272,17 +319,48 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
                 bgcolor: 'grey.200',
                 p: 2
               }}>
-                <VolumeUp sx={{ fontSize: 40, mb: 2, color: 'primary.main' }} />
+                <VolumeUp sx={{ fontSize: 32, mb: 1, color: 'primary.main' }} />
                 <audio
                   src={blobUrl}
                   controls
-                  style={{ width: '100%', minWidth: '300px' }}
+                  style={{ width: '100%', maxWidth: '300px' }}
                   onError={() => handleMediaError(mediaFile.filename)}
                 >
                   Your browser does not support the audio tag.
                 </audio>
                 <Typography variant="caption" sx={{ mt: 1, textAlign: 'center' }}>
                   {mediaFile.filename}
+                </Typography>
+              </Box>
+            )}
+
+            {mediaFile.media_type === 'text' && (
+              <Box sx={{ 
+                width: '100%', 
+                minHeight: 150,
+                maxHeight: 200,
+                display: 'flex', 
+                flexDirection: 'column',
+                alignItems: 'flex-start', 
+                justifyContent: 'flex-start',
+                bgcolor: 'grey.50',
+                p: 2,
+                overflow: 'auto'
+              }}>
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    textAlign: 'left',
+                    width: '100%',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    lineHeight: 1.5,
+                    fontFamily: 'monospace',
+                    fontSize: '0.9rem',
+                    color: 'text.primary'
+                  }}
+                >
+                  {mediaFile.file_path}
                 </Typography>
               </Box>
             )}
@@ -302,31 +380,24 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
             size="small"
             color="primary"
           />
-          {mediaFile.media_type === 'image' && blobUrl && (
-            <IconButton
-              size="small"
-              sx={{ bgcolor: 'rgba(0,0,0,0.5)', color: 'white' }}
-              onClick={() => openMediaDialog(mediaFile)}
+          {['image', 'video'].includes(mediaFile.media_type) && (blobUrl || mediaFile.media_type === 'text') && (
+            <Box
+              sx={{ 
+                bgcolor: 'rgba(0,0,0,0.6)', 
+                color: 'white',
+                borderRadius: 1,
+                px: 1,
+                py: 0.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5
+              }}
             >
               <ZoomIn fontSize="small" />
-            </IconButton>
+              <Typography variant="caption">Click to enlarge</Typography>
+            </Box>
           )}
         </Box>
-
-        {/* Media Type Badge */}
-        <Chip
-          label={mediaFile.media_type.toUpperCase()}
-          size="small"
-          color={
-            mediaFile.media_type === 'image' ? 'success' :
-            mediaFile.media_type === 'video' ? 'warning' : 'info'
-          }
-          sx={{
-            position: 'absolute',
-            bottom: 8,
-            left: 8
-          }}
-        />
 
         {/* Duration Badge for Video/Audio */}
         {mediaFile.duration_seconds && (
@@ -366,6 +437,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
             taskId={taskId}
             onMediaClick={openMediaDialog}
             onMediaError={handleMediaError}
+            onBlobUrlReady={handleBlobUrlReady}
             loadingThreshold={0.1}
             rootMargin="100px"
           />
@@ -395,38 +467,83 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
         fullWidth
       >
         <DialogTitle>
-          {selectedMedia?.filename}
+          <Typography variant="h6" component="h2" sx={{ fontWeight: 'bold' }}>
+            {selectedMedia?.key || selectedMedia?.filename}
+          </Typography>
           <Typography variant="body2" color="text.secondary">
             {selectedMedia?.media_type} • {selectedMedia?.file_size ? `${Math.round(selectedMedia.file_size / 1024)} KB` : 'Unknown size'}
             {selectedMedia?.width && selectedMedia?.height && ` • ${selectedMedia.width}×${selectedMedia.height}`}
           </Typography>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent 
+          sx={{ 
+            textAlign: 'center', 
+            p: 3, 
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'auto' // Always allow scrolling for zoomed images
+          }}
+        >
           {selectedMedia && (
-            <Box sx={{ textAlign: 'center' }}>
-              {selectedMedia.media_type === 'image' && mediaBlobUrls[selectedMedia.filename] && (
-                <img
-                  src={mediaBlobUrls[selectedMedia.filename]}
-                  alt={selectedMedia.filename}
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '140vh',
-                    objectFit: 'contain'
-                  }}
-                />
+            <Box sx={{ textAlign: 'center', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {/* Loading state when blob URL is not ready */}
+              {selectedMedia.media_type !== 'text' && !mediaBlobUrls[selectedMedia.filename] && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <CircularProgress size={60} sx={{ mb: 2 }} />
+                  <Typography variant="h6" color="text.secondary">
+                    Loading full-size {selectedMedia.media_type}...
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    {selectedMedia.filename}
+                  </Typography>
+                </Box>
               )}
+              
+              {/* Image content */}
+              {selectedMedia.media_type === 'image' && mediaBlobUrls[selectedMedia.filename] && (
+                <Box
+                  sx={{
+                    cursor: 'pointer',
+                    minHeight: 'calc(80vh - 200px)'
+                  }}
+                  onDoubleClick={handleImageDoubleClick}
+                >
+                  <img
+                    src={mediaBlobUrls[selectedMedia.filename]}
+                    alt={selectedMedia.filename}
+                    onLoad={handleImageLoad}
+                    style={{
+                      // Use calculated dimensions to show proper size
+                      width: imageDisplaySize?.width || 'auto',
+                      height: imageDisplaySize?.height || 'auto',
+                      borderRadius: 8,
+                      transition: 'all 0.3s ease',
+                      // Ensure image doesn't exceed viewport when not zoomed
+                      maxWidth: isImageZoomed ? 'none' : 'calc(100vw - 80px)',
+                      maxHeight: isImageZoomed ? 'none' : 'calc(80vh - 200px)',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </Box>
+              )}
+              
+              {/* Video content */}
               {selectedMedia.media_type === 'video' && mediaBlobUrls[selectedMedia.filename] && (
                 <video
                   src={mediaBlobUrls[selectedMedia.filename]}
                   controls
                   style={{
                     maxWidth: '100%',
-                    maxHeight: '140vh'
+                    maxHeight: '80vh'
                   }}
                 >
                   Your browser does not support the video tag.
                 </video>
               )}
+              
+              {/* Audio content */}
               {selectedMedia.media_type === 'audio' && mediaBlobUrls[selectedMedia.filename] && (
                 <Box sx={{ p: 4 }}>
                   <VolumeUp sx={{ fontSize: 80, mb: 2, color: 'primary.main' }} />
@@ -438,6 +555,36 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
                   >
                     Your browser does not support the audio tag.
                   </audio>
+                  <Typography variant="h6" sx={{ mt: 2 }}>
+                    {selectedMedia.filename}
+                  </Typography>
+                </Box>
+              )}
+              
+              {/* Text content */}
+              {selectedMedia.media_type === 'text' && (
+                <Box sx={{ 
+                  p: 3, 
+                  minHeight: '200px',
+                  maxHeight: '60vh',
+                  width: '100%',
+                  overflow: 'auto',
+                  bgcolor: 'grey.50',
+                  borderRadius: 1
+                }}>
+                  <Typography 
+                    variant="body1" 
+                    sx={{ 
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      lineHeight: 1.6,
+                      fontFamily: 'monospace',
+                      fontSize: '1.1rem',
+                      textAlign: 'left'
+                    }}
+                  >
+                    {selectedMedia.file_path}
+                  </Typography>
                 </Box>
               )}
             </Box>
