@@ -17,6 +17,7 @@ interface LazyMediaItemProps {
   taskId: string;
   onMediaClick?: (mediaFile: MediaFile) => void;
   onMediaError?: (filename: string) => void;
+  onBlobUrlReady?: (filename: string, blobUrl: string) => void;
   loadingThreshold?: number;
   rootMargin?: string;
 }
@@ -34,6 +35,7 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
   taskId,
   onMediaClick,
   onMediaError,
+  onBlobUrlReady,
   loadingThreshold = 0.1,
   rootMargin = '100px'
 }) => {
@@ -65,6 +67,11 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
         isLoading: false,
         hasError: false
       }));
+      
+      // Notify parent about the blob URL
+      if (blobUrl && onBlobUrlReady) {
+        onBlobUrlReady(mediaFile.filename, blobUrl);
+      }
     } catch (error) {
       console.error(`Error loading media ${mediaFile.filename}:`, error);
       setState(prev => ({ 
@@ -74,7 +81,7 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
       }));
       onMediaError?.(mediaFile.filename);
     }
-  }, [mediaFile, fetchMediaWithAuth, onMediaError, state.isLoading, state.blobUrl, state.hasError]);
+  }, [mediaFile, fetchMediaWithAuth, onMediaError, onBlobUrlReady, state.isLoading, state.blobUrl, state.hasError]);
 
   // Intersection Observer for lazy loading
   useEffect(() => {
@@ -104,6 +111,10 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
     if (mediaFile.media_type === 'text') {
       // Text files don't need blob URLs, mark as ready
       setState(prev => ({ ...prev, blobUrl: 'ready' }));
+      // Notify parent that text content is ready (use file_path as content)
+      if (onBlobUrlReady) {
+        onBlobUrlReady(mediaFile.filename, 'ready');
+      }
       return;
     }
     
@@ -113,7 +124,7 @@ const LazyMediaItem: React.FC<LazyMediaItemProps> = ({
       const timer = setTimeout(loadMedia, delay);
       return () => clearTimeout(timer);
     }
-  }, [state.shouldLoad, state.blobUrl, state.isLoading, state.hasError, loadMedia, mediaFile.media_type]);
+  }, [state.shouldLoad, state.blobUrl, state.isLoading, state.hasError, loadMedia, mediaFile.media_type, mediaFile.filename, onBlobUrlReady]);
 
   // Cleanup blob URL on unmount
   useEffect(() => {
