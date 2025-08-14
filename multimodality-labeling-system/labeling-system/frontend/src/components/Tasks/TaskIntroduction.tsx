@@ -17,7 +17,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Divider
 } from '@mui/material';
 import { PlayArrow, ArrowBack, ZoomIn, NavigateBefore, NavigateNext } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
@@ -191,31 +192,29 @@ const TaskIntroduction: React.FC = () => {
     
     const { width: naturalWidth, height: naturalHeight } = imageNaturalSize;
     
-    if (isImageZoomed) {
-      // When zoomed, show at actual size
-      return {
-        width: naturalWidth,
-        height: naturalHeight
-      };
-    }
-    
-    // Initially, show at full size unless it's too large for viewport
-    if (naturalWidth <= maxViewportWidth && naturalHeight <= maxViewportHeight) {
-      // Image fits naturally, show at full size
-      return {
-        width: naturalWidth,
-        height: naturalHeight
-      };
-    }
-    
-    // Image is too large, scale it down proportionally
+    // Calculate fit-to-screen dimensions (proportionally scaled to fit viewport)
     const widthRatio = maxViewportWidth / naturalWidth;
     const heightRatio = maxViewportHeight / naturalHeight;
-    const scale = Math.min(widthRatio, heightRatio);
+    const fitToScreenScale = Math.min(widthRatio, heightRatio, 1); // Never scale up to fit
     
+    const fitToScreenWidth = naturalWidth * fitToScreenScale;
+    const fitToScreenHeight = naturalHeight * fitToScreenScale;
+    
+    if (isImageZoomed) {
+      // When zoomed, ensure we have a meaningful zoom:
+      // - If image is large (requires scaling down): show at actual size (scale = 1)
+      // - If image is small (no scaling needed): zoom to 200% of fit-to-screen size
+      const zoomedScale = fitToScreenScale < 1 ? 1 : fitToScreenScale * 2;
+      return {
+        width: naturalWidth * zoomedScale,
+        height: naturalHeight * zoomedScale
+      };
+    }
+    
+    // Initially, show at fit-to-screen size
     return {
-      width: naturalWidth * scale,
-      height: naturalHeight * scale
+      width: fitToScreenWidth,
+      height: fitToScreenHeight
     };
   }, [imageNaturalSize, isImageZoomed]);
 
@@ -321,8 +320,10 @@ const TaskIntroduction: React.FC = () => {
                 <Typography variant="body1" paragraph>
                   {task.instructions || 'Please review the media items and identify any failures according to the categories provided.'}
                 </Typography>
+
+                <Divider sx={{ my: 3 }} />
                 
-                <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+                <Typography variant="h6" gutterBottom>
                   Task Details:
                 </Typography>
                 <Box sx={{ mb: 3 }}>
@@ -337,7 +338,9 @@ const TaskIntroduction: React.FC = () => {
                   </Typography>
                 </Box>
 
-                <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+                <Divider sx={{ my: 3 }} />
+
+                <Typography variant="h6" gutterBottom>
                   What you'll be doing:
                 </Typography>
                 <Box component="ul" sx={{ pl: 2 }}>
@@ -352,7 +355,9 @@ const TaskIntroduction: React.FC = () => {
                   </Typography>
                 </Box>
 
-                <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+                <Divider sx={{ my: 3 }} />
+
+                <Typography variant="h6" gutterBottom>
                   Failure Categories:
                 </Typography>
                 <Box sx={{ mb: 2 }}>
@@ -593,7 +598,7 @@ const TaskIntroduction: React.FC = () => {
                     Task Overview:
                   </Typography>
                   <Typography variant="body2">
-                    You'll analyze similar images to identify failure types according to the provided categories. 
+                    You'll analyze similar media to identify failure types according to the provided categories. 
                     Use the examples above as reference for the content types and quality standards expected.
                   </Typography>
                 </Box>
@@ -650,7 +655,7 @@ const TaskIntroduction: React.FC = () => {
       >
         <DialogTitle sx={{ color: 'black', borderBottom: '1px solid', borderColor: 'grey.200', p: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h4" component="h2" sx={{ flex: 1, textAlign: 'center' }}>
+            <Typography variant="h4" component="h2" sx={{ flex: 1, textAlign: 'center', fontWeight: 'bold' }}>
               {previewImage?.caption || previewImage?.alt}
             </Typography>
             {task?.example_images && task.example_images.length > 1 && (
