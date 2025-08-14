@@ -139,6 +139,11 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     setDialogOpen(false);
   }, []);
 
+  // Handle blob URLs from lazy-loaded media items
+  const handleBlobUrlReady = useCallback((filename: string, blobUrl: string) => {
+    setMediaBlobUrls(prev => ({ ...prev, [filename]: blobUrl }));
+  }, []);
+
   const renderMediaItem = (mediaFile: MediaFile, index: number) => {
     const blobUrl = mediaBlobUrls[mediaFile.filename];
     const isLoading = loadingStates[mediaFile.filename];
@@ -381,6 +386,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
             taskId={taskId}
             onMediaClick={openMediaDialog}
             onMediaError={handleMediaError}
+            onBlobUrlReady={handleBlobUrlReady}
             loadingThreshold={0.1}
             rootMargin="100px"
           />
@@ -418,30 +424,48 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
         </DialogTitle>
         <DialogContent>
           {selectedMedia && (
-            <Box sx={{ textAlign: 'center' }}>
+            <Box sx={{ textAlign: 'center', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {/* Loading state when blob URL is not ready */}
+              {selectedMedia.media_type !== 'text' && !mediaBlobUrls[selectedMedia.filename] && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <CircularProgress size={60} sx={{ mb: 2 }} />
+                  <Typography variant="h6" color="text.secondary">
+                    Loading full-size {selectedMedia.media_type}...
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    {selectedMedia.filename}
+                  </Typography>
+                </Box>
+              )}
+              
+              {/* Image content */}
               {selectedMedia.media_type === 'image' && mediaBlobUrls[selectedMedia.filename] && (
                 <img
                   src={mediaBlobUrls[selectedMedia.filename]}
                   alt={selectedMedia.filename}
                   style={{
                     maxWidth: '100%',
-                    maxHeight: '140vh',
+                    maxHeight: '80vh',
                     objectFit: 'contain'
                   }}
                 />
               )}
+              
+              {/* Video content */}
               {selectedMedia.media_type === 'video' && mediaBlobUrls[selectedMedia.filename] && (
                 <video
                   src={mediaBlobUrls[selectedMedia.filename]}
                   controls
                   style={{
                     maxWidth: '100%',
-                    maxHeight: '140vh'
+                    maxHeight: '80vh'
                   }}
                 >
                   Your browser does not support the video tag.
                 </video>
               )}
+              
+              {/* Audio content */}
               {selectedMedia.media_type === 'audio' && mediaBlobUrls[selectedMedia.filename] && (
                 <Box sx={{ p: 4 }}>
                   <VolumeUp sx={{ fontSize: 80, mb: 2, color: 'primary.main' }} />
@@ -453,13 +477,19 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
                   >
                     Your browser does not support the audio tag.
                   </audio>
+                  <Typography variant="h6" sx={{ mt: 2 }}>
+                    {selectedMedia.filename}
+                  </Typography>
                 </Box>
               )}
+              
+              {/* Text content */}
               {selectedMedia.media_type === 'text' && (
                 <Box sx={{ 
                   p: 3, 
                   minHeight: '200px',
                   maxHeight: '60vh',
+                  width: '100%',
                   overflow: 'auto',
                   bgcolor: 'grey.50',
                   borderRadius: 1
@@ -471,7 +501,8 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
                       wordBreak: 'break-word',
                       lineHeight: 1.6,
                       fontFamily: 'monospace',
-                      fontSize: '1.1rem'
+                      fontSize: '1.1rem',
+                      textAlign: 'left'
                     }}
                   >
                     {selectedMedia.file_path}
