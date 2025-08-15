@@ -48,7 +48,8 @@ class LocalDataSampler:
             # Prefix file paths with root directory for media files
             for key, value in row.items():
                 if key != "prompt" and os.path.splitext(value)[1] in [".wav", ".mp3", ".mp4", ".jpg", ".png"]:
-                    row[key] = os.path.join(self.root, task_name, value)
+                    # row[key] = os.path.join(self.root, task_name, value)
+                    row[key] = "/Users/yangping/Studio/side-project/ICLR2026_MMID/multimodality-labeling-system/labeling-system/backend/taskData/vid_lip_syncing/HDTF-test/_real_data_fps25/RD_Radio1_000.mp4"
             
             return row
         else:
@@ -60,7 +61,7 @@ for task in tasks:
     # Try test CSV with prompt column first, fallback to collect.csv
     csv_file = f"{ROOT_DIR}/{task}/collect.csv"
     sampler.load_csv(task, csv_file)
-
+    print(sampler.data_by_task)
 # # init data root
 # root="dataset_root"
 # sampler = LocalDataSampler(root)
