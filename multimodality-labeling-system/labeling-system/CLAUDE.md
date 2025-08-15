@@ -95,6 +95,27 @@ labeling-system/
 
 ## Development Environment Setup
 
+### Quick Setup using .env.example files
+
+1. **Copy the example files:**
+   ```bash
+   # Backend environment
+   cp backend/.env.example backend/.env
+   
+   # Frontend environment  
+   cp frontend/.env.example frontend/.env
+   ```
+
+2. **Get your Supabase credentials** from https://supabase.com:
+   - Create a new project or use existing one
+   - Go to Project Settings → API
+   - Copy URL, anon key, service role key, and JWT secret
+
+3. **Update your .env files** with actual values:
+   - Replace `your-project.supabase.co` with your actual Supabase URL
+   - Replace placeholder keys with your actual Supabase keys
+   - Update API URLs if deploying to production
+
 ### Required Environment Variables
 
 **Backend (.env in backend/)**:
@@ -104,6 +125,11 @@ SUPABASE_SERVICE_KEY=your-service-role-key
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_JWT_SECRET=your-jwt-secret
 BACKEND_CORS_ORIGINS=http://localhost:3000
+API_V1_STR=/api/v1
+MAX_FILE_SIZE=104857600
+UPLOAD_DIR=uploads
+ENVIRONMENT=development
+ROOT_DIR=/path/to/your/project/backend/taskData
 ```
 
 **Frontend (.env in frontend/)**:
