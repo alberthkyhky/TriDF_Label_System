@@ -31,7 +31,22 @@ class TaskService(BaseService):
                 assigned_task_ids = [a["task_id"] for a in assignments.data]
                 
                 if assigned_task_ids:
-                    result = self.supabase.table("tasks").select("*").or_("created_by.eq.{},id.in.({})".format(user_id, ','.join(assigned_task_ids))).execute()
+                    # Query 1: Tasks created by user
+                    user_created = self.supabase.table("tasks").select("*").eq("created_by", user_id).execute()
+                    
+                    # Query 2: Tasks assigned to user  
+                    assigned_tasks = self.supabase.table("tasks").select("*").in_("id", assigned_task_ids).execute()
+                    
+                    # Merge and deduplicate results
+                    user_created_ids = {task["id"] for task in user_created.data}
+                    merged_data = user_created.data + [task for task in assigned_tasks.data if task["id"] not in user_created_ids]
+                    
+                    # Create a mock result object with merged data
+                    class MockResult:
+                        def __init__(self, data):
+                            self.data = data
+                    
+                    result = MockResult(merged_data)
                 else:
                     result = self.supabase.table("tasks").select("*").eq("created_by", user_id).execute()
             
