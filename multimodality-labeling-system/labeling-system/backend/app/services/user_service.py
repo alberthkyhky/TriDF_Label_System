@@ -59,9 +59,7 @@ class UserService:
         try:
             result = self.supabase.table("user_profiles").select(
                 "id, email, full_name, role, created_at"
-            ).or_(
-                f"email.ilike.%{query}%,full_name.ilike.%{query}%"
-            ).limit(limit).execute()
+            ).or_("email.ilike.%{}%,full_name.ilike.%{}%".format(query, query)).limit(limit).execute()
             
             users = []
             for user_data in result.data:
