@@ -31,9 +31,7 @@ class TaskService(BaseService):
                 assigned_task_ids = [a["task_id"] for a in assignments.data]
                 
                 if assigned_task_ids:
-                    result = self.supabase.table("tasks").select("*").or_(
-                        f"created_by.eq.{user_id},id.in.({','.join(assigned_task_ids)})"
-                    ).execute()
+                    result = self.supabase.table("tasks").select("*").or_("created_by.eq.{},id.in.({})".format(user_id, ','.join(assigned_task_ids))).execute()
                 else:
                     result = self.supabase.table("tasks").select("*").eq("created_by", user_id).execute()
             
