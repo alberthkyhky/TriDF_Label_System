@@ -101,9 +101,12 @@ class AssignmentService:
             raise e
 
     async def get_all_assignments_with_details(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
-        """Get all assignments with user and task details"""
+        """Get all assignments with user and task details (optimized to avoid N+1 problem)"""
         try:
-            # Get assignments
+            # Since there's no direct FK between task_assignments and user_profiles,
+            # we'll use separate optimized queries instead of JOINs
+            
+            # 1. Get assignments
             assignments_result = self.supabase.table("task_assignments")\
                 .select("*")\
                 .order("assigned_at", desc=True)\
@@ -111,28 +114,39 @@ class AssignmentService:
                 .offset(offset)\
                 .execute()
             
+            if not assignments_result.data:
+                return []
+            
+            # 2. Get all unique task_ids and user_ids from assignments
+            task_ids = list(set(assignment["task_id"] for assignment in assignments_result.data))
+            user_ids = list(set(assignment["user_id"] for assignment in assignments_result.data))
+            
+            # 3. Batch fetch tasks and users (only 2 additional queries instead of N queries)
+            tasks_result = self.supabase.table("tasks")\
+                .select("id, title")\
+                .in_("id", task_ids)\
+                .execute()
+            
+            users_result = self.supabase.table("user_profiles")\
+                .select("id, full_name, email")\
+                .in_("id", user_ids)\
+                .execute()
+            
+            # 4. Create lookup maps for O(1) access
+            task_map = {task["id"]: task for task in tasks_result.data}
+            user_map = {user["id"]: user for user in users_result.data}
+            
+            # 5. Build response with lookups
             assignments = []
             for assignment in assignments_result.data:
-                # Get task details
-                task_result = self.supabase.table("tasks")\
-                    .select("title")\
-                    .eq("id", assignment["task_id"])\
-                    .execute()
-                
-                # Get user details
-                user_result = self.supabase.table("user_profiles")\
-                    .select("full_name, email")\
-                    .eq("id", assignment["user_id"])\
-                    .execute()
-                
-                # No label classes to process
-                class_names = []
+                task = task_map.get(assignment["task_id"], {})
+                user = user_map.get(assignment["user_id"], {})
                 
                 assignment_data = {
                     **assignment,
-                    "task_title": task_result.data[0]["title"] if task_result.data else "Unknown Task",
-                    "user_name": user_result.data[0]["full_name"] if user_result.data else "Unknown User",
-                    "user_email": user_result.data[0]["email"] if user_result.data else "Unknown Email",
+                    "task_title": task.get("title", "Unknown Task"),
+                    "user_name": user.get("full_name", "Unknown User"),
+                    "user_email": user.get("email", "Unknown Email"),
                     "accuracy": None,  # Can be calculated later
                     "time_spent": None,  # Can be calculated later
                 }
