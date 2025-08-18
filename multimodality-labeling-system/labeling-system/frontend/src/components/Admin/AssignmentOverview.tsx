@@ -29,6 +29,7 @@ import {
   Skeleton,
   TextField,
   InputAdornment,
+  Autocomplete,
 } from '@mui/material';
 import {
   Assignment as AssignmentIcon,
@@ -83,35 +84,54 @@ const AssignmentOverview: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filteredAssignments, setFilteredAssignments] = useState<AssignmentData[]>([]);
   
+  // Filter state
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<string | null>(null);
+  
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [assignmentToDelete, setAssignmentToDelete] = useState<AssignmentData | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Combined filtering function
+  const applyFilters = useCallback((query: string, userFilter: string | null, taskFilter: string | null) => {
+    let filtered = assignments;
+
+    // Apply text search filter
+    if (query.trim()) {
+      filtered = filtered.filter(assignment => 
+        assignment.task_title.toLowerCase().includes(query.toLowerCase()) ||
+        assignment.user_name.toLowerCase().includes(query.toLowerCase()) ||
+        assignment.user_email.toLowerCase().includes(query.toLowerCase())
+      );
+    }
+
+    // Apply user filter
+    if (userFilter) {
+      filtered = filtered.filter(assignment => assignment.user_id === userFilter);
+    }
+
+    // Apply task filter
+    if (taskFilter) {
+      filtered = filtered.filter(assignment => assignment.task_id === taskFilter);
+    }
+
+    setFilteredAssignments(filtered);
+  }, [assignments]);
+
   // Debounced search functionality
   const { isSearching } = useDebouncedSearch(
     searchQuery,
     useCallback((query: string) => {
-      if (!query.trim()) {
-        setFilteredAssignments(assignments);
-      } else {
-        const filtered = assignments.filter(assignment => 
-          assignment.task_title.toLowerCase().includes(query.toLowerCase()) ||
-          assignment.user_name.toLowerCase().includes(query.toLowerCase()) ||
-          assignment.user_email.toLowerCase().includes(query.toLowerCase())
-        );
-        setFilteredAssignments(filtered);
-      }
-    }, [assignments]),
+      applyFilters(query, selectedUser, selectedTask);
+    }, [applyFilters, selectedUser, selectedTask]),
     300
   );
 
-  // Update filtered assignments when assignments change
+  // Update filtered assignments when assignments or filters change
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredAssignments(assignments);
-    }
-  }, [assignments, searchQuery]);
+    applyFilters(searchQuery, selectedUser, selectedTask);
+  }, [assignments, searchQuery, selectedUser, selectedTask, applyFilters]);
 
   // Helper functions for assignment calculations
   const getAssignmentTarget = (assignment: AssignmentData) => {
@@ -123,6 +143,36 @@ const AssignmentOverview: React.FC = () => {
     const target = getAssignmentTarget(assignment);
     return assignment.completed_labels >= target;
   };
+
+  // Memoize unique users and tasks for filter dropdowns
+  const uniqueUsers = useMemo(() => {
+    const userMap = new Map();
+    assignments.forEach(assignment => {
+      if (!userMap.has(assignment.user_id)) {
+        userMap.set(assignment.user_id, {
+          id: assignment.user_id,
+          name: assignment.user_name,
+          email: assignment.user_email,
+          label: `${assignment.user_name} (${assignment.user_email})`
+        });
+      }
+    });
+    return Array.from(userMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [assignments]);
+
+  const uniqueTasks = useMemo(() => {
+    const taskMap = new Map();
+    assignments.forEach(assignment => {
+      if (!taskMap.has(assignment.task_id)) {
+        taskMap.set(assignment.task_id, {
+          id: assignment.task_id,
+          title: assignment.task_title,
+          label: assignment.task_title
+        });
+      }
+    });
+    return Array.from(taskMap.values()).sort((a, b) => a.title.localeCompare(b.title));
+  }, [assignments]);
 
   // Memoize expensive statistical calculations
   const stats = useMemo((): AssignmentStats => {
@@ -321,15 +371,12 @@ const AssignmentOverview: React.FC = () => {
         {/* Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h5">Assignment Overview</Typography>
-          <Box>
-            <Button
-              startIcon={<RefreshIconMui />}
-              disabled
-              sx={{ mr: 1 }}
-            >
-              Refresh
-            </Button>
-          </Box>
+          <Button
+            startIcon={<RefreshIconMui />}
+            disabled
+          >
+            Refresh
+          </Button>
         </Box>
 
         {/* Statistics Cards Skeleton */}
@@ -353,14 +400,22 @@ const AssignmentOverview: React.FC = () => {
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="h6">
-                Assignment Details
+                All Assignments
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {searchQuery.trim() 
-                  ? `${filteredAssignments.length} of ${assignments.length} assignments`
-                  : `${assignments.length} assignments`
-                }
-              </Typography>
+              <Skeleton variant="text" width={120} height={20} />
+            </Box>
+            
+            {/* Filters Skeleton */}
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 2, 
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              mb: 3
+            }}>
+              <Skeleton variant="rounded" width={250} height={40} />
+              <Skeleton variant="rounded" width={250} height={40} />
+              <Skeleton variant="rounded" width={250} height={40} />
             </Box>
             <TableContainer>
               <Table>
@@ -399,38 +454,13 @@ const AssignmentOverview: React.FC = () => {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5">Assignment Overview</Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <TextField
-            size="small"
-            placeholder="Search assignments..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-              ...(isSearching && {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <span style={{ fontSize: '0.75rem', color: '#666' }}>
-                      Searching...
-                    </span>
-                  </InputAdornment>
-                )
-              })
-            }}
-            sx={{ minWidth: 250 }}
-          />
-          <Button
-            startIcon={<RefreshIconMui />}
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            Refresh
-          </Button>
-        </Box>
+        <Button
+          startIcon={<RefreshIconMui />}
+          onClick={handleRefresh}
+          disabled={refreshing}
+        >
+          Refresh
+        </Button>
       </Box>
 
       {/* Stats Cards */}
@@ -480,11 +510,89 @@ const AssignmentOverview: React.FC = () => {
               All Assignments
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {searchQuery.trim() 
+              {(searchQuery.trim() || selectedUser || selectedTask)
                 ? `${filteredAssignments.length} of ${assignments.length} assignments`
                 : `${assignments.length} assignments`
               }
             </Typography>
+          </Box>
+          
+          {/* Filters */}
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 2, 
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            mb: 3
+          }}>
+            <TextField
+              size="small"
+              placeholder="Search assignments..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+                ...(isSearching && {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <span style={{ fontSize: '0.75rem', color: '#666' }}>
+                        Searching...
+                      </span>
+                    </InputAdornment>
+                  )
+                })
+              }}
+              sx={{ minWidth: 250 }}
+            />
+            
+            <Autocomplete
+              size="small"
+              options={uniqueUsers}
+              value={uniqueUsers.find(user => user.id === selectedUser) || null}
+              onChange={(event, value) => setSelectedUser(value?.id || null)}
+              getOptionLabel={(option) => option.label}
+              renderInput={(params) => (
+                <TextField 
+                  {...params} 
+                  placeholder="Filter by user..." 
+                />
+              )}
+              sx={{ minWidth: 250 }}
+              clearOnEscape
+            />
+            
+            <Autocomplete
+              size="small"
+              options={uniqueTasks}
+              value={uniqueTasks.find(task => task.id === selectedTask) || null}
+              onChange={(event, value) => setSelectedTask(value?.id || null)}
+              getOptionLabel={(option) => option.label}
+              renderInput={(params) => (
+                <TextField 
+                  {...params} 
+                  placeholder="Filter by task..." 
+                />
+              )}
+              sx={{ minWidth: 250 }}
+              clearOnEscape
+            />
+            
+            {(selectedUser || selectedTask) && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => {
+                  setSelectedUser(null);
+                  setSelectedTask(null);
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
           </Box>
           <TableContainer component={Paper}>
             <Table>
