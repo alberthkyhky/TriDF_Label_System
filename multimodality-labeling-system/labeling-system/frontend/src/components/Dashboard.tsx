@@ -59,72 +59,17 @@ const Dashboard: React.FC = () => {
   const fetchAssignments = useCallback(async () => {
     try {
       setError(null);
-      console.log('🚀 Fetching assignments...');
+      console.log('🚀 Fetching assignments with task details...');
       
-      const assignmentData = await api.getMyAssignments();
-      console.log(`📊 Retrieved ${assignmentData.length} assignments`);
+      // Use optimized endpoint that returns assignments with task titles in single call
+      const assignmentData = await api.getMyAssignmentsWithTaskDetail();
+      console.log(`📊 Retrieved ${assignmentData.length} assignments with task details`);
       
-      // Show assignments immediately with basic info
-      const basicAssignments = assignmentData.map(assignment => ({
-        ...assignment,
-        task_title: undefined // Will be loaded progressively
-      }));
-      setAssignments(basicAssignments);
-      setLoading(false); // Show UI immediately
+      // Set assignments with complete data immediately
+      setAssignments(assignmentData);
+      setLoading(false);
       
-      // Progressive loading: Load task titles in batches to avoid overwhelming server
-      const BATCH_SIZE = 3; // Process 3 tasks at a time
-      const batches = [];
-      for (let i = 0; i < assignmentData.length; i += BATCH_SIZE) {
-        batches.push(assignmentData.slice(i, i + BATCH_SIZE));
-      }
-      
-      console.log(`📦 Processing ${batches.length} batches of ${BATCH_SIZE} assignments each`);
-      
-      for (const [batchIndex, batch] of batches.entries()) {
-        try {
-          console.log(`🔄 Processing batch ${batchIndex + 1}/${batches.length}`);
-          
-          // Add delay between batches to prevent overwhelming the server
-          if (batchIndex > 0) {
-            await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
-          }
-          
-          const batchPromises = batch.map(async (assignment) => {
-            try {
-              // Use lightweight task fetch - only get what we need
-              const task = await api.getTask(assignment.task_id);
-              return {
-                assignmentId: assignment.id,
-                taskTitle: task.title
-              };
-            } catch (taskError) {
-              console.warn(`⚠️ Failed to load task title for ${assignment.task_id}:`, taskError);
-              return {
-                assignmentId: assignment.id,
-                taskTitle: `Task #${assignment.task_id.slice(0, 8)}`
-              };
-            }
-          });
-          
-          const batchResults = await Promise.all(batchPromises);
-          
-          // Update assignments with task titles from this batch
-          setAssignments(prevAssignments => 
-            prevAssignments.map(assignment => {
-              const batchResult = batchResults.find(result => result.assignmentId === assignment.id);
-              return batchResult 
-                ? { ...assignment, task_title: batchResult.taskTitle }
-                : assignment;
-            })
-          );
-          
-        } catch (batchError) {
-          console.error(`❌ Error processing batch ${batchIndex + 1}:`, batchError);
-        }
-      }
-      
-      console.log('✅ All assignment titles loaded');
+      console.log('✅ All assignment data loaded in single request');
       
     } catch (error) {
       console.error('❌ Error fetching assignments:', error);
@@ -287,16 +232,7 @@ const Dashboard: React.FC = () => {
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Typography variant="h6" gutterBottom>
-                    {assignment.task_title ? (
-                      assignment.task_title
-                    ) : (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Skeleton variant="text" width="60%" height={24} />
-                        <Typography variant="caption" color="text.secondary">
-                          Loading...
-                        </Typography>
-                      </Box>
-                    )}
+                    {assignment.task_title || `Task #${assignment.task_id.slice(0, 8)}`}
                   </Typography>
                   
                   <Box sx={{ mb: 2 }}>

@@ -46,6 +46,15 @@ async def get_my_assignments(current_user: dict = Depends(get_current_user)):
     await user_service.update_user_last_active(current_user["id"])
     return await assignment_service.get_user_assignments(current_user["id"])
 
+@router.get("/my-task-with-detail", response_model=List[TaskAssignmentWithTitle])
+@handle_router_errors
+async def get_my_assignments_with_task_detail(current_user: dict = Depends(get_current_user)):
+    """Get current user's task assignments with task details in single optimized query"""
+    
+    # Update last active
+    await user_service.update_user_last_active(current_user["id"])
+    return await assignment_service.get_user_assignments_with_task_details(current_user["id"])
+
 @router.get("/user-assignment-overview")
 @handle_router_errors
 async def get_user_assignment_overview(
