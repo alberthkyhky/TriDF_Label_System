@@ -277,6 +277,10 @@ export const api = {
     return apiCall('/assignments/my');
   },
 
+  async getMyAssignmentsWithTaskDetail(): Promise<TaskAssignment[]> {
+    return apiCall('/assignments/my-task-with-detail');
+  },
+
   async assignTask(taskId: string, data: {
     user_id_to_assign: string;
     question_range_start: number;

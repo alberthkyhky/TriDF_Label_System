@@ -365,6 +365,45 @@ class AssignmentService:
         except Exception as e:
             raise Exception(f"Error fetching assignments: {str(e)}")
     
+    async def get_user_assignments_with_task_details(self, user_id: str, active_only: bool = True) -> List[TaskAssignmentWithTitle]:
+        """Get user's task assignments with task details in single optimized query"""
+        try:
+            print(f"🔄 Fetching assignments with task details for user: {user_id}")
+            
+            # Use JOIN to get assignments with task titles in single query
+            query = self.supabase.table("task_assignments")\
+                .select("*, tasks!inner(title)")\
+                .eq("user_id", user_id)
+                
+            if active_only:
+                query = query.eq("is_active", True)
+            
+            result = query.execute()
+            
+            print(f"📊 Retrieved {len(result.data)} assignments with task details")
+            
+            # Process results to flatten the joined data
+            assignments_with_titles = []
+            for assignment_data in result.data:
+                # Extract task title from the joined data
+                task_title = assignment_data.get("tasks", {}).get("title", "Unknown Task")
+                
+                # Create enhanced assignment object
+                enhanced_assignment = {
+                    **assignment_data,
+                    "task_title": task_title
+                }
+                # Remove the nested tasks object
+                enhanced_assignment.pop("tasks", None)
+                
+                assignments_with_titles.append(TaskAssignmentWithTitle(**enhanced_assignment))
+            
+            return assignments_with_titles
+            
+        except Exception as e:
+            print(f"❌ Error fetching assignments with task details: {str(e)}")
+            raise Exception(f"Error fetching assignments with task details: {str(e)}")
+    
     async def create_task_assignment(self, assignment_data: TaskAssignmentRequest, task_id: str) -> TaskAssignment:
         """Create task assignment"""
         try:
