@@ -1,5 +1,5 @@
 // 7. Enhanced components/Dashboard.tsx - For labelers
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Box, 
   Container, 
@@ -31,10 +31,12 @@ const Dashboard: React.FC = () => {
   const [assignments, setAssignments] = useState<EnhancedTaskAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchAssignments();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Helper function to determine if assignment is completed
@@ -54,38 +56,101 @@ const Dashboard: React.FC = () => {
       : 0;
   };
 
-  const fetchAssignments = async () => {
+  const fetchAssignments = useCallback(async () => {
     try {
       setError(null);
+      console.log('🚀 Fetching assignments...');
+      
       const assignmentData = await api.getMyAssignments();
+      console.log(`📊 Retrieved ${assignmentData.length} assignments`);
       
-      // Fetch task details for each assignment to get task titles
-      const enhancedAssignments = await Promise.all(
-        assignmentData.map(async (assignment) => {
-          try {
-            const task = await api.getTask(assignment.task_id);
-            return {
-              ...assignment,
-              task_title: task.title
-            };
-          } catch (taskError) {
-            console.error(`Error fetching task ${assignment.task_id}:`, taskError);
-            return {
-              ...assignment,
-              task_title: undefined
-            };
+      // Show assignments immediately with basic info
+      const basicAssignments = assignmentData.map(assignment => ({
+        ...assignment,
+        task_title: undefined // Will be loaded progressively
+      }));
+      setAssignments(basicAssignments);
+      setLoading(false); // Show UI immediately
+      
+      // Progressive loading: Load task titles in batches to avoid overwhelming server
+      const BATCH_SIZE = 3; // Process 3 tasks at a time
+      const batches = [];
+      for (let i = 0; i < assignmentData.length; i += BATCH_SIZE) {
+        batches.push(assignmentData.slice(i, i + BATCH_SIZE));
+      }
+      
+      console.log(`📦 Processing ${batches.length} batches of ${BATCH_SIZE} assignments each`);
+      
+      for (const [batchIndex, batch] of batches.entries()) {
+        try {
+          console.log(`🔄 Processing batch ${batchIndex + 1}/${batches.length}`);
+          
+          // Add delay between batches to prevent overwhelming the server
+          if (batchIndex > 0) {
+            await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
           }
-        })
-      );
+          
+          const batchPromises = batch.map(async (assignment) => {
+            try {
+              // Use lightweight task fetch - only get what we need
+              const task = await api.getTask(assignment.task_id);
+              return {
+                assignmentId: assignment.id,
+                taskTitle: task.title
+              };
+            } catch (taskError) {
+              console.warn(`⚠️ Failed to load task title for ${assignment.task_id}:`, taskError);
+              return {
+                assignmentId: assignment.id,
+                taskTitle: `Task #${assignment.task_id.slice(0, 8)}`
+              };
+            }
+          });
+          
+          const batchResults = await Promise.all(batchPromises);
+          
+          // Update assignments with task titles from this batch
+          setAssignments(prevAssignments => 
+            prevAssignments.map(assignment => {
+              const batchResult = batchResults.find(result => result.assignmentId === assignment.id);
+              return batchResult 
+                ? { ...assignment, task_title: batchResult.taskTitle }
+                : assignment;
+            })
+          );
+          
+        } catch (batchError) {
+          console.error(`❌ Error processing batch ${batchIndex + 1}:`, batchError);
+        }
+      }
       
-      setAssignments(enhancedAssignments);
+      console.log('✅ All assignment titles loaded');
+      
     } catch (error) {
-      console.error('Error fetching assignments:', error);
-      setError('Failed to fetch your assignments');
-    } finally {
+      console.error('❌ Error fetching assignments:', error);
+      setError('Failed to fetch your assignments. Please try again.');
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Retry function for failed requests
+  const retryFetch = useCallback(async () => {
+    if (retryCount < 3) {
+      console.log(`🔄 Retrying fetch (attempt ${retryCount + 1}/3)...`);
+      setRetryCount(prev => prev + 1);
+      setLoading(true);
+      setError(null);
+      
+      // Add exponential backoff delay
+      const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      await fetchAssignments();
+    } else {
+      console.error('💀 Max retry attempts reached');
+      setError('Failed to load assignments after multiple attempts. Please refresh the page.');
+    }
+  }, [retryCount, fetchAssignments]);
 
   const calculateProgress = (assignment: EnhancedTaskAssignment) => {
     const completed = assignment.completed_labels || 0;
@@ -198,7 +263,20 @@ const Dashboard: React.FC = () => {
         </Typography>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert 
+            severity="error" 
+            sx={{ mb: 3 }}
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={retryFetch}
+                disabled={loading}
+              >
+                {loading ? 'Retrying...' : 'Retry'}
+              </Button>
+            }
+          >
             {error}
           </Alert>
         )}
@@ -209,7 +287,16 @@ const Dashboard: React.FC = () => {
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <CardContent sx={{ flexGrow: 1 }}>
                   <Typography variant="h6" gutterBottom>
-                    {assignment.task_title || `Task #${assignment.task_id.slice(0, 8)}`}
+                    {assignment.task_title ? (
+                      assignment.task_title
+                    ) : (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Skeleton variant="text" width="60%" height={24} />
+                        <Typography variant="caption" color="text.secondary">
+                          Loading...
+                        </Typography>
+                      </Box>
+                    )}
                   </Typography>
                   
                   <Box sx={{ mb: 2 }}>
