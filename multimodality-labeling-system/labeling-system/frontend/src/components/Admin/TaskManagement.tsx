@@ -132,6 +132,10 @@ const TaskManagement: React.FC = () => {
       if (!choiceObj.text || !Array.isArray(choiceObj.options) || typeof choiceObj.multiple_select !== 'boolean') {
         throw new Error(`Choice "${key}" must have text (string), options (array), and multiple_select (boolean)`);
       }
+      // Validate optional order field if present
+      if (choiceObj.order !== undefined && typeof choiceObj.order !== 'number') {
+        throw new Error(`Choice "${key}" order field must be a number if provided`);
+      }
     }
   };
 

@@ -10,6 +10,7 @@ export interface FailureChoice {
   text: string;
   options: string[];
   multiple_select: boolean;
+  order?: number;
 }
 
 export interface QuestionChoices {

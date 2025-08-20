@@ -28,7 +28,8 @@ const QuestionTemplateStep: React.FC<QuestionTemplateStepProps> = ({ formData, s
   
   // Memoize expensive Object operations on choices
   const choicesEntries = useMemo(() => 
-    Object.entries(formData.question_template.choices), 
+    Object.entries(formData.question_template.choices)
+      .sort(([,a], [,b]) => (a.order || 999) - (b.order || 999)), 
     [formData.question_template.choices]
   );
 

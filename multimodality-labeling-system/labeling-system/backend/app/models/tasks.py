@@ -29,6 +29,7 @@ class FailureChoice(BaseModel):
     text: str
     options: List[str]
     multiple_select: bool = True
+    order: Optional[int] = None
     
     @validator('options')
     def validate_options(cls, v):

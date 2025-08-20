@@ -107,7 +107,9 @@ const ReviewStep: React.FC<ReviewStepProps> = ({ formData }) => {
               </Typography>
               
               <List dense>
-                {Object.entries(formData.question_template.choices).map(([key, choice]) => (
+                {Object.entries(formData.question_template.choices)
+                  .sort(([,a], [,b]) => (a.order || 999) - (b.order || 999))
+                  .map(([key, choice]) => (
                   <ListItem key={key} sx={{ px: 0 }}>
                     <ListItemText
                       primary={

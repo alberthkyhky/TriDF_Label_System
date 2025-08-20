@@ -16,6 +16,7 @@ interface FailureChoice {
   text: string;
   options: string[];
   multiple_select: boolean;
+  order?: number;
 }
 
 interface FailureTypeSelectorProps {
@@ -148,7 +149,9 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
         />
       </Typography>
 
-      {Object.entries(choices).map(([failureType, choiceData], index) => (
+      {Object.entries(choices)
+        .sort(([,a], [,b]) => (a.order || 999) - (b.order || 999))
+        .map(([failureType, choiceData], index) => (
         <Accordion 
           key={failureType}
           defaultExpanded={true}

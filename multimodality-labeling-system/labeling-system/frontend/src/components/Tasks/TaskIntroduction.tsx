@@ -234,7 +234,8 @@ const TaskIntroduction: React.FC = () => {
   // Memoize expensive calculations to prevent re-computation on every render
   // Note: These need to be called before any early returns
   const failureCategories = useMemo(() => 
-    task ? Object.entries(task.question_template.choices || {}) : [], 
+    task ? Object.entries(task.question_template.choices || {})
+      .sort(([,a], [,b]) => ((a as any).order || 999) - ((b as any).order || 999)) : [], 
     [task?.question_template.choices]
   );
 
