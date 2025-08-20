@@ -4,11 +4,6 @@
   "instructions": "Listen to both audio samples and identify any quality issues in the generated audio. Compare it against the reference audio to determine if there are any failures in the generation process.",
   "questions_number": 50,
   "priority": "medium",
-  "required_agreements": 2,
-  "example_media": [
-    "example_audio_1.wav",
-    "example_audio_2.wav"
-  ],
   "question_template": {
     "question_text": "Compare the generated audio with the reference audio. What quality issues do you observe?",
     "choices": {
