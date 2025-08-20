@@ -462,12 +462,37 @@ class AssignmentService:
     async def update_assignment_progress_from_response(self, assignment_id: str):
         """Update assignment progress when a response is submitted"""
         try:
+            # Get current assignment details
+            assignment_result = self.supabase.table("task_assignments").select("*").eq("id", assignment_id).execute()
+            if not assignment_result.data:
+                print(f"Assignment {assignment_id} not found")
+                return
+            
+            assignment = assignment_result.data[0]
+            
+            # Count actual responses for this assignment
             responses = self.supabase.table("question_responses").select("id").eq("task_assignment_id", assignment_id).execute()
             completed_count = len(responses.data)
             
-            self.supabase.table("task_assignments").update({
+            # Calculate assignment target
+            question_range_start = assignment.get("question_range_start", 1)
+            question_range_end = assignment.get("question_range_end", 1)
+            assignment_target = question_range_end - question_range_start + 1
+            
+            # Prepare update data
+            update_data = {
                 "completed_labels": completed_count
-            }).eq("id", assignment_id).execute()
+            }
+            
+            # Mark as completed if target reached
+            if completed_count >= assignment_target:
+                from datetime import datetime
+                update_data["completed_at"] = datetime.utcnow().isoformat()
+                print(f"✅ Assignment {assignment_id} marked as completed ({completed_count}/{assignment_target})")
+            
+            # Update the assignment
+            self.supabase.table("task_assignments").update(update_data).eq("id", assignment_id).execute()
+            
         except Exception as e:
             print(f"Error updating assignment progress: {str(e)}")
     

@@ -33,13 +33,41 @@ class ResponseService(BaseService):
     async def create_detailed_question_response(self, response_data: QuestionResponseDetailedCreate, user_id: str) -> QuestionResponseDetailed:
         """Create a detailed question response with structured data"""
         try:
-            # Find the user's task assignment
-            assignments = self.supabase.table("task_assignments").select("id").eq("user_id", user_id).eq("task_id", response_data.task_id).execute()
+            # Find the user's task assignment with assignment details
+            assignments = self.supabase.table("task_assignments").select("*").eq("user_id", user_id).eq("task_id", response_data.task_id).execute()
             
             if not assignments.data:
                 raise Exception("No task assignment found for user")
             
-            assignment_id = assignments.data[0]["id"]
+            assignment = assignments.data[0]
+            assignment_id = assignment["id"]
+            
+            # Check if assignment is still active
+            if not assignment.get("is_active", True):
+                raise Exception("Assignment is not active")
+            
+            # Calculate assignment limits
+            question_range_start = assignment.get("question_range_start", 1)
+            question_range_end = assignment.get("question_range_end", 1)
+            assignment_total = question_range_end - question_range_start + 1
+            current_completed = assignment.get("completed_labels", 0)
+            
+            # Check if user has already completed their assignment
+            if current_completed >= assignment_total:
+                raise Exception(f"Assignment already completed. You have finished all {assignment_total} assigned questions.")
+            
+            # Check if this would exceed the assignment limit
+            if current_completed + 1 > assignment_total:
+                raise Exception(f"Cannot submit response. This would exceed your assigned question limit of {assignment_total} questions.")
+            
+            # Validate question_id is within assigned range (question_id is 0-based, ranges are 1-based)
+            if response_data.question_id < (question_range_start - 1) or response_data.question_id >= question_range_end:
+                raise Exception(f"Question {response_data.question_id + 1} is outside your assigned range ({question_range_start}-{question_range_end})")
+            
+            # Check if this specific question has already been answered
+            existing_responses = self.supabase.table("question_responses").select("id").eq("task_assignment_id", assignment_id).eq("question_id", response_data.question_id).execute()
+            if existing_responses.data:
+                raise Exception(f"Question {response_data.question_id + 1} has already been answered")
             
             # Create the response record
             response_dict = {
