@@ -73,11 +73,8 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
     return 'primary';
   };
 
-  const getFailureTypeIcon = (failureType: string) => {
-    if (failureType.includes('A-type')) return '1.';
-    if (failureType.includes('B-type')) return '2.';
-    if (failureType.includes('C-type')) return '3.';
-    return '1.';
+  const getFailureTypeIcon = (index: number) => {
+    return `${index + 1}.`;
   };
 
   // Check if user selected "No" (None)
@@ -151,7 +148,7 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
         />
       </Typography>
 
-      {Object.entries(choices).map(([failureType, choiceData]) => (
+      {Object.entries(choices).map(([failureType, choiceData], index) => (
         <Accordion 
           key={failureType}
           defaultExpanded={true}
@@ -180,7 +177,7 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
               <Typography variant="h6">
-                {getFailureTypeIcon(failureType)}
+                {getFailureTypeIcon(index)}
               </Typography>
               <Box sx={{ flex: 1 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>

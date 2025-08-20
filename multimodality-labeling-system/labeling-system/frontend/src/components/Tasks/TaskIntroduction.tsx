@@ -361,7 +361,7 @@ const TaskIntroduction: React.FC = () => {
                 <Typography variant="h6" gutterBottom>
                   What you'll be doing:
                 </Typography>
-                <Box component="ul" sx={{ pl: 2 }}>
+                <Box component="ol" sx={{ pl: 2 }}>
                   <Typography component="li" variant="body2" paragraph>
                     Answer: "{task.question_template.question_text}"
                   </Typography>
