@@ -4,12 +4,6 @@
   "instructions": "Review each media item carefully. For images, check for visual artifacts and clarity. For videos, evaluate both visual and audio quality. For audio files, focus on sound quality and clarity. Select all applicable failure categories for each question.",
   "questions_number": 100,
   "priority": "high",
-  "required_agreements": 3,
-  "example_media": [
-    "example_image.jpg",
-    "example_video.mp4",
-    "example_audio.wav"
-  ],
   "question_template": {
     "question_text": "Analyze the provided media content and identify any quality issues or failures present.",
     "choices": {

@@ -22,7 +22,8 @@ import {
   Divider,
   Switch,
   FormControlLabel,
-  IconButton
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import {
   Save,
@@ -32,7 +33,9 @@ import {
   Info,
   Add,
   Delete,
-  Photo
+  Photo,
+  KeyboardArrowUp,
+  KeyboardArrowDown
 } from '@mui/icons-material';
 import { TaskWithQuestionsData } from '../../../types/createTask';
 import { TaskAssignment } from '../../../types/tasks';
@@ -304,13 +307,67 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
     }
   };
 
-  const handleTaskChange = (updates: Partial<TaskWithQuestionsData>) => {
+  const handleTaskChange = useCallback((updates: Partial<TaskWithQuestionsData>) => {
     setEditedTask(prev => prev ? { ...prev, ...updates } : null);
     setHasUnsavedChanges(true);
     // Clear messages when user makes changes
     setError(null);
     setSuccess(null);
-  };
+  }, []);
+
+  // Helper functions for choice ordering
+  const handleMoveChoice = useCallback((choiceKey: string, direction: 'up' | 'down') => {
+    if (!editedTask?.question_template?.choices) return;
+
+    const choices = editedTask.question_template.choices;
+    const sortedEntries = Object.entries(choices)
+      .sort(([,a], [,b]) => ((a as any).order || 999) - ((b as any).order || 999));
+    
+    const currentIndex = sortedEntries.findIndex(([key]) => key === choiceKey);
+    if (currentIndex === -1) return;
+
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (newIndex < 0 || newIndex >= sortedEntries.length) return;
+
+    // Swap the order values
+    const currentChoice = sortedEntries[currentIndex][1];
+    const targetChoice = sortedEntries[newIndex][1];
+    
+    const currentOrder = (currentChoice as any).order || currentIndex + 1;
+    const targetOrder = (targetChoice as any).order || newIndex + 1;
+
+    const newChoices = { ...choices };
+    newChoices[choiceKey] = { ...currentChoice, order: targetOrder } as any;
+    newChoices[sortedEntries[newIndex][0]] = { ...targetChoice, order: currentOrder } as any;
+
+    handleTaskChange({
+      question_template: {
+        ...editedTask.question_template,
+        choices: newChoices
+      }
+    });
+  }, [editedTask, handleTaskChange]);
+
+
+  const normalizeOrders = useCallback(() => {
+    if (!editedTask?.question_template?.choices) return;
+
+    const choices = editedTask.question_template.choices;
+    const sortedEntries = Object.entries(choices)
+      .sort(([,a], [,b]) => ((a as any).order || 999) - ((b as any).order || 999));
+
+    const newChoices = { ...choices };
+    sortedEntries.forEach(([key, choice], index) => {
+      newChoices[key] = { ...choice, order: index + 1 } as any;
+    });
+
+    handleTaskChange({
+      question_template: {
+        ...editedTask.question_template,
+        choices: newChoices
+      }
+    });
+  }, [editedTask, handleTaskChange]);
 
   const handleClose = () => {
     if (hasUnsavedChanges) {
@@ -528,122 +585,167 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
                   sx={{ mb: 3 }}
                 />
 
-                <Typography variant="subtitle1" gutterBottom>Answer Choices</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="subtitle1">Answer Choices</Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={normalizeOrders}
+                    startIcon={<Info />}
+                  >
+                    Normalize Order
+                  </Button>
+                </Box>
                 {editedTask.question_template?.choices && typeof editedTask.question_template.choices === 'object' ? 
                   Object.entries(editedTask.question_template.choices)
                     .sort(([,a], [,b]) => ((a as any).order || 999) - ((b as any).order || 999))
-                    .map(([key, choice]) => (
-              <Card key={key} sx={{ mb: 2 }}>
-                <CardContent>
-                  <Typography variant="subtitle2" color="primary" gutterBottom>
-                    Choice: {key}
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    label="Choice Text"
-                    value={choice.text}
-                    onChange={(e) => {
-                      const newChoices = { ...editedTask.question_template.choices };
-                      newChoices[key] = { ...choice, text: e.target.value };
-                      handleTaskChange({
-                        question_template: {
-                          ...editedTask.question_template,
-                          choices: newChoices
-                        }
-                      });
-                    }}
-                    sx={{ mb: 2 }}
-                  />
-                  
-                  {/* Options Editor */}
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-                      Options:
-                    </Typography>
-                    {(Array.isArray(choice.options) ? choice.options : []).map((option, index) => (
-                      <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <TextField
-                          size="small"
-                          value={option}
-                          onChange={(e) => {
-                            const newChoices = { ...editedTask.question_template.choices };
-                            const currentOptions = Array.isArray(choice.options) ? choice.options : [];
-                            const newOptions = [...currentOptions];
-                            newOptions[index] = e.target.value;
-                            newChoices[key] = { ...choice, options: newOptions };
-                            handleTaskChange({
-                              question_template: {
-                                ...editedTask.question_template,
-                                choices: newChoices
-                              }
-                            });
-                          }}
-                          sx={{ flexGrow: 1, mr: 1 }}
-                          placeholder={`Option ${index + 1}`}
-                        />
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => {
-                            const newChoices = { ...editedTask.question_template.choices };
-                            const currentOptions = Array.isArray(choice.options) ? choice.options : [];
-                            const newOptions = currentOptions.filter((_, i) => i !== index);
-                            newChoices[key] = { ...choice, options: newOptions };
-                            handleTaskChange({
-                              question_template: {
-                                ...editedTask.question_template,
-                                choices: newChoices
-                              }
-                            });
-                          }}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    ))}
-                    <Button
-                      size="small"
-                      startIcon={<Add />}
-                      onClick={() => {
-                        const newChoices = { ...editedTask.question_template.choices };
-                        const newOptions = Array.isArray(choice.options) ? [...choice.options, ''] : [''];
-                        newChoices[key] = { ...choice, options: newOptions };
-                        handleTaskChange({
-                          question_template: {
-                            ...editedTask.question_template,
-                            choices: newChoices
-                          }
-                        });
-                      }}
-                      variant="outlined"
-                      sx={{ mt: 1 }}
-                    >
-                      Add Option
-                    </Button>
-                  </Box>
+                    .map(([key, choice], index, sortedArray) => {
+                      const isFirst = index === 0;
+                      const isLast = index === sortedArray.length - 1;
+                      
+                      return (
+                        <Card key={key} sx={{ mb: 2, border: '1px solid', borderColor: 'divider' }}>
+                          <CardContent>
+                            {/* Header with order controls */}
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="subtitle2" color="primary">
+                                  Choice: {key}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  Position {index + 1} of {sortedArray.length}
+                                </Typography>
+                              </Box>
+                              
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {/* Move buttons */}
+                                <Tooltip title="Move up">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleMoveChoice(key, 'up')}
+                                    disabled={isFirst}
+                                  >
+                                    <KeyboardArrowUp />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Move down">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleMoveChoice(key, 'down')}
+                                    disabled={isLast}
+                                  >
+                                    <KeyboardArrowDown />
+                                  </IconButton>
+                                </Tooltip>
+                              </Box>
+                            </Box>
+                            <TextField
+                              fullWidth
+                              label="Choice Text"
+                              value={choice.text}
+                              onChange={(e) => {
+                                const newChoices = { ...editedTask.question_template.choices };
+                                newChoices[key] = { ...choice, text: e.target.value };
+                                handleTaskChange({
+                                  question_template: {
+                                    ...editedTask.question_template,
+                                    choices: newChoices
+                                  }
+                                });
+                              }}
+                              sx={{ mb: 2 }}
+                            />
+                            
+                            {/* Options Editor */}
+                            <Box sx={{ mb: 2 }}>
+                              <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                                Options:
+                              </Typography>
+                              {(Array.isArray(choice.options) ? choice.options : []).map((option, index) => (
+                                <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                                  <TextField
+                                    size="small"
+                                    value={option}
+                                    onChange={(e) => {
+                                      const newChoices = { ...editedTask.question_template.choices };
+                                      const currentOptions = Array.isArray(choice.options) ? choice.options : [];
+                                      const newOptions = [...currentOptions];
+                                      newOptions[index] = e.target.value;
+                                      newChoices[key] = { ...choice, options: newOptions };
+                                      handleTaskChange({
+                                        question_template: {
+                                          ...editedTask.question_template,
+                                          choices: newChoices
+                                        }
+                                      });
+                                    }}
+                                    sx={{ flexGrow: 1, mr: 1 }}
+                                    placeholder={`Option ${index + 1}`}
+                                  />
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() => {
+                                      const newChoices = { ...editedTask.question_template.choices };
+                                      const currentOptions = Array.isArray(choice.options) ? choice.options : [];
+                                      const newOptions = currentOptions.filter((_, i) => i !== index);
+                                      newChoices[key] = { ...choice, options: newOptions };
+                                      handleTaskChange({
+                                        question_template: {
+                                          ...editedTask.question_template,
+                                          choices: newChoices
+                                        }
+                                      });
+                                    }}
+                                  >
+                                    <Delete fontSize="small" />
+                                  </IconButton>
+                                </Box>
+                              ))}
+                              <Button
+                                size="small"
+                                startIcon={<Add />}
+                                onClick={() => {
+                                  const newChoices = { ...editedTask.question_template.choices };
+                                  const newOptions = Array.isArray(choice.options) ? [...choice.options, ''] : [''];
+                                  newChoices[key] = { ...choice, options: newOptions };
+                                  handleTaskChange({
+                                    question_template: {
+                                      ...editedTask.question_template,
+                                      choices: newChoices
+                                    }
+                                  });
+                                }}
+                                variant="outlined"
+                                sx={{ mt: 1 }}
+                              >
+                                Add Option
+                              </Button>
+                            </Box>
 
-                  {/* Multiple Select Toggle */}
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={choice.multiple_select || false}
-                        onChange={(e) => {
-                          const newChoices = { ...editedTask.question_template.choices };
-                          newChoices[key] = { ...choice, multiple_select: e.target.checked };
-                          handleTaskChange({
-                            question_template: {
-                              ...editedTask.question_template,
-                              choices: newChoices
-                            }
-                          });
-                        }}
-                      />
-                    }
-                    label="Allow Multiple Selection"
-                  />
-                </CardContent>
-              </Card>
-                )) : (
+                            {/* Multiple Select Toggle */}
+                            <FormControlLabel
+                              control={
+                                <Switch
+                                  checked={choice.multiple_select || false}
+                                  onChange={(e) => {
+                                    const newChoices = { ...editedTask.question_template.choices };
+                                    newChoices[key] = { ...choice, multiple_select: e.target.checked };
+                                    handleTaskChange({
+                                      question_template: {
+                                        ...editedTask.question_template,
+                                        choices: newChoices
+                                      }
+                                    });
+                                  }}
+                                />
+                              }
+                              label="Allow Multiple Selection"
+                            />
+                          </CardContent>
+                        </Card>
+                      );
+                    }) : (
                   <Alert severity="info">
                     No question choices available or invalid format.
                   </Alert>
