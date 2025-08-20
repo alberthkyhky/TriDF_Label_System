@@ -1,5 +1,5 @@
 // 7. Enhanced components/Dashboard.tsx - For labelers
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   Box, 
   Container, 
@@ -12,7 +12,9 @@ import {
   Chip,
   AppBar,
   Toolbar,
-  Alert
+  Alert,
+  Checkbox,
+  FormControlLabel
 } from '@mui/material';
 import { PlayArrow, CheckCircle } from '@mui/icons-material';
 import { Skeleton } from '@mui/material';
@@ -32,6 +34,7 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [showCompleted, setShowCompleted] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -102,6 +105,30 @@ const Dashboard: React.FC = () => {
     const total = getAssignmentTarget(assignment) || 1;
     return Math.min((completed / total) * 100, 100);
   };
+
+  // Filter and sort assignments based on completion status
+  const filteredAndSortedAssignments = useMemo(() => {
+    let filtered = assignments;
+    
+    // Filter: hide completed tasks unless showCompleted is true
+    if (!showCompleted) {
+      filtered = assignments.filter(assignment => !getIsAssignmentCompleted(assignment));
+    }
+    
+    // Sort: incomplete tasks first, then completed tasks
+    return filtered.sort((a, b) => {
+      const aCompleted = getIsAssignmentCompleted(a);
+      const bCompleted = getIsAssignmentCompleted(b);
+      
+      // If completion status is different, incomplete comes first
+      if (aCompleted !== bCompleted) {
+        return aCompleted ? 1 : -1;
+      }
+      
+      // If same completion status, sort by assignment date (newest first)
+      return new Date(b.assigned_at).getTime() - new Date(a.assigned_at).getTime();
+    });
+  }, [assignments, showCompleted]);
 
   const handleHomeClick = () => {
     // Navigate to home dashboard based on user role and view mode
@@ -203,9 +230,22 @@ const Dashboard: React.FC = () => {
       </AppBar>
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          My Assigned Tasks
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h4">
+            My Assigned Tasks
+          </Typography>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={showCompleted}
+                onChange={(e) => setShowCompleted(e.target.checked)}
+                color="primary"
+              />
+            }
+            label="Show completed tasks"
+            sx={{ m: 0 }}
+          />
+        </Box>
 
         {error && (
           <Alert 
@@ -227,7 +267,7 @@ const Dashboard: React.FC = () => {
         )}
         
         <Grid container spacing={3}>
-          {assignments.map((assignment) => (
+          {filteredAndSortedAssignments.map((assignment) => (
             <Grid size={{ xs: 12, sm: 6, md: 4 }} key={assignment.id}>
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <CardContent sx={{ flexGrow: 1 }}>
@@ -282,13 +322,23 @@ const Dashboard: React.FC = () => {
           ))}
         </Grid>
 
-        {assignments.length === 0 && !error && (
+        {filteredAndSortedAssignments.length === 0 && !error && (
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
-              No tasks assigned yet
+              {assignments.length === 0 
+                ? 'No tasks assigned yet'
+                : !showCompleted 
+                  ? 'No incomplete tasks' 
+                  : 'No tasks found'
+              }
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Contact your administrator to get assigned to labeling tasks.
+              {assignments.length === 0 
+                ? 'Contact your administrator to get assigned to labeling tasks.'
+                : !showCompleted 
+                  ? 'All your assigned tasks are completed. Use the checkbox above to view completed tasks.'
+                  : 'No tasks match your current filter.'
+              }
             </Typography>
           </Box>
         )}
