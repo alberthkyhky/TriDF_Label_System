@@ -67,8 +67,9 @@ interface AssignmentData {
 
 interface AssignmentStats {
   total_assignments: number;
-  active_assignments: number;
+  in_progress_assignments: number;
   completed_assignments: number;
+  inactive_assignments: number;
   avg_completion_rate: number;
   total_labels_completed: number;
   total_labels_target: number;
@@ -179,8 +180,9 @@ const AssignmentOverview: React.FC = () => {
     if (assignments.length === 0) {
       return {
         total_assignments: 0,
-        active_assignments: 0,
+        in_progress_assignments: 0,
         completed_assignments: 0,
+        inactive_assignments: 0,
         avg_completion_rate: 0,
         total_labels_completed: 0,
         total_labels_target: 0,
@@ -188,16 +190,21 @@ const AssignmentOverview: React.FC = () => {
     }
 
     const total = assignments.length;
-    const active = assignments.filter(a => a.is_active).length;
+    
+    // Use mutually exclusive categories
     const completed = assignments.filter(isAssignmentCompleted).length;
+    const inProgress = assignments.filter(a => a.is_active && !isAssignmentCompleted(a)).length;
+    const inactive = assignments.filter(a => !a.is_active && !isAssignmentCompleted(a)).length;
+    
     const totalCompleted = assignments.reduce((sum, a) => sum + a.completed_labels, 0);
     const totalTarget = assignments.reduce((sum, a) => sum + getAssignmentTarget(a), 0);
     const avgCompletion = totalTarget > 0 ? (totalCompleted / totalTarget) * 100 : 0;
 
     return {
       total_assignments: total,
-      active_assignments: active,
+      in_progress_assignments: inProgress,
       completed_assignments: completed,
+      inactive_assignments: inactive,
       avg_completion_rate: avgCompletion,
       total_labels_completed: totalCompleted,
       total_labels_target: totalTarget,
@@ -381,16 +388,19 @@ const AssignmentOverview: React.FC = () => {
 
         {/* Statistics Cards Skeleton */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
             <StatCardSkeleton />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
             <StatCardSkeleton />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
             <StatCardSkeleton />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+            <StatCardSkeleton />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 12, md: 2.4 }}>
             <StatCardSkeleton />
           </Grid>
         </Grid>
@@ -466,7 +476,7 @@ const AssignmentOverview: React.FC = () => {
       {/* Stats Cards */}
       {stats && (
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
             <StatCard
               title="Total Assignments"
               value={stats.total_assignments}
@@ -474,15 +484,15 @@ const AssignmentOverview: React.FC = () => {
               color="primary"
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
             <StatCard
-              title="Active Assignments"
-              value={stats.active_assignments}
+              title="In Progress"
+              value={stats.in_progress_assignments}
               icon={<PlayArrowIcon />}
-              color="success"
+              color="warning"
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
             <StatCard
               title="Completed"
               value={stats.completed_assignments}
@@ -490,13 +500,22 @@ const AssignmentOverview: React.FC = () => {
               color="success"
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 2.4 }}>
+            <StatCard
+              title="Inactive/Paused"
+              value={stats.inactive_assignments}
+              subtitle={stats.inactive_assignments > 0 ? "Assignments paused or disabled" : "All assignments active"}
+              icon={<PauseIcon />}
+              color="error"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 12, md: 2.4 }}>
             <StatCard
               title="Overall Progress"
               value={`${stats.avg_completion_rate.toFixed(1)}%`}
-              subtitle={`${stats.total_labels_completed} / ${stats.total_labels_target} labels`}
+              subtitle={`${stats.total_labels_completed} / ${stats.total_labels_target} labels completed`}
               icon={<TaskIcon />}
-              color="warning"
+              color="secondary"
             />
           </Grid>
         </Grid>
