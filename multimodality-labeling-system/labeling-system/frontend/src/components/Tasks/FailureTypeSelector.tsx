@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -10,7 +10,7 @@ import {
   AccordionSummary,
   AccordionDetails
 } from '@mui/material';
-import { ExpandMore, CheckCircle, Cancel } from '@mui/icons-material';
+import { ExpandMore, CheckCircle } from '@mui/icons-material';
 
 interface FailureChoice {
   text: string;
@@ -32,6 +32,14 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
   // Track which failure types user explicitly said "Yes" to
   const [yesStates, setYesStates] = React.useState<Record<string, boolean>>({});
 
+  // Helper function to check if a failure type has only one detail option
+  const hasSingleOption = useCallback((failureType: string) => {
+    const choiceData = choices[failureType];
+    if (!choiceData) return false;
+    const detailOptions = choiceData.options.filter(option => option !== 'None');
+    return detailOptions.length === 1;
+  }, [choices]);
+
   // Memoize expensive selection summary calculations
   const selectionSummaries = useMemo(() => {
     const summaries: Record<string, string> = {};
@@ -43,7 +51,12 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
       } else if (selections.includes('None')) {
         summaries[failureType] = 'No failures detected';
       } else if (yesStates[failureType] && selections.filter(s => s !== 'None').length === 0) {
-        summaries[failureType] = 'Ready to select failures';
+        // Handle single option case
+        if (hasSingleOption(failureType)) {
+          summaries[failureType] = 'Auto-selected single option';
+        } else {
+          summaries[failureType] = 'Ready to select failures';
+        }
       } else {
         const failureCount = selections.filter(s => s !== 'None').length;
         summaries[failureType] = `${failureCount} failure${failureCount !== 1 ? 's' : ''} selected`;
@@ -51,7 +64,7 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
     });
     
     return summaries;
-  }, [choices, responses, yesStates]);
+  }, [choices, responses, yesStates, hasSingleOption]);
 
   const getFailureTypeColor = (failureType: string) => {
     if (failureType.includes('A-type')) return 'error';
@@ -105,6 +118,15 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
       setYesStates(prev => ({ ...prev, [failureType]: true }));
       if (hasSelectedNo(failureType)) {
         onSelectionChange(failureType, 'None', false);
+      }
+      
+      // Auto-select single option if only one detail option exists
+      if (hasSingleOption(failureType)) {
+        const choiceData = choices[failureType];
+        const singleOption = choiceData.options.filter(option => option !== 'None')[0];
+        if (singleOption) {
+          onSelectionChange(failureType, singleOption, true);
+        }
       }
     } else {
       // Clear yes state and all failure selections
@@ -177,15 +199,6 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
                     color={getFailureTypeColor(failureType) as any}
                   />
                 )}
-                {hasSelectedNo(failureType) && (
-                  <Chip 
-                    icon={<Cancel />}
-                    label="None"
-                    size="small"
-                    color="success"
-                    variant="outlined"
-                  />
-                )}
                 {yesStates[failureType] && !hasSelectedNo(failureType) && 
                  (!responses[failureType] || responses[failureType].filter(s => s !== 'None').length === 0) && (
                   <Chip 
@@ -240,8 +253,8 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
               </FormGroup>
             </Box>
 
-            {/* Show specific failure options only if "Yes" is selected */}
-            {hasSelectedYes(failureType) && (
+            {/* Show specific failure options only if "Yes" is selected and not single option */}
+            {hasSelectedYes(failureType) && !hasSingleOption(failureType) && (
               <Box sx={{ 
                 p: 2, 
                 bgcolor: `${getFailureTypeColor(failureType)}.50`, 
@@ -313,15 +326,23 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
                   Selected for {failureType}:
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {responses[failureType]?.map((selection) => (
+                  {responses[failureType]?.filter(selection => selection !== 'None').map((selection) => (
                     <Chip
                       key={selection}
                       label={selection}
                       size="small"
-                      color={selection === 'None' ? 'success' : getFailureTypeColor(failureType) as any}
-                      variant={selection === 'None' ? 'outlined' : 'filled'}
+                      color={getFailureTypeColor(failureType) as any}
+                      variant="filled"
                     />
                   ))}
+                  {hasSelectedNo(failureType) && (
+                    <Chip
+                      label="No failures detected"
+                      size="small"
+                      color="success"
+                      variant="outlined"
+                    />
+                  )}
                 </Box>
               </Box>
             )}
