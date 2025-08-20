@@ -530,7 +530,9 @@ const TaskModificationDialog: React.FC<TaskModificationDialogProps> = ({
 
                 <Typography variant="subtitle1" gutterBottom>Answer Choices</Typography>
                 {editedTask.question_template?.choices && typeof editedTask.question_template.choices === 'object' ? 
-                  Object.entries(editedTask.question_template.choices).map(([key, choice]) => (
+                  Object.entries(editedTask.question_template.choices)
+                    .sort(([,a], [,b]) => ((a as any).order || 999) - ((b as any).order || 999))
+                    .map(([key, choice]) => (
               <Card key={key} sx={{ mb: 2 }}>
                 <CardContent>
                   <Typography variant="subtitle2" color="primary" gutterBottom>

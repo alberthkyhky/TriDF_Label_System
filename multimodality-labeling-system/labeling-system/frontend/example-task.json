@@ -14,6 +14,7 @@
     "choices": {
       "structural_issues": {
         "text": "Structural Issues (A-type failures)",
+        "order": 1,
         "options": [
           "None",
           "Audio truncation",
@@ -24,7 +25,8 @@
         "multiple_select": true
       },
       "functional_issues": {
-        "text": "Functional Issues (B-type failures)", 
+        "text": "Functional Issues (B-type failures)",
+        "order": 2,
         "options": [
           "None",
           "Voice mismatch",
@@ -37,6 +39,7 @@
       },
       "quality_issues": {
         "text": "Quality Issues (C-type failures)",
+        "order": 3,
         "options": [
           "None",
           "Background noise",

@@ -150,13 +150,16 @@ class TaskService(BaseService):
         """Properly serialize QuestionTemplate to dict"""
         choices_dict = {}
         
-        # Convert each FailureChoice to dict
+        # Convert each FailureChoice to dict, preserving order field if present
         for key, failure_choice in question_template.choices.items():
             choices_dict[key] = {
                 "text": failure_choice.text,
                 "options": failure_choice.options,
                 "multiple_select": failure_choice.multiple_select
             }
+            # Preserve order field if it exists
+            if hasattr(failure_choice, 'order') and failure_choice.order is not None:
+                choices_dict[key]["order"] = failure_choice.order
         
         return {
             "question_text": question_template.question_text,

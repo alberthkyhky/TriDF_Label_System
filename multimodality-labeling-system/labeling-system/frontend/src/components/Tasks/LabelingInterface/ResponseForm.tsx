@@ -6,6 +6,7 @@ interface FailureChoice {
   text: string;
   options: string[];
   multiple_select: boolean;
+  order?: number;
 }
 
 interface QuestionWithMedia {

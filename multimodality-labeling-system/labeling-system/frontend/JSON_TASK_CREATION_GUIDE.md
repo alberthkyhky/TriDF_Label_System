@@ -26,6 +26,7 @@ The admin dashboard now supports creating tasks by uploading JSON files. This fe
     "choices": {                           // object: Answer choices
       "choice_key": {                      // string: Unique identifier for choice
         "text": "Choice label",            // string: Display text for choice
+        "order": 1,                        // number: Display order (optional, defaults to alphabetical)
         "options": ["Option1", "Option2"], // array: Available options
         "multiple_select": true            // boolean: Allow multiple selections
       }
@@ -43,7 +44,7 @@ The admin dashboard now supports creating tasks by uploading JSON files. This fe
 
 1. **Required Fields**: All fields listed above must be present
 2. **Question Template**: Must have `question_text` and `choices`
-3. **Choice Structure**: Each choice must have `text`, `options` array, and `multiple_select` boolean
+3. **Choice Structure**: Each choice must have `text`, `options` array, and `multiple_select` boolean. Optional `order` number for display ordering
 4. **Media Config**: Must have numeric values for `num_images`, `num_videos`, `num_audios`
 5. **Options Array**: Must include "None" as first option (added automatically if missing)
 
@@ -63,11 +64,13 @@ The admin dashboard now supports creating tasks by uploading JSON files. This fe
     "choices": {
       "structural_issues": {
         "text": "Structural Issues (A-type failures)",
+        "order": 1,
         "options": ["None", "Audio truncation", "Silent segments", "Incomplete generation"],
         "multiple_select": true
       },
       "quality_issues": {
         "text": "Quality Issues (C-type failures)", 
+        "order": 2,
         "options": ["None", "Background noise", "Audio artifacts", "Volume inconsistency"],
         "multiple_select": true
       }
@@ -95,11 +98,13 @@ The admin dashboard now supports creating tasks by uploading JSON files. This fe
     "choices": {
       "technical_failures": {
         "text": "Technical Failures",
+        "order": 1,
         "options": ["None", "Corruption or artifacts", "Resolution issues", "Format problems"],
         "multiple_select": true
       },
       "overall_rating": {
         "text": "Overall Quality Rating",
+        "order": 2,
         "options": ["Excellent", "Good", "Fair", "Poor", "Unacceptable"],
         "multiple_select": false
       }

@@ -15,6 +15,7 @@
     "choices": {
       "technical_failures": {
         "text": "Technical Failures",
+        "order": 1,
         "options": [
           "None",
           "Corruption or artifacts",
@@ -27,6 +28,7 @@
       },
       "content_failures": {
         "text": "Content Quality Issues",
+        "order": 2,
         "options": [
           "None", 
           "Poor composition",
@@ -39,6 +41,7 @@
       },
       "audio_specific": {
         "text": "Audio-Specific Issues (for audio/video content)",
+        "order": 3,
         "options": [
           "None",
           "Background noise",
@@ -51,6 +54,7 @@
       },
       "overall_rating": {
         "text": "Overall Quality Rating",
+        "order": 4,
         "options": [
           "Excellent",
           "Good", 
