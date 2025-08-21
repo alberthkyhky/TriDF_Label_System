@@ -5,6 +5,8 @@ import {
   FormGroup,
   FormControlLabel,
   Checkbox,
+  Radio,
+  RadioGroup,
   Chip,
   Accordion,
   AccordionSummary,
@@ -138,6 +140,23 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
     }
   };
 
+  // Handle radio button selection for single-select mode
+  const handleRadioSelection = (failureType: string, selectedOption: string) => {
+    const currentSelections = responses[failureType] || [];
+    
+    // Clear all current selections first
+    currentSelections.forEach(selection => {
+      if (selection !== 'None') {
+        onSelectionChange(failureType, selection, false);
+      }
+    });
+    
+    // Set the new selection
+    if (selectedOption && selectedOption !== 'None') {
+      onSelectionChange(failureType, selectedOption, true);
+    }
+  };
+
   return (
     <Box>
       <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1}}>
@@ -215,9 +234,6 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
           <AccordionDetails>
             {/* Primary Yes/No Question */}
             <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" gutterBottom >
-                Are there any {failureType} failures in this data?
-              </Typography>
               <FormGroup row>
                 <FormControlLabel
                   control={
@@ -266,49 +282,94 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
                   What type of {failureType} failures do you see?
                 </Typography>
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-                  Select all that apply:
+                  {choiceData.multiple_select ? 'Select all that apply:' : 'Select one option:'}
                 </Typography>
                 
-                <FormGroup>
-                  {choiceData.options.filter(option => option !== 'None').map((option) => {
-                    const isSelected = responses[failureType]?.includes(option) || false;
-                    
-                    return (
-                      <FormControlLabel
-                        key={option}
-                        control={
-                          <Checkbox
-                            checked={isSelected}
-                            onChange={(e) => onSelectionChange(failureType, option, e.target.checked)}
-                            color={getFailureTypeColor(failureType) as any}
-                            size="small"
-                          />
-                        }
-                        label={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                            <Typography variant="body2" sx={{ flex: 1 }}>
-                              {option}
-                            </Typography>
-                            {isSelected && (
-                              <Chip 
-                                label="✓" 
-                                size="small"
-                                color={getFailureTypeColor(failureType) as any}
-                              />
-                            )}
-                          </Box>
-                        }
-                        sx={{ 
-                          mb: 0.5,
-                          p: 0.5,
-                          borderRadius: 1,
-                          bgcolor: isSelected ? `${getFailureTypeColor(failureType)}.100` : 'transparent',
-                          '&:hover': { bgcolor: `${getFailureTypeColor(failureType)}.200` }
-                        }}
-                      />
-                    );
-                  })}
-                </FormGroup>
+                {choiceData.multiple_select ? (
+                  <FormGroup>
+                    {choiceData.options.filter(option => option !== 'None').map((option) => {
+                      const isSelected = responses[failureType]?.includes(option) || false;
+                      
+                      return (
+                        <FormControlLabel
+                          key={option}
+                          control={
+                            <Checkbox
+                              checked={isSelected}
+                              onChange={(e) => onSelectionChange(failureType, option, e.target.checked)}
+                              color={getFailureTypeColor(failureType) as any}
+                              size="small"
+                            />
+                          }
+                          label={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                              <Typography variant="body2" sx={{ flex: 1 }}>
+                                {option}
+                              </Typography>
+                              {isSelected && (
+                                <Chip 
+                                  label="✓" 
+                                  size="small"
+                                  color={getFailureTypeColor(failureType) as any}
+                                />
+                              )}
+                            </Box>
+                          }
+                          sx={{ 
+                            mb: 0.5,
+                            p: 0.5,
+                            borderRadius: 1,
+                            bgcolor: isSelected ? `${getFailureTypeColor(failureType)}.100` : 'transparent',
+                            '&:hover': { bgcolor: `${getFailureTypeColor(failureType)}.200` }
+                          }}
+                        />
+                      );
+                    })}
+                  </FormGroup>
+                ) : (
+                  <RadioGroup
+                    value={responses[failureType]?.find(option => option !== 'None') || ''}
+                    onChange={(e) => handleRadioSelection(failureType, e.target.value)}
+                  >
+                    {choiceData.options.filter(option => option !== 'None').map((option) => {
+                      const isSelected = responses[failureType]?.includes(option) || false;
+                      
+                      return (
+                        <FormControlLabel
+                          key={option}
+                          value={option}
+                          control={
+                            <Radio
+                              color={getFailureTypeColor(failureType) as any}
+                              size="small"
+                            />
+                          }
+                          label={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                              <Typography variant="body2" sx={{ flex: 1 }}>
+                                {option}
+                              </Typography>
+                              {isSelected && (
+                                <Chip 
+                                  label="✓" 
+                                  size="small"
+                                  color={getFailureTypeColor(failureType) as any}
+                                />
+                              )}
+                            </Box>
+                          }
+                          sx={{ 
+                            mb: 0.5,
+                            p: 0.5,
+                            borderRadius: 1,
+                            bgcolor: isSelected ? `${getFailureTypeColor(failureType)}.100` : 'transparent',
+                            '&:hover': { bgcolor: `${getFailureTypeColor(failureType)}.200` }
+                          }}
+                        />
+                      );
+                    })}
+                  </RadioGroup>
+                )}
               </Box>
             )}
 
