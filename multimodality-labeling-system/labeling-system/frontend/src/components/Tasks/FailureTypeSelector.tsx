@@ -279,7 +279,9 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
                 borderColor: `${getFailureTypeColor(failureType)}.200`
               }}>
                 <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>
-                  What type of {failureType} failures do you see?
+                  {failureType === 'Difficulty' 
+                    ? 'What is the level of realism do you think?' 
+                    : `What type of ${failureType} failures do you see?`}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
                   {choiceData.multiple_select ? 'Select all that apply:' : 'Select one option:'}
