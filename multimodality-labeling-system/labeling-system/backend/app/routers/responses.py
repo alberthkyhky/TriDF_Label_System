@@ -48,3 +48,18 @@ async def get_my_responses(
 ):
     """Get current user's question responses"""
     return await response_service.get_user_responses(current_user["id"], task_id)
+
+
+@router.get("/my/question/{task_id}/{question_id}", response_model=Optional[QuestionResponseDetailed])
+@handle_router_errors
+async def get_my_response_for_question(
+    task_id: str,
+    question_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get current user's existing response for a specific question"""
+    return await response_service.get_user_response_for_question(
+        current_user["id"], 
+        task_id, 
+        question_id
+    )

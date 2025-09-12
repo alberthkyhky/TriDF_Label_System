@@ -90,6 +90,8 @@ const LabelingInterface: React.FC = () => {
   const [assignment, setAssignment] = useState<any>(null);
   const [showCompletionDialog, setShowCompletionDialog] = useState(false);
   const [completionMessage, setCompletionMessage] = useState('');
+  const [hasExistingResponse, setHasExistingResponse] = useState(false);
+  const [existingResponseData, setExistingResponseData] = useState<any>(null);
 
   // Completion dialog handlers
   const handleCompletionDialogClose = useCallback(() => {
@@ -154,6 +156,37 @@ const LabelingInterface: React.FC = () => {
         console.log('Fetched questions:', questionsData);
         setQuestions(questionsData);
         setQuestionStartTime(new Date());
+        
+        // Try to load existing response for this question
+        try {
+          const existingResponse = await api.getMyResponseForQuestion(taskId, actualQuestionId);
+          console.log('Existing response for question:', existingResponse);
+          
+          if (existingResponse && questionsData[0]) {
+            // Load the existing response into the UI
+            setResponses(prev => ({
+              ...prev,
+              [questionsData[0].id]: {
+                question_id: questionsData[0].id,
+                task_id: taskId,
+                responses: existingResponse.responses || {},
+                media_files: questionsData[0].media_files?.map(f => f.file_path) || [],
+                started_at: existingResponse.started_at
+              }
+            }));
+            setHasExistingResponse(true);
+            setExistingResponseData(existingResponse);
+            console.log('Loaded existing response into UI');
+          } else {
+            setHasExistingResponse(false);
+            setExistingResponseData(null);
+          }
+        } catch (responseError: any) {
+          // Not finding an existing response is not an error - user hasn't answered yet
+          console.log('No existing response found (normal for new questions)');
+          setHasExistingResponse(false);
+          setExistingResponseData(null);
+        }
       } catch (error: any) {
         console.error('Error fetching questions:', error);
         setError(error.message || 'Failed to load questions');
@@ -272,6 +305,9 @@ const LabelingInterface: React.FC = () => {
       setQuestions([]);
       setResponses({});
       setError(null);
+      // Clear existing response state when moving to next question
+      setHasExistingResponse(false);
+      setExistingResponseData(null);
     } catch (error: any) {
       console.error('Error submitting response:', error);
       const errorMessage = error.message || 'Error submitting response. Please try again.';
@@ -292,6 +328,9 @@ const LabelingInterface: React.FC = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
       setError(null); // Clear any error when navigating
+      // Clear existing response state when navigating
+      setHasExistingResponse(false);
+      setExistingResponseData(null);
     }
   }, [currentQuestionIndex]);
 
@@ -407,6 +446,8 @@ const LabelingInterface: React.FC = () => {
             isSubmitting={submitting}
             onPrevious={handlePreviousQuestion}
             onSubmit={handleSubmitResponse}
+            hasExistingResponse={hasExistingResponse}
+            existingResponseData={existingResponseData}
           />
         </ErrorBoundary>
       </Container>

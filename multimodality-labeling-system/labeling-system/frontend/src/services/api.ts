@@ -430,6 +430,10 @@ export const api = {
     return apiCall(endpoint);
   },
 
+  async getMyResponseForQuestion(taskId: string, questionId: number): Promise<any | null> {
+    return apiCall(`/responses/my/question/${taskId}/${questionId}`);
+  },
+
   // Media Management
   /**
    * Get available media files (for admin preview)
