@@ -161,6 +161,11 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
         onSelectionChange(failureType, 'None', false);
       }
       
+      // For DeepFake Success, selecting "Yes" is the final answer.
+      if (isDeepFakeSuccess(failureType)) {
+        onSelectionChange(failureType, 'Yes', true); // Add a 'Yes' value to the responses
+      }
+
       // Auto-select single option if only one detail option exists
       if (hasSingleOption(failureType)) {
         const choiceData = choices[failureType];
