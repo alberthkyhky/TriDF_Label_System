@@ -292,10 +292,10 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
                     }
                     label={
                       isDeepFakeSuccess(failureType) ? (
-                        <Typography variant="body2">No</Typography>
+                        <Typography variant="body2">Incorrect</Typography>
                       ) : (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="body2">No</Typography>
+                          <Typography variant="body2">Incorrect</Typography>
                           <Chip label="No failures" size="small" variant="outlined" color="success" />
                         </Box>
                       )
@@ -312,10 +312,10 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
                     }
                     label={
                       isDeepFakeSuccess(failureType) ? (
-                        <Typography variant="body2">Yes</Typography>
+                        <Typography variant="body2">Correct</Typography>
                       ) : (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="body2">Yes</Typography>
+                          <Typography variant="body2">Correct</Typography>
                           <Chip label="Has failures" size="small" variant="outlined" color={getFailureTypeColor(failureType) as any} />
                         </Box>
                       )
