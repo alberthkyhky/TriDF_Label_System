@@ -24,12 +24,14 @@ import { PlayArrow, ArrowBack, ZoomIn, NavigateBefore, NavigateNext } from '@mui
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
 import { TaskWithQuestionsData } from '../../types/createTask';
+import { TaskAssignment } from '../../types/tasks';
 
 const TaskIntroduction: React.FC = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [task, setTask] = useState<TaskWithQuestionsData | null>(null);
+  const [assignment, setAssignment] = useState<TaskAssignment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<{ src: string; alt: string; caption?: string } | null>(null);
@@ -54,6 +56,17 @@ const TaskIntroduction: React.FC = () => {
         setTask(taskData);
         
         console.log('Fetched task data:', taskData);
+        
+        // Fetch user's assignment for this task
+        try {
+          const assignmentData = await api.getTaskAssignment(taskId);
+          setAssignment(assignmentData);
+          console.log('Fetched assignment data:', assignmentData);
+        } catch (assignmentError: any) {
+          console.log('No assignment found for this task:', assignmentError.message);
+          // This is not necessarily an error - user might not have an assignment
+          setAssignment(null);
+        }
         
       } catch (error: any) {
         console.error('Error fetching task:', error);
@@ -221,9 +234,18 @@ const TaskIntroduction: React.FC = () => {
   // Memoize expensive calculations to prevent re-computation on every render
   // Note: These need to be called before any early returns
   const failureCategories = useMemo(() => 
-    task ? Object.entries(task.question_template.choices || {}) : [], 
+    task ? Object.entries(task.question_template.choices || {})
+      .sort(([,a], [,b]) => ((a as any).order || 999) - ((b as any).order || 999)) : [], 
     [task?.question_template.choices]
   );
+
+  // Calculate assigned questions count
+  const assignedQuestionsCount = useMemo(() => {
+    if (!assignment || !assignment.question_range_start || !assignment.question_range_end) {
+      return 0;
+    }
+    return assignment.question_range_end - assignment.question_range_start + 1;
+  }, [assignment?.question_range_start, assignment?.question_range_end]);
 
 
   // Loading state
@@ -299,7 +321,7 @@ const TaskIntroduction: React.FC = () => {
               variant="outlined" 
             />
             <Chip 
-              label={`${task.questions_number} Questions Available`} 
+              label={assignedQuestionsCount > 0 ? `${assignedQuestionsCount} Questions Assigned` : `${task.questions_number} Questions Available`} 
               color="primary"
               variant="outlined" 
             />
@@ -331,10 +353,7 @@ const TaskIntroduction: React.FC = () => {
                     <strong>Question:</strong> {task.question_template.question_text}
                   </Typography>
                   <Typography variant="body2" paragraph>
-                    <strong>Total questions in task:</strong> {task.questions_number}
-                  </Typography>
-                  <Typography variant="body2" paragraph>
-                    <strong>Required agreements per question:</strong> {task.required_agreements}
+                    <strong>Assigned questions:</strong> {assignedQuestionsCount > 0 ? assignedQuestionsCount : task.questions_number}
                   </Typography>
                 </Box>
 
@@ -343,7 +362,7 @@ const TaskIntroduction: React.FC = () => {
                 <Typography variant="h6" gutterBottom>
                   What you'll be doing:
                 </Typography>
-                <Box component="ul" sx={{ pl: 2 }}>
+                <Box component="ol" sx={{ pl: 2 }}>
                   <Typography component="li" variant="body2" paragraph>
                     Answer: "{task.question_template.question_text}"
                   </Typography>
@@ -631,9 +650,15 @@ const TaskIntroduction: React.FC = () => {
             Start Labeling
           </Button>
 
-          {task.questions_number === 0 && (
+          {(assignedQuestionsCount === 0 && task.questions_number === 0) && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
               No questions have been generated for this task yet. Please contact your administrator.
+            </Typography>
+          )}
+          
+          {(assignedQuestionsCount === 0 && task.questions_number > 0) && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
+              No questions have been assigned to you for this task yet. Please contact your administrator.
             </Typography>
           )}
         </Box>

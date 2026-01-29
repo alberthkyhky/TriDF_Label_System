@@ -1,5 +1,5 @@
 // 7. Enhanced components/Dashboard.tsx - For labelers
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   Box, 
   Container, 
@@ -12,7 +12,9 @@ import {
   Chip,
   AppBar,
   Toolbar,
-  Alert
+  Alert,
+  Checkbox,
+  FormControlLabel
 } from '@mui/material';
 import { PlayArrow, CheckCircle } from '@mui/icons-material';
 import { Skeleton } from '@mui/material';
@@ -31,10 +33,13 @@ const Dashboard: React.FC = () => {
   const [assignments, setAssignments] = useState<EnhancedTaskAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [showCompleted, setShowCompleted] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchAssignments();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Helper function to determine if assignment is completed
@@ -54,44 +59,76 @@ const Dashboard: React.FC = () => {
       : 0;
   };
 
-  const fetchAssignments = async () => {
+  const fetchAssignments = useCallback(async () => {
     try {
       setError(null);
-      const assignmentData = await api.getMyAssignments();
+      console.log('🚀 Fetching assignments with task details...');
       
-      // Fetch task details for each assignment to get task titles
-      const enhancedAssignments = await Promise.all(
-        assignmentData.map(async (assignment) => {
-          try {
-            const task = await api.getTask(assignment.task_id);
-            return {
-              ...assignment,
-              task_title: task.title
-            };
-          } catch (taskError) {
-            console.error(`Error fetching task ${assignment.task_id}:`, taskError);
-            return {
-              ...assignment,
-              task_title: undefined
-            };
-          }
-        })
-      );
+      // Use optimized endpoint that returns assignments with task titles in single call
+      const assignmentData = await api.getMyAssignmentsWithTaskDetail();
+      console.log(`📊 Retrieved ${assignmentData.length} assignments with task details`);
       
-      setAssignments(enhancedAssignments);
+      // Set assignments with complete data immediately
+      setAssignments(assignmentData);
+      setLoading(false);
+      
+      console.log('✅ All assignment data loaded in single request');
+      
     } catch (error) {
-      console.error('Error fetching assignments:', error);
-      setError('Failed to fetch your assignments');
-    } finally {
+      console.error('❌ Error fetching assignments:', error);
+      setError('Failed to fetch your assignments. Please try again.');
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Retry function for failed requests
+  const retryFetch = useCallback(async () => {
+    if (retryCount < 3) {
+      console.log(`🔄 Retrying fetch (attempt ${retryCount + 1}/3)...`);
+      setRetryCount(prev => prev + 1);
+      setLoading(true);
+      setError(null);
+      
+      // Add exponential backoff delay
+      const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      await fetchAssignments();
+    } else {
+      console.error('💀 Max retry attempts reached');
+      setError('Failed to load assignments after multiple attempts. Please refresh the page.');
+    }
+  }, [retryCount, fetchAssignments]);
 
   const calculateProgress = (assignment: EnhancedTaskAssignment) => {
     const completed = assignment.completed_labels || 0;
     const total = getAssignmentTarget(assignment) || 1;
     return Math.min((completed / total) * 100, 100);
   };
+
+  // Filter and sort assignments based on completion status
+  const filteredAndSortedAssignments = useMemo(() => {
+    let filtered = assignments;
+    
+    // Filter: hide completed tasks unless showCompleted is true
+    if (!showCompleted) {
+      filtered = assignments.filter(assignment => !getIsAssignmentCompleted(assignment));
+    }
+    
+    // Sort: incomplete tasks first, then completed tasks
+    return filtered.sort((a, b) => {
+      const aCompleted = getIsAssignmentCompleted(a);
+      const bCompleted = getIsAssignmentCompleted(b);
+      
+      // If completion status is different, incomplete comes first
+      if (aCompleted !== bCompleted) {
+        return aCompleted ? 1 : -1;
+      }
+      
+      // If same completion status, sort by assignment date (newest first)
+      return new Date(b.assigned_at).getTime() - new Date(a.assigned_at).getTime();
+    });
+  }, [assignments, showCompleted]);
 
   const handleHomeClick = () => {
     // Navigate to home dashboard based on user role and view mode
@@ -193,18 +230,44 @@ const Dashboard: React.FC = () => {
       </AppBar>
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          My Assigned Tasks
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h4">
+            My Assigned Tasks
+          </Typography>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={showCompleted}
+                onChange={(e) => setShowCompleted(e.target.checked)}
+                color="primary"
+              />
+            }
+            label="Show completed tasks"
+            sx={{ m: 0 }}
+          />
+        </Box>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert 
+            severity="error" 
+            sx={{ mb: 3 }}
+            action={
+              <Button 
+                color="inherit" 
+                size="small" 
+                onClick={retryFetch}
+                disabled={loading}
+              >
+                {loading ? 'Retrying...' : 'Retry'}
+              </Button>
+            }
+          >
             {error}
           </Alert>
         )}
         
         <Grid container spacing={3}>
-          {assignments.map((assignment) => (
+          {filteredAndSortedAssignments.map((assignment) => (
             <Grid size={{ xs: 12, sm: 6, md: 4 }} key={assignment.id}>
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                 <CardContent sx={{ flexGrow: 1 }}>
@@ -259,13 +322,23 @@ const Dashboard: React.FC = () => {
           ))}
         </Grid>
 
-        {assignments.length === 0 && !error && (
+        {filteredAndSortedAssignments.length === 0 && !error && (
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
-              No tasks assigned yet
+              {assignments.length === 0 
+                ? 'No tasks assigned yet'
+                : !showCompleted 
+                  ? 'No incomplete tasks' 
+                  : 'No tasks found'
+              }
             </Typography>
             <Typography variant="body1" color="text.secondary">
-              Contact your administrator to get assigned to labeling tasks.
+              {assignments.length === 0 
+                ? 'Contact your administrator to get assigned to labeling tasks.'
+                : !showCompleted 
+                  ? 'All your assigned tasks are completed. Use the checkbox above to view completed tasks.'
+                  : 'No tasks match your current filter.'
+              }
             </Typography>
           </Box>
         )}

@@ -56,8 +56,17 @@ class LocalDataSampler:
             raise IndexError(f"Index {idx} exceeds the number of rows in task_name {task_name}")
 
 sampler = LocalDataSampler(ROOT_DIR)
-tasks = ["aud_voice_cloning", "aud_voice_conversion"]
-for task in tasks:
+taskset = [
+    'aud_voice_cloning', 
+    'aud_voice_conversion', 
+    'img_editing', 
+    'img_face_swapping', 
+    'vid_lip-syncing', 
+    'vid_talking_head_synthesis'
+    
+    ]
+
+for task in taskset:
     # Try test CSV with prompt column first, fallback to collect.csv
     csv_file = f"{ROOT_DIR}/{task}/collect.csv"
     sampler.load_csv(task, csv_file)

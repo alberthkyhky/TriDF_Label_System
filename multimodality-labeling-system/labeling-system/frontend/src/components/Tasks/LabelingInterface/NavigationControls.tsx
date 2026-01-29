@@ -1,6 +1,6 @@
 import React from 'react';
-import { Box, Button, Typography } from '@mui/material';
-import { ArrowForward, CheckCircle, NavigateBefore } from '@mui/icons-material';
+import { Box, Button, Typography, Chip } from '@mui/material';
+import { ArrowForward, CheckCircle, NavigateBefore, Edit, Schedule } from '@mui/icons-material';
 
 interface NavigationControlsProps {
   currentQuestionIndex: number;
@@ -9,6 +9,8 @@ interface NavigationControlsProps {
   isSubmitting: boolean;
   onPrevious: () => void;
   onSubmit: () => void;
+  hasExistingResponse: boolean;
+  existingResponseData: any;
 }
 
 export const NavigationControls: React.FC<NavigationControlsProps> = ({
@@ -17,7 +19,9 @@ export const NavigationControls: React.FC<NavigationControlsProps> = ({
   isResponseValid,
   isSubmitting,
   onPrevious,
-  onSubmit
+  onSubmit,
+  hasExistingResponse,
+  existingResponseData
 }) => {
   const isFinalQuestion = currentQuestionIndex === totalQuestions - 1;
 
@@ -44,24 +48,48 @@ export const NavigationControls: React.FC<NavigationControlsProps> = ({
         <Typography variant="body2" color="text.secondary">
           Question {currentQuestionIndex + 1} of {totalQuestions}
         </Typography>
+        {hasExistingResponse && (
+          <Box sx={{ mt: 1, mb: 1 }}>
+            <Chip
+              icon={<Edit />}
+              label={`Previously answered ${existingResponseData?.submitted_at ? new Date(existingResponseData.submitted_at).toLocaleDateString() : ''}`}
+              size="small"
+              color="info"
+              variant="outlined"
+              sx={{ mr: 1 }}
+            />
+            <Chip
+              icon={<Schedule />}
+              label={`${existingResponseData?.time_spent_seconds || 0}s spent`}
+              size="small"
+              color="default"
+              variant="outlined"
+            />
+          </Box>
+        )}
         <Typography variant="caption" color="text.secondary">
-          {isFinalQuestion ? 'Final question' : 'Continue to next question'}
+          {hasExistingResponse 
+            ? 'Modify your previous answer' 
+            : isFinalQuestion ? 'Final question' : 'Continue to next question'
+          }
         </Typography>
         {isSubmitting && (
           <Typography variant="caption" color="primary" display="block">
-            Submitting response...
+            {hasExistingResponse ? 'Updating response...' : 'Submitting response...'}
           </Typography>
         )}
       </Box>
 
       <Button
         variant="contained"
-        endIcon={isFinalQuestion ? <CheckCircle /> : <ArrowForward />}
+        endIcon={hasExistingResponse ? <Edit /> : isFinalQuestion ? <CheckCircle /> : <ArrowForward />}
         onClick={onSubmit}
         disabled={!isResponseValid || isSubmitting}
         sx={{ minWidth: 160 }}
+        color={hasExistingResponse ? "secondary" : "primary"}
       >
-        {isSubmitting ? 'Submitting...' : 
+        {isSubmitting ? (hasExistingResponse ? 'Updating...' : 'Submitting...') : 
+         hasExistingResponse ? 'Update Answer' :
          isFinalQuestion ? 'Complete Task' : 'Next Question'}
       </Button>
     </Box>

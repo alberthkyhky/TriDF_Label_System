@@ -40,6 +40,11 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
   const [isImageZoomed, setIsImageZoomed] = useState(false);
   const [imageNaturalSize, setImageNaturalSize] = useState<{ width: number; height: number } | null>(null);
 
+  // Separate state for dialog media to prevent wrong video display
+  const [dialogBlobUrl, setDialogBlobUrl] = useState<string | null>(null);
+  const [dialogLoading, setDialogLoading] = useState(false);
+  const [dialogError, setDialogError] = useState(false);
+
   // Fetch media with authentication using POST with file path
   const fetchMediaWithAuth = useCallback(async (mediaFile: MediaFile): Promise<string> => {
     const response = await api.getMediaFile(taskId, mediaFile);
@@ -79,11 +84,12 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
         .map(async (mediaFile) => {
           try {
             const blobUrl = await fetchMediaWithAuth(mediaFile);
+            console.log(`📷 Main view media loaded: ${mediaFile.filename} (${mediaFile.media_type})`);
             setMediaBlobUrls(prev => ({ ...prev, [mediaFile.filename]: blobUrl }));
             setLoadingStates(prev => ({ ...prev, [mediaFile.filename]: false }));
             setErrorStates(prev => ({ ...prev, [mediaFile.filename]: false }));
           } catch (error) {
-            console.error(`Error loading media ${mediaFile.filename}:`, error);
+            console.error(`❌ Error loading main view media ${mediaFile.filename}:`, error);
             setLoadingStates(prev => ({ ...prev, [mediaFile.filename]: false }));
             setErrorStates(prev => ({ ...prev, [mediaFile.filename]: true }));
           }
@@ -99,11 +105,12 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
             .map(async (mediaFile) => {
               try {
                 const blobUrl = await fetchMediaWithAuth(mediaFile);
+                console.log(`🎥 Main view media loaded: ${mediaFile.filename} (${mediaFile.media_type})`);
                 setMediaBlobUrls(prev => ({ ...prev, [mediaFile.filename]: blobUrl }));
                 setLoadingStates(prev => ({ ...prev, [mediaFile.filename]: false }));
                 setErrorStates(prev => ({ ...prev, [mediaFile.filename]: false }));
               } catch (error) {
-                console.error(`Error loading media ${mediaFile.filename}:`, error);
+                console.error(`❌ Error loading main view media ${mediaFile.filename}:`, error);
                 setLoadingStates(prev => ({ ...prev, [mediaFile.filename]: false }));
                 setErrorStates(prev => ({ ...prev, [mediaFile.filename]: true }));
               }
@@ -131,17 +138,66 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     setErrorStates(prev => ({ ...prev, [filename]: true }));
   }, []);
 
+  // Load media specifically for dialog to prevent wrong video bug
+  const loadDialogMedia = useCallback(async (mediaFile: MediaFile) => {
+    // Text files don't need blob URLs
+    if (mediaFile.media_type === 'text') {
+      setDialogBlobUrl('ready');
+      return;
+    }
+
+    setDialogLoading(true);
+    setDialogError(false);
+
+    // Clean up any existing blob URL before loading new one
+    if (dialogBlobUrl && dialogBlobUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(dialogBlobUrl);
+    }
+    setDialogBlobUrl(null);
+
+    try {
+      // Always fetch fresh blob URL for dialog to ensure correct media
+      console.log(`🎬 Loading dialog media: ${mediaFile.filename} (${mediaFile.media_type})`);
+      const blobUrl = await fetchMediaWithAuth(mediaFile);
+
+      // Validate blob URL before setting it
+      if (blobUrl && (blobUrl.startsWith('blob:') || blobUrl.startsWith('data:'))) {
+        setDialogBlobUrl(blobUrl);
+        console.log(`✅ Dialog media loaded successfully: ${mediaFile.filename}`);
+      } else {
+        throw new Error('Invalid blob URL received');
+      }
+
+      setDialogLoading(false);
+    } catch (error) {
+      console.error(`❌ Error loading dialog media ${mediaFile.filename}:`, error);
+      setDialogError(true);
+      setDialogLoading(false);
+      setDialogBlobUrl(null);
+    }
+  }, [fetchMediaWithAuth, dialogBlobUrl]);
+
   const openMediaDialog = useCallback((mediaFile: MediaFile) => {
     setSelectedMedia(mediaFile);
     setDialogOpen(true);
-  }, []);
+    // Load fresh media for dialog to prevent wrong video display
+    loadDialogMedia(mediaFile);
+  }, [loadDialogMedia]);
 
   const closeMediaDialog = useCallback(() => {
     setSelectedMedia(null);
     setDialogOpen(false);
     setIsImageZoomed(false);
     setImageNaturalSize(null);
-  }, []);
+
+    // Clean up dialog blob URL to prevent memory leaks
+    if (dialogBlobUrl && dialogBlobUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(dialogBlobUrl);
+    }
+    setDialogBlobUrl(null);
+    setDialogLoading(false);
+    setDialogError(false);
+  }, [dialogBlobUrl]);
 
   const handleImageDoubleClick = useCallback(() => {
     setIsImageZoomed(prev => !prev);
@@ -155,10 +211,21 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
     });
   }, []);
 
-  // Handle blob URLs from lazy-loaded media items
+  // Handle blob URLs from lazy-loaded media items (for main view only, not dialog)
   const handleBlobUrlReady = useCallback((filename: string, blobUrl: string) => {
+    // Only update main view blob URLs, dialog has its own separate state
     setMediaBlobUrls(prev => ({ ...prev, [filename]: blobUrl }));
+    console.log(`📎 Main view blob URL ready: ${filename}`);
   }, []);
+
+  // Cleanup dialog blob URL when selected media changes
+  useEffect(() => {
+    return () => {
+      if (dialogBlobUrl && dialogBlobUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(dialogBlobUrl);
+      }
+    };
+  }, [selectedMedia?.filename, dialogBlobUrl]);
 
   // Calculate optimal image size for dialog preview
   const imageDisplaySize = useMemo(() => {
@@ -488,8 +555,8 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
         >
           {selectedMedia && (
             <Box sx={{ textAlign: 'center', minHeight: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {/* Loading state when blob URL is not ready */}
-              {selectedMedia.media_type !== 'text' && !mediaBlobUrls[selectedMedia.filename] && (
+              {/* Loading state when dialog media is loading */}
+              {dialogLoading && (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <CircularProgress size={60} sx={{ mb: 2 }} />
                   <Typography variant="h6" color="text.secondary">
@@ -500,9 +567,22 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
                   </Typography>
                 </Box>
               )}
+
+              {/* Error state for dialog media */}
+              {dialogError && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'error.main' }}>
+                  <ErrorIcon sx={{ fontSize: 60, mb: 2 }} />
+                  <Typography variant="h6" color="error.main">
+                    Failed to load {selectedMedia.media_type}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    {selectedMedia.filename}
+                  </Typography>
+                </Box>
+              )}
               
               {/* Image content */}
-              {selectedMedia.media_type === 'image' && mediaBlobUrls[selectedMedia.filename] && (
+              {selectedMedia.media_type === 'image' && dialogBlobUrl && !dialogLoading && !dialogError && (
                 <Box
                   sx={{
                     cursor: 'pointer',
@@ -511,7 +591,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
                   onDoubleClick={handleImageDoubleClick}
                 >
                   <img
-                    src={mediaBlobUrls[selectedMedia.filename]}
+                    src={dialogBlobUrl}
                     alt={selectedMedia.filename}
                     onLoad={handleImageLoad}
                     style={{
@@ -530,9 +610,9 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
               )}
               
               {/* Video content */}
-              {selectedMedia.media_type === 'video' && mediaBlobUrls[selectedMedia.filename] && (
+              {selectedMedia.media_type === 'video' && dialogBlobUrl && !dialogLoading && !dialogError && (
                 <video
-                  src={mediaBlobUrls[selectedMedia.filename]}
+                  src={dialogBlobUrl}
                   controls
                   style={{
                     maxWidth: '100%',
@@ -544,11 +624,11 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({
               )}
               
               {/* Audio content */}
-              {selectedMedia.media_type === 'audio' && mediaBlobUrls[selectedMedia.filename] && (
+              {selectedMedia.media_type === 'audio' && dialogBlobUrl && !dialogLoading && !dialogError && (
                 <Box sx={{ p: 4 }}>
                   <VolumeUp sx={{ fontSize: 80, mb: 2, color: 'primary.main' }} />
                   <audio
-                    src={mediaBlobUrls[selectedMedia.filename]}
+                    src={dialogBlobUrl}
                     controls
                     style={{ width: '100%', minWidth: '300px' }}
                     autoPlay

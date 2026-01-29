@@ -57,9 +57,29 @@ class UserService:
     async def search_users(self, query: str, limit: int = 50) -> List[UserPublic]:
         """Search users by email or name"""
         try:
-            result = self.supabase.table("user_profiles").select(
+            # Query users by email
+            email_results = self.supabase.table("user_profiles").select(
                 "id, email, full_name, role, created_at"
-            ).or_("email.ilike.%{}%,full_name.ilike.%{}%".format(query, query)).limit(limit).execute()
+            ).ilike("email", f"%{query}%").limit(limit).execute()
+            
+            # Query users by full_name  
+            name_results = self.supabase.table("user_profiles").select(
+                "id, email, full_name, role, created_at"
+            ).ilike("full_name", f"%{query}%").limit(limit).execute()
+            
+            # Merge and deduplicate results
+            email_user_ids = {user["id"] for user in email_results.data}
+            merged_data = email_results.data + [user for user in name_results.data if user["id"] not in email_user_ids]
+            
+            # Limit to requested limit
+            merged_data = merged_data[:limit]
+            
+            # Create a mock result object with merged data
+            class MockResult:
+                def __init__(self, data):
+                    self.data = data
+            
+            result = MockResult(merged_data)
             
             users = []
             for user_data in result.data:

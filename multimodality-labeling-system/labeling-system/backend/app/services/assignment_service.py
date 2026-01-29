@@ -101,9 +101,12 @@ class AssignmentService:
             raise e
 
     async def get_all_assignments_with_details(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
-        """Get all assignments with user and task details"""
+        """Get all assignments with user and task details (optimized to avoid N+1 problem)"""
         try:
-            # Get assignments
+            # Since there's no direct FK between task_assignments and user_profiles,
+            # we'll use separate optimized queries instead of JOINs
+            
+            # 1. Get assignments
             assignments_result = self.supabase.table("task_assignments")\
                 .select("*")\
                 .order("assigned_at", desc=True)\
@@ -111,28 +114,39 @@ class AssignmentService:
                 .offset(offset)\
                 .execute()
             
+            if not assignments_result.data:
+                return []
+            
+            # 2. Get all unique task_ids and user_ids from assignments
+            task_ids = list(set(assignment["task_id"] for assignment in assignments_result.data))
+            user_ids = list(set(assignment["user_id"] for assignment in assignments_result.data))
+            
+            # 3. Batch fetch tasks and users (only 2 additional queries instead of N queries)
+            tasks_result = self.supabase.table("tasks")\
+                .select("id, title")\
+                .in_("id", task_ids)\
+                .execute()
+            
+            users_result = self.supabase.table("user_profiles")\
+                .select("id, full_name, email")\
+                .in_("id", user_ids)\
+                .execute()
+            
+            # 4. Create lookup maps for O(1) access
+            task_map = {task["id"]: task for task in tasks_result.data}
+            user_map = {user["id"]: user for user in users_result.data}
+            
+            # 5. Build response with lookups
             assignments = []
             for assignment in assignments_result.data:
-                # Get task details
-                task_result = self.supabase.table("tasks")\
-                    .select("title")\
-                    .eq("id", assignment["task_id"])\
-                    .execute()
-                
-                # Get user details
-                user_result = self.supabase.table("user_profiles")\
-                    .select("full_name, email")\
-                    .eq("id", assignment["user_id"])\
-                    .execute()
-                
-                # No label classes to process
-                class_names = []
+                task = task_map.get(assignment["task_id"], {})
+                user = user_map.get(assignment["user_id"], {})
                 
                 assignment_data = {
                     **assignment,
-                    "task_title": task_result.data[0]["title"] if task_result.data else "Unknown Task",
-                    "user_name": user_result.data[0]["full_name"] if user_result.data else "Unknown User",
-                    "user_email": user_result.data[0]["email"] if user_result.data else "Unknown Email",
+                    "task_title": task.get("title", "Unknown Task"),
+                    "user_name": user.get("full_name", "Unknown User"),
+                    "user_email": user.get("email", "Unknown Email"),
                     "accuracy": None,  # Can be calculated later
                     "time_spent": None,  # Can be calculated later
                 }
@@ -351,6 +365,45 @@ class AssignmentService:
         except Exception as e:
             raise Exception(f"Error fetching assignments: {str(e)}")
     
+    async def get_user_assignments_with_task_details(self, user_id: str, active_only: bool = True) -> List[TaskAssignmentWithTitle]:
+        """Get user's task assignments with task details in single optimized query"""
+        try:
+            print(f"🔄 Fetching assignments with task details for user: {user_id}")
+            
+            # Use JOIN to get assignments with task titles in single query
+            query = self.supabase.table("task_assignments")\
+                .select("*, tasks!inner(title)")\
+                .eq("user_id", user_id)
+                
+            if active_only:
+                query = query.eq("is_active", True)
+            
+            result = query.execute()
+            
+            print(f"📊 Retrieved {len(result.data)} assignments with task details")
+            
+            # Process results to flatten the joined data
+            assignments_with_titles = []
+            for assignment_data in result.data:
+                # Extract task title from the joined data
+                task_title = assignment_data.get("tasks", {}).get("title", "Unknown Task")
+                
+                # Create enhanced assignment object
+                enhanced_assignment = {
+                    **assignment_data,
+                    "task_title": task_title
+                }
+                # Remove the nested tasks object
+                enhanced_assignment.pop("tasks", None)
+                
+                assignments_with_titles.append(TaskAssignmentWithTitle(**enhanced_assignment))
+            
+            return assignments_with_titles
+            
+        except Exception as e:
+            print(f"❌ Error fetching assignments with task details: {str(e)}")
+            raise Exception(f"Error fetching assignments with task details: {str(e)}")
+    
     async def create_task_assignment(self, assignment_data: TaskAssignmentRequest, task_id: str) -> TaskAssignment:
         """Create task assignment"""
         try:
@@ -409,12 +462,37 @@ class AssignmentService:
     async def update_assignment_progress_from_response(self, assignment_id: str):
         """Update assignment progress when a response is submitted"""
         try:
+            # Get current assignment details
+            assignment_result = self.supabase.table("task_assignments").select("*").eq("id", assignment_id).execute()
+            if not assignment_result.data:
+                print(f"Assignment {assignment_id} not found")
+                return
+            
+            assignment = assignment_result.data[0]
+            
+            # Count actual responses for this assignment
             responses = self.supabase.table("question_responses").select("id").eq("task_assignment_id", assignment_id).execute()
             completed_count = len(responses.data)
             
-            self.supabase.table("task_assignments").update({
+            # Calculate assignment target
+            question_range_start = assignment.get("question_range_start", 1)
+            question_range_end = assignment.get("question_range_end", 1)
+            assignment_target = question_range_end - question_range_start + 1
+            
+            # Prepare update data
+            update_data = {
                 "completed_labels": completed_count
-            }).eq("id", assignment_id).execute()
+            }
+            
+            # Mark as completed if target reached
+            if completed_count >= assignment_target:
+                from datetime import datetime
+                update_data["completed_at"] = datetime.utcnow().isoformat()
+                print(f"✅ Assignment {assignment_id} marked as completed ({completed_count}/{assignment_target})")
+            
+            # Update the assignment
+            self.supabase.table("task_assignments").update(update_data).eq("id", assignment_id).execute()
+            
         except Exception as e:
             print(f"Error updating assignment progress: {str(e)}")
     

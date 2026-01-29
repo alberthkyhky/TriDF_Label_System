@@ -10,9 +10,13 @@ import {
   AppBar,
   Toolbar,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
-import { ArrowBack } from '@mui/icons-material';
+import { ArrowBack, CheckCircle } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
 import { ProgressIndicator } from './LabelingInterface/ProgressIndicator';
@@ -40,6 +44,7 @@ interface FailureChoice {
   text: string;
   options: string[];
   multiple_select: boolean;
+  order?: number;
 }
 
 interface QuestionWithMedia {
@@ -82,6 +87,22 @@ const LabelingInterface: React.FC = () => {
   const [questionStartTime, setQuestionStartTime] = useState<Date>(new Date());
   const [totalQuestions, setTotalQuestions] = useState(-1);
   const [taskTitle, setTaskTitle] = useState<string>('');
+  const [assignment, setAssignment] = useState<any>(null);
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+  const [completionMessage, setCompletionMessage] = useState('');
+  const [hasExistingResponse, setHasExistingResponse] = useState(false);
+  const [existingResponseData, setExistingResponseData] = useState<any>(null);
+
+  // Completion dialog handlers
+  const handleCompletionDialogClose = useCallback(() => {
+    setShowCompletionDialog(false);
+    navigate('/dashboard');
+  }, [navigate]);
+
+  const showCompletionMessage = useCallback((message: string) => {
+    setCompletionMessage(message);
+    setShowCompletionDialog(true);
+  }, []);
 
   useEffect(() => {
     const fetchAssignment = async () => {
@@ -93,12 +114,21 @@ const LabelingInterface: React.FC = () => {
       try {
         setError(null);
         const assignmentData = await api.getTaskAssignment(taskId);
-        setCurrentQuestionIndex(assignmentData.completed_labels);
+        setAssignment(assignmentData);
         // Calculate total questions from assignment range
         const totalQuestions = assignmentData.question_range_end - assignmentData.question_range_start + 1;
         setTotalQuestions(totalQuestions);
+        
+        // Set current question index to completed_labels (this represents progress within assignment)
+        setCurrentQuestionIndex(assignmentData.completed_labels);
         // Set task title from assignment data
         setTaskTitle(assignmentData.task_title || 'Unknown Task');
+        
+        // Check if assignment is already complete
+        if (assignmentData.completed_labels >= totalQuestions) {
+          showCompletionMessage('You have already completed this assignment! You will be redirected to the dashboard.');
+          return;
+        }
       } catch (error: any) {
         console.error('Error fetching assignment:', error);
         setError(error.message || 'Failed to load assignment');
@@ -107,7 +137,7 @@ const LabelingInterface: React.FC = () => {
     if (currentQuestionIndex === -1) {
       fetchAssignment();
     }
-  }, []);
+  }, [showCompletionMessage, navigate]);
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -120,10 +150,43 @@ const LabelingInterface: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const questionsData = await api.getTaskQuestionsWithMedia(taskId, currentQuestionIndex);
+        // Convert relative progress to actual question ID based on assignment range
+        const actualQuestionId = assignment ? (assignment.question_range_start - 1) + currentQuestionIndex : currentQuestionIndex;
+        const questionsData = await api.getTaskQuestionsWithMedia(taskId, actualQuestionId);
         console.log('Fetched questions:', questionsData);
         setQuestions(questionsData);
         setQuestionStartTime(new Date());
+        
+        // Try to load existing response for this question
+        try {
+          const existingResponse = await api.getMyResponseForQuestion(taskId, actualQuestionId);
+          console.log('Existing response for question:', existingResponse);
+          
+          if (existingResponse && questionsData[0]) {
+            // Load the existing response into the UI
+            setResponses(prev => ({
+              ...prev,
+              [questionsData[0].id]: {
+                question_id: questionsData[0].id,
+                task_id: taskId,
+                responses: existingResponse.responses || {},
+                media_files: questionsData[0].media_files?.map(f => f.file_path) || [],
+                started_at: existingResponse.started_at
+              }
+            }));
+            setHasExistingResponse(true);
+            setExistingResponseData(existingResponse);
+            console.log('Loaded existing response into UI');
+          } else {
+            setHasExistingResponse(false);
+            setExistingResponseData(null);
+          }
+        } catch (responseError: any) {
+          // Not finding an existing response is not an error - user hasn't answered yet
+          console.log('No existing response found (normal for new questions)');
+          setHasExistingResponse(false);
+          setExistingResponseData(null);
+        }
       } catch (error: any) {
         console.error('Error fetching questions:', error);
         setError(error.message || 'Failed to load questions');
@@ -134,7 +197,7 @@ const LabelingInterface: React.FC = () => {
     if (currentQuestionIndex !== -1) {
       fetchQuestions();
     }
-  }, [taskId, currentQuestionIndex]);
+  }, [taskId, currentQuestionIndex, assignment]);
 
   // Reset timer when question changes
   useEffect(() => {
@@ -208,8 +271,11 @@ const LabelingInterface: React.FC = () => {
       // Calculate time spent on this question
       const timeSpent = Math.round((Date.now() - questionStartTime.getTime()) / 1000);
       
+      // Convert relative progress to actual question ID for submission
+      const actualQuestionId = assignment ? (assignment.question_range_start - 1) + currentQuestionIndex : currentQuestionIndex;
+      
       const responseData = {
-        question_id: currentQuestionIndex,
+        question_id: actualQuestionId,
         task_id: taskId!,
         responses: currentResponse.responses,
         time_spent_seconds: timeSpent,
@@ -221,28 +287,50 @@ const LabelingInterface: React.FC = () => {
       // Submit response to backend
       await api.createDetailedQuestionResponse(responseData);
       
-      // Move to next question or complete task
-      if (currentQuestionIndex < totalQuestions) {
-        setCurrentQuestionIndex(prev => prev + 1);
-        setQuestions([]);
-        setResponses({});
-        setError(null);
-      } else {
-        alert('Task completed successfully! Redirecting to dashboard...');
-        navigate('/dashboard');
+      // Fetch updated assignment data to check completion status
+      const updatedAssignment = await api.getTaskAssignment(taskId!);
+      setAssignment(updatedAssignment);
+      
+      // Calculate assignment target
+      const assignmentTarget = updatedAssignment.question_range_end - updatedAssignment.question_range_start + 1;
+      
+      // Check if assignment is now complete
+      if (updatedAssignment.completed_labels >= assignmentTarget) {
+        showCompletionMessage('Assignment completed successfully! You have finished all your assigned questions. You will be redirected to the dashboard.');
+        return;
       }
+      
+      // Move to next question if assignment is not complete
+      setCurrentQuestionIndex(prev => prev + 1);
+      setQuestions([]);
+      setResponses({});
+      setError(null);
+      // Clear existing response state when moving to next question
+      setHasExistingResponse(false);
+      setExistingResponseData(null);
     } catch (error: any) {
       console.error('Error submitting response:', error);
-      setError(error.message || 'Error submitting response. Please try again.');
+      const errorMessage = error.message || 'Error submitting response. Please try again.';
+      
+      // Check if error indicates assignment completion
+      if (errorMessage.includes('Assignment already completed') || errorMessage.includes('exceed your assigned question limit')) {
+        showCompletionMessage('Assignment completed! You have finished all your assigned questions. You will be redirected to the dashboard.');
+        return;
+      }
+      
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }
-  }, [currentQuestion, currentQuestionIndex, totalQuestions, currentResponse, questionStartTime, taskId, navigate]);
+  }, [currentQuestion, currentQuestionIndex, totalQuestions, currentResponse, questionStartTime, taskId, navigate, assignment, showCompletionMessage]);
 
   const handlePreviousQuestion = useCallback(() => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
       setError(null); // Clear any error when navigating
+      // Clear existing response state when navigating
+      setHasExistingResponse(false);
+      setExistingResponseData(null);
     }
   }, [currentQuestionIndex]);
 
@@ -358,9 +446,52 @@ const LabelingInterface: React.FC = () => {
             isSubmitting={submitting}
             onPrevious={handlePreviousQuestion}
             onSubmit={handleSubmitResponse}
+            hasExistingResponse={hasExistingResponse}
+            existingResponseData={existingResponseData}
           />
         </ErrorBoundary>
       </Container>
+
+      {/* Assignment Completion Dialog */}
+      <Dialog
+        open={showCompletionDialog}
+        onClose={handleCompletionDialogClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            p: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+            <CheckCircle sx={{ fontSize: 48, color: 'success.main', mr: 1 }} />
+          </Box>
+          <Typography variant="h5" component="div" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+            Assignment Complete!
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center', py: 2 }}>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            {completionMessage}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Great job on completing your assigned questions!
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+          <Button
+            variant="contained"
+            onClick={handleCompletionDialogClose}
+            size="large"
+            sx={{ px: 4 }}
+          >
+            Go to Dashboard
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

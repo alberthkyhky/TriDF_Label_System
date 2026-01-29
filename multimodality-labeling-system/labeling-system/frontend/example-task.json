@@ -4,16 +4,12 @@
   "instructions": "Listen to both audio samples and identify any quality issues in the generated audio. Compare it against the reference audio to determine if there are any failures in the generation process.",
   "questions_number": 50,
   "priority": "medium",
-  "required_agreements": 2,
-  "example_media": [
-    "example_audio_1.wav",
-    "example_audio_2.wav"
-  ],
   "question_template": {
     "question_text": "Compare the generated audio with the reference audio. What quality issues do you observe?",
     "choices": {
       "structural_issues": {
         "text": "Structural Issues (A-type failures)",
+        "order": 1,
         "options": [
           "None",
           "Audio truncation",
@@ -24,7 +20,8 @@
         "multiple_select": true
       },
       "functional_issues": {
-        "text": "Functional Issues (B-type failures)", 
+        "text": "Functional Issues (B-type failures)",
+        "order": 2,
         "options": [
           "None",
           "Voice mismatch",
@@ -37,6 +34,7 @@
       },
       "quality_issues": {
         "text": "Quality Issues (C-type failures)",
+        "order": 3,
         "options": [
           "None",
           "Background noise",

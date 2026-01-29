@@ -1,21 +1,24 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import {
   Box,
   Typography,
   FormGroup,
   FormControlLabel,
   Checkbox,
+  Radio,
+  RadioGroup,
   Chip,
   Accordion,
   AccordionSummary,
   AccordionDetails
 } from '@mui/material';
-import { ExpandMore, CheckCircle, Cancel } from '@mui/icons-material';
+import { ExpandMore, CheckCircle } from '@mui/icons-material';
 
 interface FailureChoice {
   text: string;
   options: string[];
   multiple_select: boolean;
+  order?: number;
 }
 
 interface FailureTypeSelectorProps {
@@ -32,18 +35,72 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
   // Track which failure types user explicitly said "Yes" to
   const [yesStates, setYesStates] = React.useState<Record<string, boolean>>({});
 
+  // Helper function to check if a failure type should hide the Yes/No level
+  const shouldHideYesNoLevel = useCallback((failureType: string) => {
+    return failureType === 'Difficulty' || failureType === 'Success';
+  }, []);
+
+  // Helper function to detect DeepFake Success questions
+  const isDeepFakeSuccess = useCallback((failureType: string) => {
+    return failureType.includes('DeepFake Success');
+  }, []);
+
+  // Auto-initialize yes state for Difficulty and Success questions
+  React.useEffect(() => {
+    const autoYesStates: Record<string, boolean> = {};
+    Object.keys(choices).forEach(failureType => {
+      if (shouldHideYesNoLevel(failureType)) {
+        autoYesStates[failureType] = true;
+      }
+    });
+    setYesStates(prev => ({ ...prev, ...autoYesStates }));
+  }, [choices, shouldHideYesNoLevel]);
+
+  // Helper function to check if a failure type has only one detail option
+  const hasSingleOption = useCallback((failureType: string) => {
+    const choiceData = choices[failureType];
+    if (!choiceData) return false;
+    const detailOptions = choiceData.options.filter(option => option !== 'None');
+    return detailOptions.length === 1;
+  }, [choices]);
+
   // Memoize expensive selection summary calculations
   const selectionSummaries = useMemo(() => {
     const summaries: Record<string, string> = {};
     
     Object.keys(choices).forEach(failureType => {
       const selections = responses[failureType] || [];
-      if (selections.length === 0 && !yesStates[failureType]) {
+      const isSpecialCategory = shouldHideYesNoLevel(failureType);
+      const isDeepFake = isDeepFakeSuccess(failureType);
+      
+      if (isDeepFake) {
+        // For DeepFake Success questions, show simple Yes/No status
+        if (selections.includes('None')) {
+          summaries[failureType] = 'No selected';
+        } else if (yesStates[failureType] || selections.filter(s => s !== 'None').length > 0) {
+          summaries[failureType] = 'Yes selected';
+        } else {
+          summaries[failureType] = 'No selection';
+        }
+      } else if (isSpecialCategory) {
+        // For Difficulty/Success questions, show selection status directly
+        const optionCount = selections.filter(s => s !== 'None').length;
+        if (optionCount === 0) {
+          summaries[failureType] = 'Please make a selection';
+        } else {
+          summaries[failureType] = `${optionCount} option${optionCount !== 1 ? 's' : ''} selected`;
+        }
+      } else if (selections.length === 0 && !yesStates[failureType]) {
         summaries[failureType] = 'No selection';
       } else if (selections.includes('None')) {
         summaries[failureType] = 'No failures detected';
       } else if (yesStates[failureType] && selections.filter(s => s !== 'None').length === 0) {
-        summaries[failureType] = 'Ready to select failures';
+        // Handle single option case
+        if (hasSingleOption(failureType)) {
+          summaries[failureType] = 'Auto-selected single option';
+        } else {
+          summaries[failureType] = 'Ready to select failures';
+        }
       } else {
         const failureCount = selections.filter(s => s !== 'None').length;
         summaries[failureType] = `${failureCount} failure${failureCount !== 1 ? 's' : ''} selected`;
@@ -51,7 +108,7 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
     });
     
     return summaries;
-  }, [choices, responses, yesStates]);
+  }, [choices, responses, yesStates, hasSingleOption, shouldHideYesNoLevel, isDeepFakeSuccess]);
 
   const getFailureTypeColor = (failureType: string) => {
     if (failureType.includes('A-type')) return 'error';
@@ -60,11 +117,8 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
     return 'primary';
   };
 
-  const getFailureTypeIcon = (failureType: string) => {
-    if (failureType.includes('A-type')) return '1.';
-    if (failureType.includes('B-type')) return '2.';
-    if (failureType.includes('C-type')) return '3.';
-    return '1.';
+  const getFailureTypeIcon = (index: number) => {
+    return `${index + 1}.`;
   };
 
   // Check if user selected "No" (None)
@@ -106,6 +160,20 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
       if (hasSelectedNo(failureType)) {
         onSelectionChange(failureType, 'None', false);
       }
+      
+      // For DeepFake Success, selecting "Yes" is the final answer.
+      if (isDeepFakeSuccess(failureType)) {
+        onSelectionChange(failureType, 'Yes', true); // Add a 'Yes' value to the responses
+      }
+
+      // Auto-select single option if only one detail option exists
+      if (hasSingleOption(failureType)) {
+        const choiceData = choices[failureType];
+        const singleOption = choiceData.options.filter(option => option !== 'None')[0];
+        if (singleOption) {
+          onSelectionChange(failureType, singleOption, true);
+        }
+      }
     } else {
       // Clear yes state and all failure selections
       setYesStates(prev => ({ ...prev, [failureType]: false }));
@@ -115,6 +183,23 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
           onSelectionChange(failureType, selection, false);
         }
       });
+    }
+  };
+
+  // Handle radio button selection for single-select mode
+  const handleRadioSelection = (failureType: string, selectedOption: string) => {
+    const currentSelections = responses[failureType] || [];
+    
+    // Clear all current selections first
+    currentSelections.forEach(selection => {
+      if (selection !== 'None') {
+        onSelectionChange(failureType, selection, false);
+      }
+    });
+    
+    // Set the new selection
+    if (selectedOption && selectedOption !== 'None') {
+      onSelectionChange(failureType, selectedOption, true);
     }
   };
 
@@ -129,7 +214,9 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
         />
       </Typography>
 
-      {Object.entries(choices).map(([failureType, choiceData]) => (
+      {Object.entries(choices)
+        .sort(([,a], [,b]) => (a.order || 999) - (b.order || 999))
+        .map(([failureType, choiceData], index) => (
         <Accordion 
           key={failureType}
           defaultExpanded={true}
@@ -158,7 +245,7 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
               <Typography variant="h6">
-                {getFailureTypeIcon(failureType)}
+                {getFailureTypeIcon(index)}
               </Typography>
               <Box sx={{ flex: 1 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
@@ -177,15 +264,6 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
                     color={getFailureTypeColor(failureType) as any}
                   />
                 )}
-                {hasSelectedNo(failureType) && (
-                  <Chip 
-                    icon={<Cancel />}
-                    label="None"
-                    size="small"
-                    color="success"
-                    variant="outlined"
-                  />
-                )}
                 {yesStates[failureType] && !hasSelectedNo(failureType) && 
                  (!responses[failureType] || responses[failureType].filter(s => s !== 'None').length === 0) && (
                   <Chip 
@@ -200,48 +278,55 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
           </AccordionSummary>
           
           <AccordionDetails>
-            {/* Primary Yes/No Question */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" gutterBottom >
-                Are there any {failureType} failures in this data?
-              </Typography>
-              <FormGroup row>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={hasSelectedNo(failureType)}
-                      onChange={(e) => handleNoSelection(failureType, e.target.checked)}
-                      color="success"
-                    />
-                  }
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body2">No</Typography>
-                      <Chip label="No failures" size="small" variant="outlined" color="success" />
-                    </Box>
-                  }
-                  sx={{ mr: 3 }}
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={hasSelectedYes(failureType)}
-                      onChange={(e) => handleYesSelection(failureType, e.target.checked)}
-                      color={getFailureTypeColor(failureType) as any}
-                    />
-                  }
-                  label={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body2">Yes</Typography>
-                      <Chip label="Has failures" size="small" variant="outlined" color={getFailureTypeColor(failureType) as any} />
-                    </Box>
-                  }
-                />
-              </FormGroup>
-            </Box>
+            {/* Primary Yes/No Question - Hidden for Difficulty/Success questions */}
+            {!shouldHideYesNoLevel(failureType) && (
+              <Box sx={{ mb: 3 }}>
+                <FormGroup row>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={hasSelectedNo(failureType)}
+                        onChange={(e) => handleNoSelection(failureType, e.target.checked)}
+                        color="success"
+                      />
+                    }
+                    label={
+                      isDeepFakeSuccess(failureType) ? (
+                        <Typography variant="body2">Incorrect</Typography>
+                      ) : (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2">Incorrect</Typography>
+                          <Chip label="No failures" size="small" variant="outlined" color="success" />
+                        </Box>
+                      )
+                    }
+                    sx={{ mr: 3 }}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={hasSelectedYes(failureType)}
+                        onChange={(e) => handleYesSelection(failureType, e.target.checked)}
+                        color={getFailureTypeColor(failureType) as any}
+                      />
+                    }
+                    label={
+                      isDeepFakeSuccess(failureType) ? (
+                        <Typography variant="body2">Correct</Typography>
+                      ) : (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2">Correct</Typography>
+                          <Chip label="Has failures" size="small" variant="outlined" color={getFailureTypeColor(failureType) as any} />
+                        </Box>
+                      )
+                    }
+                  />
+                </FormGroup>
+              </Box>
+            )}
 
-            {/* Show specific failure options only if "Yes" is selected */}
-            {hasSelectedYes(failureType) && (
+            {/* Show specific failure options if "Yes" is selected and not single option, OR if it's a Difficulty/Success question, BUT NOT for DeepFake Success */}
+            {((hasSelectedYes(failureType) && !hasSingleOption(failureType)) || shouldHideYesNoLevel(failureType)) && !isDeepFakeSuccess(failureType) ? (
               <Box sx={{ 
                 p: 2, 
                 bgcolor: `${getFailureTypeColor(failureType)}.50`, 
@@ -250,57 +335,106 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
                 borderColor: `${getFailureTypeColor(failureType)}.200`
               }}>
                 <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>
-                  What type of {failureType} failures do you see?
+                  {failureType === 'Difficulty' 
+                    ? 'What is the level of realism do you think?' 
+                    : failureType === 'Success'
+                    ? 'How would you rate the success level?'
+                    : `What type of ${failureType} failures do you see?`}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-                  Select all that apply:
+                  {choiceData.multiple_select ? 'Select all that apply:' : 'Select one option:'}
                 </Typography>
                 
-                <FormGroup>
-                  {choiceData.options.filter(option => option !== 'None').map((option) => {
-                    const isSelected = responses[failureType]?.includes(option) || false;
-                    
-                    return (
-                      <FormControlLabel
-                        key={option}
-                        control={
-                          <Checkbox
-                            checked={isSelected}
-                            onChange={(e) => onSelectionChange(failureType, option, e.target.checked)}
-                            color={getFailureTypeColor(failureType) as any}
-                            size="small"
-                          />
-                        }
-                        label={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                            <Typography variant="body2" sx={{ flex: 1 }}>
-                              {option}
-                            </Typography>
-                            {isSelected && (
-                              <Chip 
-                                label="✓" 
-                                size="small"
-                                color={getFailureTypeColor(failureType) as any}
-                              />
-                            )}
-                          </Box>
-                        }
-                        sx={{ 
-                          mb: 0.5,
-                          p: 0.5,
-                          borderRadius: 1,
-                          bgcolor: isSelected ? `${getFailureTypeColor(failureType)}.100` : 'transparent',
-                          '&:hover': { bgcolor: `${getFailureTypeColor(failureType)}.200` }
-                        }}
-                      />
-                    );
-                  })}
-                </FormGroup>
+                {choiceData.multiple_select ? (
+                  <FormGroup>
+                    {choiceData.options.filter(option => option !== 'None').map((option) => {
+                      const isSelected = responses[failureType]?.includes(option) || false;
+                      
+                      return (
+                        <FormControlLabel
+                          key={option}
+                          control={
+                            <Checkbox
+                              checked={isSelected}
+                              onChange={(e) => onSelectionChange(failureType, option, e.target.checked)}
+                              color={getFailureTypeColor(failureType) as any}
+                              size="small"
+                            />
+                          }
+                          label={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                              <Typography variant="body2" sx={{ flex: 1 }}>
+                                {option}
+                              </Typography>
+                              {isSelected && (
+                                <Chip 
+                                  label="✓" 
+                                  size="small"
+                                  color={getFailureTypeColor(failureType) as any}
+                                />
+                              )}
+                            </Box>
+                          }
+                          sx={{ 
+                            mb: 0.5,
+                            p: 0.5,
+                            borderRadius: 1,
+                            bgcolor: isSelected ? `${getFailureTypeColor(failureType)}.100` : 'transparent',
+                            '&:hover': { bgcolor: `${getFailureTypeColor(failureType)}.200` }
+                          }}
+                        />
+                      );
+                    })}
+                  </FormGroup>
+                ) : (
+                  <RadioGroup
+                    value={responses[failureType]?.find(option => option !== 'None') || ''}
+                    onChange={(e) => handleRadioSelection(failureType, e.target.value)}
+                  >
+                    {choiceData.options.filter(option => option !== 'None').map((option) => {
+                      const isSelected = responses[failureType]?.includes(option) || false;
+                      
+                      return (
+                        <FormControlLabel
+                          key={option}
+                          value={option}
+                          control={
+                            <Radio
+                              color={getFailureTypeColor(failureType) as any}
+                              size="small"
+                            />
+                          }
+                          label={
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                              <Typography variant="body2" sx={{ flex: 1 }}>
+                                {option}
+                              </Typography>
+                              {isSelected && (
+                                <Chip 
+                                  label="✓" 
+                                  size="small"
+                                  color={getFailureTypeColor(failureType) as any}
+                                />
+                              )}
+                            </Box>
+                          }
+                          sx={{ 
+                            mb: 0.5,
+                            p: 0.5,
+                            borderRadius: 1,
+                            bgcolor: isSelected ? `${getFailureTypeColor(failureType)}.100` : 'transparent',
+                            '&:hover': { bgcolor: `${getFailureTypeColor(failureType)}.200` }
+                          }}
+                        />
+                      );
+                    })}
+                  </RadioGroup>
+                )}
               </Box>
-            )}
+            ) : null}
 
             {/* Selection Summary */}
-            {(hasSelectedYes(failureType) || hasSelectedNo(failureType)) && (
+            {(hasSelectedYes(failureType) || hasSelectedNo(failureType) || shouldHideYesNoLevel(failureType)) && !isDeepFakeSuccess(failureType) && (
               <Box sx={{ 
                 mt: 2, 
                 p: 2, 
@@ -313,15 +447,23 @@ const FailureTypeSelector: React.FC<FailureTypeSelectorProps> = ({
                   Selected for {failureType}:
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {responses[failureType]?.map((selection) => (
+                  {responses[failureType]?.filter(selection => selection !== 'None').map((selection) => (
                     <Chip
                       key={selection}
                       label={selection}
                       size="small"
-                      color={selection === 'None' ? 'success' : getFailureTypeColor(failureType) as any}
-                      variant={selection === 'None' ? 'outlined' : 'filled'}
+                      color={getFailureTypeColor(failureType) as any}
+                      variant="filled"
                     />
                   ))}
+                  {hasSelectedNo(failureType) && (
+                    <Chip
+                      label="No failures detected"
+                      size="small"
+                      color="success"
+                      variant="outlined"
+                    />
+                  )}
                 </Box>
               </Box>
             )}

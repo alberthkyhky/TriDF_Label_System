@@ -277,6 +277,10 @@ export const api = {
     return apiCall('/assignments/my');
   },
 
+  async getMyAssignmentsWithTaskDetail(): Promise<TaskAssignment[]> {
+    return apiCall('/assignments/my-task-with-detail');
+  },
+
   async assignTask(taskId: string, data: {
     user_id_to_assign: string;
     question_range_start: number;
@@ -424,6 +428,10 @@ export const api = {
   async getMyResponses(taskId?: string): Promise<any[]> {
     const endpoint = taskId ? `/responses/my?task_id=${taskId}` : '/responses/my';
     return apiCall(endpoint);
+  },
+
+  async getMyResponseForQuestion(taskId: string, questionId: number): Promise<any | null> {
+    return apiCall(`/responses/my/question/${taskId}/${questionId}`);
   },
 
   // Media Management
